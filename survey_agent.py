@@ -23,6 +23,7 @@ import time
 
 from cdp_client import CDPClient, REMOTE_PORTS, ensure_tunnel
 from vision import GemmaVision, VisionError
+import reflection
 
 PROFILE_CACHE_DIR = os.path.expanduser("~/.vydra-survey-profiles")
 
@@ -141,6 +142,13 @@ def main() -> None:
     def log(msg: str) -> None:
         print(f"[survey_agent] {msg}", flush=True)
 
+    run_id = ""
+    try:
+        from persona_graph_memory import start_run_trace
+        run_id = start_run_trace(args.profile, args.url)
+    except Exception as e:
+        log(f"Warning: Failed to start run trace: {e}")
+
     busy = heavy_state_busy()
     if busy and not args.force:
         print(
@@ -210,9 +218,13 @@ def main() -> None:
             log(f"No stored credentials for host={site_host!r} — skipping login step.")
 
         completed = False
+        trace_steps: list[dict] = []
+        stop_reason = None
         for step in range(1, args.max_steps + 1):
             shot_path = os.path.join(screenshot_dir, f"step-{step:03d}.png")
             client.screenshot(shot_path)
+            ptxt = client.page_text()
+            topic = reflection.detect_pattern(ptxt)
             try:
                 decision = vision.decide_action(shot_path, persona, step)
             except Exception as _v_err:
@@ -254,9 +266,12 @@ def main() -> None:
             value = str(decision.get("value", ""))
             log(f"Step {step}: action={action!r} target={target!r} value={value!r}")
 
+            trace_steps.append({"s": step, "t": topic, "q": ptxt[:120], "a": action, "tg": target, "v": value})
+
             if action == "done":
                 log("Gemma reports the survey is complete.")
                 completed = True
+                stop_reason = "done"
                 break
 
             is_final_looking = action == "click" and any(
@@ -265,12 +280,14 @@ def main() -> None:
             )
             if args.dry_run and is_final_looking:
                 log(f"[dry-run] Would click final-looking target {target!r} — stopping instead of submitting.")
+                stop_reason = "dry_run_final"
                 break
 
             if action == "click":
                 if not client.click_by_text(target):
                     log(f"Could not find an element matching target_text={target!r} — "
                         f"stopping this run rather than guessing blindly.")
+                    stop_reason = "target_not_found"
                     break
             elif action == "type":
                 if target:
@@ -280,11 +297,13 @@ def main() -> None:
                 client.scroll()
             else:
                 log(f"Unknown action {action!r} from Gemma — stopping.")
+                stop_reason = "unknown_action"
                 break
 
             time.sleep(1.0)
         else:
             log(f"Hit --max-steps={args.max_steps} safety cap without Gemma reporting done.")
+            stop_reason = "max_steps"
 
         log(f"Run finished. completed={completed}")
         try:
@@ -293,6 +312,21 @@ def main() -> None:
             record_survey_outcome(args.profile, args.url, status_str)
         except Exception as e:
             log(f"Warning: Failed to record survey outcome: {e}")
+
+        try:
+            final_text = client.page_text()
+            final_url = client.get_current_url()
+            outcome, reason = reflection.classify_outcome(
+                final_text, final_url,
+                gemma_said_done=completed,
+                dry_run=args.dry_run,
+                hit_max_steps=(stop_reason == "max_steps"),
+            )
+            from persona_graph_memory import record_run_trace
+            record_run_trace(run_id, outcome=outcome, outcome_reason=reason,
+                              final_text=final_text[:2000], steps=trace_steps)
+        except Exception as e:
+            log(f"Warning: Failed to record run trace: {e}")
     finally:
         client.close()
         log(f"Screenshots kept at {screenshot_dir}")
