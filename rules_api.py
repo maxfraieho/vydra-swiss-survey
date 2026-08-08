@@ -1,7 +1,8 @@
 """
 rules_api.py — Flask Blueprint for rules management and trace inspection API.
 Phase U1: read-only GET endpoints. Phase U3 (plan-ui-astryx-addendum.md §2.1):
-adds PATCH/POST mutation endpoints, all gated behind X-Astryx-Token.
+adds PATCH/POST mutation endpoints, all gated behind X-Astryx-Token. Phase U4
+(§2.3): per-host playbook gating via host_gates, POST /api/gate/<host>/approve.
 """
 from __future__ import annotations
 
@@ -376,7 +377,10 @@ def get_trace_by_id(run_id: str):
 
 @rules_bp.route("/api/gate/<path:host>", methods=["GET"])
 def get_host_gate(host: str):
-    """GET /api/gate/<host>: host readiness metrics calculated from host_rules."""
+    """GET /api/gate/<host>: host readiness metrics calculated from host_rules
+    + host_gates. Phase U4: playbook_mode now comes from the host_gates table
+    (host -> base_domain(host) -> '*' chain, same precedence as get_host_rules),
+    not a plain env var - this is the same value get_enhanced_persona() acts on."""
     conn = persona_graph_memory._connect()
     conn.row_factory = sqlite3.Row
     try:
@@ -418,15 +422,30 @@ def get_host_gate(host: str):
 
         conflicts_count = len(conflict_rows)
 
+        gate_row = None
+        for lvl in (h, base_h, "*"):
+            gate_row = conn.execute(
+                "SELECT * FROM host_gates WHERE host=?", (lvl,)
+            ).fetchone()
+            if gate_row is not None:
+                break
+        playbook_mode = gate_row["playbook_mode"] if gate_row is not None else "shadow"
+
+        has_completed_run = bool(list_traces(host=h, outcome="completed", limit=1))
+
         return jsonify({
             "host": h,
+            "playbook_mode": playbook_mode,
+            "gated_by": gate_row["host"] if gate_row is not None else None,
             "unreviewed_shadow_rules": unreviewed_shadow_count,
             "conflicts_count": conflicts_count,
             "missing_evidence_rules": missing_evidence_count,
             "total_rules": total_rules,
             "active_rules": active_rules,
             "retired_rules": retired_rules,
-            "ready_for_active": (unreviewed_shadow_count == 0 and conflicts_count == 0),
+            "has_completed_run": has_completed_run,
+            "ready_for_active": (unreviewed_shadow_count == 0 and conflicts_count == 0
+                                  and has_completed_run),
         })
     finally:
         conn.close()
@@ -567,3 +586,57 @@ def resolve_conflict(rule_id: int):
                                                     audit_action="resolve_conflict")
 
     return jsonify({"winner_id": winner_id, "loser_ids": loser_ids, "loser_action": loser_action})
+
+
+@rules_bp.route("/api/gate/<path:host>/approve", methods=["POST"])
+@_require_astryx_token
+def approve_host_gate(host: str):
+    """POST /api/gate/<host>/approve: {playbook_mode?, promote_reviewed_shadow?, note?}.
+
+    Phase U4 (plan-ui-astryx-addendum.md §2.1/§2.3): the human decision that
+    turns per-host learning on. Two things happen in one call, matching the
+    "gate screen" use-case (§2.4 #3):
+      1. (default on) bulk-promote this host's shadow rules that already have
+         a rule_audit trail (i.e. a human has actually looked at them, not
+         just self_reflection dropping them in) to 'active'.
+      2. switch host_gates.playbook_mode for this host (default 'active') -
+         the value bump_rule_outcome() and get_enhanced_persona() now read.
+
+    playbook_mode='off'/'shadow' is also accepted here so the same endpoint
+    can walk a host back down, not just up."""
+    h = norm_host(host)
+    body = request.get_json(silent=True) or {}
+    mode = body.get("playbook_mode", "active")
+    promote_reviewed_shadow = body.get("promote_reviewed_shadow", True)
+    note = body.get("note")
+    actor = _actor_from_request()
+
+    promoted_ids: list[int] = []
+    if promote_reviewed_shadow:
+        conn = persona_graph_memory._connect()
+        try:
+            rows = conn.execute(
+                "SELECT DISTINCT hr.id FROM host_rules hr "
+                "WHERE hr.host=? AND hr.status='shadow' "
+                "AND EXISTS (SELECT 1 FROM rule_audit ra WHERE ra.rule_id = hr.id)",
+                (h,),
+            ).fetchall()
+            promoted_ids = [r[0] for r in rows]
+        finally:
+            conn.close()
+        if promoted_ids:
+            persona_graph_memory.bulk_set_status(
+                promoted_ids, "active", actor=actor, note=note, audit_action="promote"
+            )
+
+    try:
+        gate = persona_graph_memory.set_host_gate(h, mode, actor=actor, note=note)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify({
+        "host": h,
+        "playbook_mode": gate["playbook_mode"],
+        "promoted_rule_ids": promoted_ids,
+        "gate": gate,
+    })

@@ -97,6 +97,14 @@ CREATE TABLE IF NOT EXISTS rule_audit (
     created_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_rule_audit_rule_id ON rule_audit(rule_id);
+
+CREATE TABLE IF NOT EXISTS host_gates (
+    host          TEXT PRIMARY KEY,
+    playbook_mode TEXT NOT NULL DEFAULT 'shadow'
+                  CHECK(playbook_mode IN ('off', 'shadow', 'active')),
+    updated_at    TEXT,
+    updated_by    TEXT
+);
 """
 
 # Phase U3 (plan-ui-astryx-addendum.md): valid host_rules.status values for the
@@ -104,10 +112,20 @@ CREATE INDEX IF NOT EXISTS idx_rule_audit_rule_id ON rule_audit(rule_id);
 # bulk_set_status validate identically.
 _ALLOWED_STATUS = {"shadow", "active", "retired"}
 
+# Phase U4: valid host_gates.playbook_mode values, mirrors the CHECK constraint
+# in SCHEMA so Python raises the same error before hitting sqlite3.IntegrityError.
+_ALLOWED_PLAYBOOK_MODES = {"off", "shadow", "active"}
+
 
 def _connect() -> sqlite3.Connection:
+    """Open the graph DB. Phase U4 (defect #3, plan-ui-astryx-addendum.md §2.2):
+    survey_agent.py runs can write while rules_api.py reads concurrently, so
+    every connection gets WAL journal mode (readers don't block the writer)
+    and a busy_timeout (retry instead of immediate 'database is locked')."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
     return conn
 
@@ -279,7 +297,13 @@ def get_host_rules(host: str, persona: str, include_shadow: bool = False) -> lis
 
 def bump_rule_outcome(rule_ids: list[int], outcome: str) -> None:
     """Increment wins/losses for `rule_ids` based on `outcome`, then promote
-    shadow rules to active (if enabled) or retire consistently-losing ones."""
+    shadow rules to active (if enabled) or retire consistently-losing ones.
+
+    Phase U4 (plan-ui-astryx-addendum.md §2.3, variant B): the shadow->active
+    auto-promote gate is now per-host via host_gates.playbook_mode=='active',
+    not the global VYDRA_PLAYBOOK env var - "turn playbook on for one verified
+    host" was impossible before this. host is read off each rule's own row
+    (host_rules.host), so a '*'-scoped rule is gated by host_gates['*']."""
     if outcome not in ("completed", "disqualified"):
         return
     conn = _connect()
@@ -292,13 +316,16 @@ def bump_rule_outcome(rule_ids: list[int], outcome: str) -> None:
                 conn.execute("UPDATE host_rules SET losses = losses + 1, updated_at=? WHERE id=?",
                              (_now(), rid))
             row = conn.execute(
-                "SELECT status, confidence, wins, losses FROM host_rules WHERE id=?", (rid,)
+                "SELECT host, status, confidence, wins, losses FROM host_rules WHERE id=?", (rid,)
             ).fetchone()
             if row is None:
                 continue
-            status, confidence, wins, losses = row
-            if (status == "shadow" and wins >= 1 and confidence >= 0.6
-                    and os.environ.get("VYDRA_PLAYBOOK") == "active"):
+            host, status, confidence, wins, losses = row
+            gate = conn.execute(
+                "SELECT playbook_mode FROM host_gates WHERE host=?", (host,)
+            ).fetchone()
+            host_active = bool(gate) and gate[0] == "active"
+            if status == "shadow" and wins >= 1 and confidence >= 0.6 and host_active:
                 conn.execute("UPDATE host_rules SET status='active', updated_at=? WHERE id=?",
                              (_now(), rid))
             elif losses >= 3 and losses > wins:
@@ -700,18 +727,67 @@ def bulk_delete_rules(rule_ids: list[int], *, actor: str = "human",
         conn.close()
 
 
+def get_host_gate(host: str) -> Optional[dict]:
+    """Current host_gates row for `host` (exact match, no host/base_domain/*
+    fallback chain - callers that need that do it themselves, see
+    get_enhanced_persona). None if the host has never been gated."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM host_gates WHERE host=?", (host,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def set_host_gate(host: str, playbook_mode: str, *, actor: str = "human",
+                   note: Optional[str] = None) -> dict:
+    """UPSERT host_gates.playbook_mode for `host` (phase U4 write path for
+    POST /api/gate/<host>/approve). Raises ValueError on an invalid mode -
+    mirrors the SCHEMA CHECK constraint so callers get a clean 400 instead of
+    sqlite3.IntegrityError."""
+    if playbook_mode not in _ALLOWED_PLAYBOOK_MODES:
+        raise ValueError(
+            f"playbook_mode must be one of {sorted(_ALLOWED_PLAYBOOK_MODES)}, got {playbook_mode!r}"
+        )
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        conn.execute(
+            "INSERT INTO host_gates (host, playbook_mode, updated_at, updated_by) "
+            "VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(host) DO UPDATE SET playbook_mode=excluded.playbook_mode, "
+            "updated_at=excluded.updated_at, updated_by=excluded.updated_by",
+            (host, playbook_mode, now, actor),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM host_gates WHERE host=?", (host,)).fetchone()
+        result = dict(row)
+        record_rule_audit(0, "gate_switch", None, result, actor, note, conn=conn)
+        conn.commit()
+        return result
+    finally:
+        conn.close()
+
+
 def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = "") -> str:
     """Appends known REAL facts to the base persona text, for the model to
     reuse when a later survey asks about the same topic - a consistency
     aid, not a source of fabricated qualifying answers. If nothing has
     been recorded yet for this persona, returns base_persona unchanged.
 
-    survey_url: used to look up host_rules for this host. Shadow-phase only
-    (Phase 6): the rules section is always computed when rules exist, but
-    is only appended to the returned text when VYDRA_PLAYBOOK=active (and,
-    if set, VYDRA_PLAYBOOK_HOSTS allows this host) - otherwise its presence
-    is only logged (sha256 + length) so Phase 7 can flip the env var without
-    a code change and this stays verifiable against the shadow log."""
+    survey_url: used to look up host_rules for this host. The rules section is
+    always computed when rules exist, but is only appended to the returned
+    text when the host is gated 'active' - otherwise its presence is only
+    logged (sha256 + length) so this stays verifiable against the shadow log.
+
+    Phase U4 (plan-ui-astryx-addendum.md §2.3): host_gates is now the source
+    of truth for per-host mode (checked host -> base_domain(host) -> '*',
+    same precedence chain as get_host_rules). VYDRA_PLAYBOOK[_HOSTS] env vars
+    are only consulted when no host_gates row exists at any of those levels -
+    they're the old global switch, kept as a fallback for hosts nobody has
+    gated yet, not an override of an explicit host_gates decision."""
     facts = get_facts(profile_key)
     result = base_persona if not facts else None
 
@@ -741,9 +817,18 @@ def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = 
                     break
                 rules_section += line
 
-            if (os.environ.get("VYDRA_PLAYBOOK") == "active"
-                    and (not os.environ.get("VYDRA_PLAYBOOK_HOSTS")
-                         or host in {norm_host(h) for h in os.environ["VYDRA_PLAYBOOK_HOSTS"].split(",")})):
+            gate_active = None
+            for lvl in (host, base_domain(host), "*"):
+                gate = get_host_gate(lvl)
+                if gate is not None:
+                    gate_active = gate["playbook_mode"] == "active"
+                    break
+            if gate_active is None:
+                gate_active = (os.environ.get("VYDRA_PLAYBOOK") == "active"
+                                and (not os.environ.get("VYDRA_PLAYBOOK_HOSTS")
+                                     or host in {norm_host(h) for h in os.environ["VYDRA_PLAYBOOK_HOSTS"].split(",")}))
+
+            if gate_active:
                 result = (result if result is not None else base_persona) + rules_section
             else:
                 print(f"[shadow] would-add host_rules section for {host}: "
