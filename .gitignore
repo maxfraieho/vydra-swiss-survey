@@ -2,5 +2,4 @@ __pycache__/
 *.pyc
 *.png
 *.log
-.DS_Store
-node_modules/
+survey-agent.pid
