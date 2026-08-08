@@ -1,0 +1,41 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import './theme/theme.css';
+
+import { neutralTheme } from './theme/neutralTheme';
+import { Theme } from '@astryxdesign/core/theme';
+import { getAppBasename } from './api/client';
+
+import { AppShell } from './shell/AppShell';
+import { RulesTable } from './screens/rules/RulesTable';
+import { Compare } from './screens/rules/Compare';
+import { Conflicts } from './screens/rules/Conflicts';
+import { Traces } from './screens/audit/Traces';
+import { Report } from './screens/audit/Report';
+
+const basename = getAppBasename();
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <Theme theme={neutralTheme}>
+      <BrowserRouter basename={basename}>
+        <Routes>
+          <Route path="/" element={<AppShell />}>
+            <Route index element={<Navigate to="/rules" replace />} />
+            <Route path="rules" element={<RulesTable />} />
+            <Route path="rules/compare" element={<Compare />} />
+            <Route path="rules/conflicts" element={<Conflicts />} />
+            <Route path="traces" element={<Traces />} />
+            <Route path="traces/:runId" element={<Traces />} />
+            <Route path="report" element={<Report />} />
+            <Route path="*" element={<Navigate to="/rules" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </Theme>
+  </React.StrictMode>
+);
