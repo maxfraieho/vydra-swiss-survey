@@ -13,7 +13,7 @@ export function getAppBasename(): string {
   if (idx !== -1) {
     return pathname.substring(0, idx + 4);
   }
-  return '/app';
+  return '';
 }
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
