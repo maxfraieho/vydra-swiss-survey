@@ -61,6 +61,15 @@ DONE_PHRASES: dict[str, list[str]] = {
 }
 
 
+# Substrings (lowercase) indicating a negative/denial answer, per language.
+NEGATIVE_TOKENS: dict[str, list[str]] = {
+    "de": ["nein", "kein", "niemals", "nicht"],
+    "fr": ["non", "jamais", "pas de", "aucun"],
+    "it": ["no", "mai", "nessun", "niente"],
+    "en": ["no", "never", "none", "not"],
+}
+
+
 def detect_pattern(page_text: str) -> str | None:
     """First TOPIC_KEYWORDS pattern whose substring appears in the first ~600 chars
     of `page_text` (lowercased). None if nothing matches -- never invents a pattern."""
@@ -119,3 +128,65 @@ def classify_outcome(
         return ("incomplete", "hit max steps")
 
     return ("incomplete", "no outcome signal found")
+
+
+def _answer_polarity(target_text: str, value: str) -> str:
+    """Best-effort 'affirm'/'deny' from a step's target_text + value, lowercase
+    substring match against NEGATIVE_TOKENS (all languages). No NLP."""
+    haystack = f"{target_text} {value}".lower()
+    for tokens in NEGATIVE_TOKENS.values():
+        for tok in tokens:
+            if tok in haystack:
+                return "deny"
+    return "affirm"
+
+
+def reflect(trace: dict, *, use_llm: bool = False, vision=None) -> list[dict]:
+    """Rule-based reflection on a degraded run outcome (disqualified/incomplete/
+    error): guesses which of the last few answered topics likely caused it, by
+    comparing the answer's actual polarity against QUALIFYING_POLARITY. Returns
+    lessons for record_host_rule() to write as status='shadow' rows -- nothing
+    here is read back into the persona prompt (that's phase 6)."""
+    if use_llm:
+        # LLM-assisted reflection is a future phase -- not implemented here.
+        return []
+
+    outcome = trace.get("outcome")
+    if outcome not in ("disqualified", "incomplete", "error"):
+        return []
+
+    steps = [s for s in trace.get("steps", []) if s.get("t")]
+    lessons: list[dict] = []
+    seen_patterns: set = set()
+    for step in reversed(steps[-3:]):
+        topic = step["t"]
+        if topic in seen_patterns:
+            continue
+        seen_patterns.add(topic)
+
+        expected = QUALIFYING_POLARITY.get(topic)
+        if expected is None:
+            continue
+        expected_norm = "deny" if expected == "not_fully_healthy" else expected
+
+        actual = _answer_polarity(step.get("tg") or "", step.get("v") or "")
+
+        confidence = 0.5 if actual != expected_norm else 0.4
+        behavior = (
+            f"Для патерну '{topic}' на цьому хості потрібна відповідь '{expected}' щоб пройти "
+            f"скринінг — попередній прогін відповів '{actual}' і отримав результат '{outcome}'."
+        )
+        lessons.append({
+            "pattern": topic,
+            "behavior": behavior,
+            "confidence": confidence,
+            "evidence": {
+                "outcome_reason": trace.get("outcome_reason"),
+                "step": step.get("s"),
+                "question": (step.get("q") or "")[:120],
+                "answered": step.get("tg") or step.get("v"),
+                "outcome": outcome,
+            },
+        })
+
+    return lessons

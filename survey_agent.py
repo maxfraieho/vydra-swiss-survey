@@ -325,6 +325,24 @@ def main() -> None:
             from persona_graph_memory import record_run_trace
             record_run_trace(run_id, outcome=outcome, outcome_reason=reason,
                               final_text=final_text[:2000], steps=trace_steps)
+
+            if outcome in ("disqualified", "incomplete", "error"):
+                lessons = reflection.reflect({
+                    "outcome": outcome, "outcome_reason": reason,
+                    "steps": trace_steps, "host": site_host, "persona": args.profile,
+                })
+                if lessons:
+                    from persona_graph_memory import get_host_rules, record_host_rule
+                    existing = get_host_rules(site_host, args.profile, include_shadow=True)
+                    overridden = {r["pattern"] for r in existing if r["source"] == "human_override"}
+                    for lesson in lessons:
+                        if lesson["pattern"] in overridden:
+                            continue
+                        record_host_rule(
+                            site_host, lesson["pattern"], lesson["behavior"],
+                            persona=args.profile, source="self_reflection", status="shadow",
+                            confidence=lesson["confidence"], evidence=lesson["evidence"],
+                        )
         except Exception as e:
             log(f"Warning: Failed to record run trace: {e}")
     finally:
