@@ -245,7 +245,7 @@ def main() -> None:
                     decision["action"] = verif_res.get("override_action")
                     decision["target_text"] = verif_res.get("override_target", decision.get("target_text"))
                     decision["value"] = verif_res.get("override_value", decision.get("value"))
-                    log(f"[Verification Override] step {step}: action={decision["action"]} target={decision["target_text"]}")
+                    log(f"[Verification Override] step {step}: action={decision['action']} target={decision['target_text']}")
             except Exception as _ve:
                 pass
 
