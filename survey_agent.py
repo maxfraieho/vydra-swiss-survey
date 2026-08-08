@@ -60,7 +60,7 @@ def heavy_state_busy() -> list[str]:
     return [name for name, active in checks.items() if active]
 
 
-def load_persona(profile_key: str) -> str:
+def load_persona(profile_key: str, survey_url: str = "") -> str:
     path = os.path.join(PROFILE_CACHE_DIR, PROFILES[profile_key]["persona_file"])
     if not os.path.exists(path):
         raise SystemExit(
@@ -77,7 +77,7 @@ def load_persona(profile_key: str) -> str:
             break
     try:
         from persona_graph_memory import get_enhanced_persona
-        content = get_enhanced_persona(profile_key, content)
+        content = get_enhanced_persona(profile_key, content, survey_url)
     except Exception as e:
         print(f"[survey_agent] Warning: Failed to apply dynamic memory: {e}", flush=True)
     return content
@@ -161,7 +161,7 @@ def main() -> None:
         )
         sys.exit(409)
 
-    persona = load_persona(args.profile)
+    persona = load_persona(args.profile, args.url)
     site_host = args.url.split("//", 1)[-1].split("/", 1)[0].replace("www.", "")
     creds = load_credentials(site_host, args.profile)
 

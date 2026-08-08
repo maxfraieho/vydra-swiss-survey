@@ -25,6 +25,7 @@ lookups, in addition to being reachable via edges for full-graph queries
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -339,23 +340,52 @@ def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = 
     reuse when a later survey asks about the same topic - a consistency
     aid, not a source of fabricated qualifying answers. If nothing has
     been recorded yet for this persona, returns base_persona unchanged.
-    survey_url: reserved for future host_rules filtering, unused for now."""
+
+    survey_url: used to look up host_rules for this host. Shadow-phase only
+    (Phase 6): the rules section is always computed when rules exist, but
+    is only appended to the returned text when VYDRA_PLAYBOOK=active (and,
+    if set, VYDRA_PLAYBOOK_HOSTS allows this host) - otherwise its presence
+    is only logged (sha256 + length) so Phase 7 can flip the env var without
+    a code change and this stays verifiable against the shadow log."""
     facts = get_facts(profile_key)
-    if not facts:
-        return base_persona
+    result = base_persona if not facts else None
 
-    section = (
-        "\n\n---\n"
-        "## 🧠 РАНІШЕ ЗАФІКСОВАНІ РЕАЛЬНІ ВІДПОВІДІ\n\n"
-        "Якщо питання стосується однієї з цих тем — обери варіант, що відповідає "
-        "вже зафіксованій реальній відповіді нижче, для консистентності між опитуваннями. "
-        "Якщо теми немає в списку — відповідай на власний розсуд, нічого не вигадуй "
-        "спеціально для проходження скринінгу.\n\n"
-    )
-    for topic, value in sorted(facts.items()):
-        section += f"   * **{topic}**: {value}\n"
+    if facts:
+        section = (
+            "\n\n---\n"
+            "## 🧠 РАНІШЕ ЗАФІКСОВАНІ РЕАЛЬНІ ВІДПОВІДІ\n\n"
+            "Якщо питання стосується однієї з цих тем — обери варіант, що відповідає "
+            "вже зафіксованій реальній відповіді нижче, для консистентності між опитуваннями. "
+            "Якщо теми немає в списку — відповідай на власний розсуд, нічого не вигадуй "
+            "спеціально для проходження скринінгу.\n\n"
+        )
+        for topic, value in sorted(facts.items()):
+            section += f"   * **{topic}**: {value}\n"
+        result = base_persona + section
 
-    return base_persona + section
+    if survey_url:
+        host = norm_host(survey_url)
+        rules = get_host_rules(host, profile_key, include_shadow=False)
+        if rules:
+            rules = sorted(rules, key=lambda r: -r["confidence"])[:12]
+            rules_section = "\n\n---\n## 📋 ПРАВИЛА ЦЬОГО СЕРВІСУ\n\n"
+            for r in rules:
+                suffix = " (людина)" if r["source"] == "human_override" else ""
+                line = f"   * {r['behavior']}{suffix}\n"
+                if len(rules_section) + len(line) > 1500:
+                    break
+                rules_section += line
+
+            if (os.environ.get("VYDRA_PLAYBOOK") == "active"
+                    and (not os.environ.get("VYDRA_PLAYBOOK_HOSTS")
+                         or host in {norm_host(h) for h in os.environ["VYDRA_PLAYBOOK_HOSTS"].split(",")})):
+                result = (result if result is not None else base_persona) + rules_section
+            else:
+                print(f"[shadow] would-add host_rules section for {host}: "
+                      f"sha256={hashlib.sha256(rules_section.encode()).hexdigest()[:12]} "
+                      f"({len(rules_section)} chars)", flush=True)
+
+    return result if result is not None else base_persona
 
 
 def record_survey_outcome(profile_key: str, survey_url: str, status: str,
