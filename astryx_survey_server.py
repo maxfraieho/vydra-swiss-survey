@@ -563,12 +563,8 @@ ASTRYX_HTML_TEMPLATE = """
 </html>
 """
 
-@app.route("/")
-def index():
-    return render_template_string(ASTRYX_HTML_TEMPLATE)
-
-@app.route("/app", defaults={"path": ""})
-@app.route("/app/<path:path>")
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
 def serve_app(path):
     from flask import send_from_directory
     dist_dir = os.path.join(os.path.dirname(__file__), "web", "dist")
@@ -576,6 +572,10 @@ def serve_app(path):
     if path and os.path.exists(target_path) and os.path.isfile(target_path):
         return send_from_directory(dist_dir, path)
     return send_from_directory(dist_dir, "index.html")
+
+@app.route("/legacy")
+def index():
+    return render_template_string(ASTRYX_HTML_TEMPLATE)
 
 
 @app.route("/api/survey/screenshot/latest")
