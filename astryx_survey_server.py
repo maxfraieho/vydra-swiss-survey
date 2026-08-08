@@ -638,6 +638,8 @@ def verify_step_api():
         training_mode = ACTIVE_SURVEY_STATE["training_mode"]
         ACTIVE_SURVEY_STATE["pending_step"] = data.get("step")
         ACTIVE_SURVEY_STATE["pending_decision"] = data.get("decision")
+        ACTIVE_SURVEY_STATE["pending_pattern"] = data.get("pattern")
+        ACTIVE_SURVEY_STATE["pending_page_text"] = data.get("page_text", "")
         ACTIVE_SURVEY_STATE["verification_event"].clear()
         ACTIVE_SURVEY_STATE["verification_result"] = None
         if training_mode:
@@ -682,11 +684,21 @@ def override_step_api():
     if target:
         try:
             sys.path.insert(0, os.path.expanduser("~/vydra-swiss-survey"))
-            from persona_graph_memory import record_fact
-            topic = f"rule_{int(time.time())}"
             rule_val = f"{target} ({explanation})" if explanation else target
-            record_fact(profile, topic, rule_val, ACTIVE_SURVEY_STATE.get("url", ""))
-            add_log(f"🧠 Записано нове правило в Graph Memory [{profile}]: {topic} = {rule_val}")
+            pattern = ACTIVE_SURVEY_STATE.get("pending_pattern")
+            if pattern:
+                from persona_graph_memory import record_host_rule, norm_host
+                host = norm_host(ACTIVE_SURVEY_STATE.get("url", ""))
+                record_host_rule(host, pattern, rule_val, persona=profile, source="human_override",
+                                  status="active", confidence=0.9,
+                                  evidence={"target": target, "explanation": explanation,
+                                            "page_text": ACTIVE_SURVEY_STATE.get("pending_page_text", "")[:300]})
+                add_log(f"🧠 Записано host_rule [{profile}@{host}] pattern={pattern}: {rule_val}")
+            else:
+                from persona_graph_memory import record_fact
+                topic = f"rule_{int(time.time())}"
+                record_fact(profile, topic, rule_val, ACTIVE_SURVEY_STATE.get("url", ""))
+                add_log(f"🧠 Записано нове правило в Graph Memory [{profile}]: {topic} = {rule_val}")
         except Exception as e:
             add_log(f"Помилка запису правила у Graph Memory: {e}")
 

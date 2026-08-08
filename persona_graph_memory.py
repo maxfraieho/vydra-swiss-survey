@@ -384,6 +384,80 @@ def record_survey_outcome(profile_key: str, survey_url: str, status: str,
             record_fact(profile_key, k, v, survey_url)
 
 
+def migrate() -> None:
+    """One-time (idempotent) migration: legacy rule_* facts -> host_rules,
+    persona_memory.py seed facts -> record_fact(), and global qualification
+    seed rules -> host_rules(host='*'). Safe to re-run: never bumps
+    confidence on an already-migrated row (checks existence first), and
+    never deletes the legacy fact rows it reads from."""
+    import reflection
+
+    conn = _connect()
+    try:
+        legacy_rows = conn.execute(
+            "SELECT id, label, persona, topic FROM nodes WHERE type='fact' AND topic LIKE 'rule_%'"
+        ).fetchall()
+        for fact_id, label, persona, topic in legacy_rows:
+            edge = conn.execute(
+                "SELECT n.label FROM edges e JOIN nodes n ON n.id = e.dst "
+                "WHERE e.src = ? AND e.relation = 'RECORDED_IN' ORDER BY e.created_at DESC LIMIT 1",
+                (fact_id,),
+            ).fetchone()
+            host = norm_host(edge[0]) if edge else "*"
+            pattern = reflection.detect_pattern(label)
+            if pattern is None:
+                pattern = f"legacy:{topic}"
+            existing = conn.execute(
+                "SELECT id FROM host_rules WHERE host=? AND persona=? AND pattern=? AND source='human_override'",
+                (host, persona, pattern),
+            ).fetchone()
+            if existing:
+                continue
+            record_host_rule(host, pattern, label, persona=persona, source="human_override",
+                              status="active", confidence=0.9, evidence={"migrated_from": topic})
+    finally:
+        conn.close()
+
+    record_fact("arno", "tobacco_smoker", "True")
+    record_fact("arno", "tobacco_details",
+                "Курець IQOS / HEETS та сигарет Marlboro Red (~10 стіків/сигарет на день, "
+                "стаж 5+ років, купує в K Kiosk та Migros). На питання скрінінгу про вживання "
+                "тютюну/IQOS відповідає СТВЕРДНО.")
+    record_fact("arno", "coffee_details", "П'є каву Nespresso та Migros/Coop, 2-3 чашки на день.")
+    record_fact("arno", "tech_details", "Користується Tesla Model 3, iPhone 15 Pro, Revolut, UBS.")
+    record_fact("annet", "coffee_details", "П'є каву Nespresso, 1-2 чашки на день.")
+    record_fact("annet", "tech_details", "Користується iPhone 14, UBS, Helsana.")
+
+    from reflection import QUALIFYING_POLARITY
+
+    conn = _connect()
+    try:
+        for pattern, polarity in QUALIFYING_POLARITY.items():
+            existing = conn.execute(
+                "SELECT id FROM host_rules WHERE host='*' AND pattern=? AND source='seed'",
+                (pattern,),
+            ).fetchone()
+            if existing:
+                continue
+            if polarity == "affirm":
+                behavior = (f"На питання про '{pattern}' завжди відповідай ствердно "
+                            f"('Так'/'Користуюся') — стандартне правило кваліфікації опитувань, "
+                            f"підвищує шанс пройти скрінінг.")
+            elif polarity == "deny":
+                behavior = (f"На питання про '{pattern}' завжди відповідай заперечно "
+                            f"('Ні'/'Не займаюсь') — стандартне правило кваліфікації.")
+            elif polarity == "not_fully_healthy":
+                behavior = ("На питання про стан здоров'я відповідай, що не повністю здоровий / "
+                            "має незначні проблеми зі здоров'ям — частий критерій кваліфікації "
+                            "в опитуваннях про здоров'я.")
+            else:
+                continue
+            record_host_rule("*", pattern, behavior, persona="*", source="seed",
+                              status="active", confidence=0.7, evidence={"seed": True})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import sys
 
@@ -391,7 +465,9 @@ if __name__ == "__main__":
         print("Usage:\n"
               "  persona_graph_memory.py record <persona> <topic> <value> [survey_url]\n"
               "  persona_graph_memory.py facts <persona>\n"
-              "  persona_graph_memory.py history <persona> <topic>")
+              "  persona_graph_memory.py history <persona> <topic>\n"
+              "  persona_graph_memory.py rules <host> [persona]\n"
+              "  persona_graph_memory.py migrate")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -407,6 +483,15 @@ if __name__ == "__main__":
         _, _, persona, topic = sys.argv
         for entry in get_fact_history(persona, topic):
             print(f"{entry['recorded_at']}  {entry['survey_url']}")
+    elif cmd == "rules":
+        _, _, host, *rest = sys.argv
+        persona = rest[0] if rest else "*"
+        for r in get_host_rules(host, persona, include_shadow=True):
+            print(f"[{r['status']}] {r['host']}/{r['persona']} {r['pattern']} "
+                  f"(src={r['source']}, conf={r['confidence']:.2f}): {r['behavior']}")
+    elif cmd == "migrate":
+        migrate()
+        print("Migration complete.")
     else:
         print(f"Unknown command: {cmd}")
         sys.exit(1)

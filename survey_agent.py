@@ -248,7 +248,9 @@ def main() -> None:
                                                  "shot_path": shot_path,
                                                  "decision": decision,
                                                  "profile": args.profile,
-                                                 "url": current_url
+                                                 "url": current_url,
+                                                 "page_text": ptxt[:2000],
+                                                 "pattern": topic
                                              }).encode("utf-8"),
                                              headers={"Content-Type": "application/json"})
                 resp = urllib.request.urlopen(req, timeout=300)
