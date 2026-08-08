@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { usePolling } from '../api/hooks';
+import { useIsNarrow } from './useIsNarrow';
 
 export interface SurveyStatus {
   status: 'idle' | 'waiting_auth' | 'running' | 'waiting_verification' | 'finished' | 'error';
@@ -14,6 +15,7 @@ export interface SurveyStatus {
 }
 
 export const StatusBar: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const { data: statusData } = usePolling<SurveyStatus>('/api/survey/status', {
     enabled: true,
     intervalMs: 3000,
@@ -51,13 +53,14 @@ export const StatusBar: React.FC = () => {
   };
 
   return (
-    <div style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: '12px 24px' }}>
+    <div style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: isNarrow ? '10px 12px' : '12px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
           <div
             style={{
               width: '36px',
               height: '36px',
+              flexShrink: 0,
               borderRadius: '10px',
               background: 'linear-gradient(135deg, #6366f1, #a855f7)',
               color: '#fff',
@@ -70,12 +73,12 @@ export const StatusBar: React.FC = () => {
           >
             A
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 700, fontSize: '16px', color: '#f8fafc' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: isNarrow ? '6px' : '8px' }}>
+              <span style={{ fontWeight: 700, fontSize: isNarrow ? '14px' : '16px', color: '#f8fafc' }}>
                 Astryx Swiss Survey Console
               </span>
-              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: '#1e293b', color: '#94a3b8', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: '#1e293b', color: '#94a3b8', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                 /app (U2)
               </span>
             </div>
@@ -116,6 +119,8 @@ export const StatusBar: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px',
             fontSize: '13px',
           }}
         >
@@ -132,6 +137,7 @@ export const StatusBar: React.FC = () => {
               textDecoration: 'none',
               fontWeight: 700,
               fontSize: '12px',
+              whiteSpace: 'nowrap',
             }}
           >
             → До кроку у Режимі Навчання (/)

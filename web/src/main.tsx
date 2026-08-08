@@ -16,6 +16,7 @@ import { Compare } from './screens/rules/Compare';
 import { Conflicts } from './screens/rules/Conflicts';
 import { Traces } from './screens/audit/Traces';
 import { Report } from './screens/audit/Report';
+import { SurveyOps } from './screens/ops/SurveyOps';
 
 const basename = getAppBasename();
 
@@ -32,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="traces" element={<Traces />} />
             <Route path="traces/:runId" element={<Traces />} />
             <Route path="report" element={<Report />} />
+            <Route path="ops" element={<SurveyOps />} />
             <Route path="*" element={<Navigate to="/rules" replace />} />
           </Route>
         </Routes>
