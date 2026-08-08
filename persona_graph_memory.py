@@ -85,7 +85,24 @@ CREATE TABLE IF NOT EXISTS run_traces (
     steps_json     TEXT NOT NULL DEFAULT '[]'
 );
 CREATE INDEX IF NOT EXISTS idx_traces_host ON run_traces(host, started_at);
+
+CREATE TABLE IF NOT EXISTS rule_audit (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id     INTEGER NOT NULL,
+    actor       TEXT NOT NULL,          -- 'human' | 'agent'
+    action      TEXT NOT NULL,          -- edit|promote|retire|delete|create|resolve_conflict
+    before_json TEXT,
+    after_json  TEXT,
+    note        TEXT,
+    created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_rule_audit_rule_id ON rule_audit(rule_id);
 """
+
+# Phase U3 (plan-ui-astryx-addendum.md): valid host_rules.status values for the
+# human-edit write path. Kept as one constant so update_host_rule/create_manual_rule/
+# bulk_set_status validate identically.
+_ALLOWED_STATUS = {"shadow", "active", "retired"}
 
 
 def _connect() -> sqlite3.Connection:
@@ -484,6 +501,203 @@ def get_trace(run_id: str) -> Optional[dict]:
         conn.close()
 
 
+def record_rule_audit(rule_id: int, action: str, before: Optional[dict], after: Optional[dict],
+                       actor: str, note: Optional[str] = None,
+                       conn: Optional[sqlite3.Connection] = None) -> None:
+    """Append one row to rule_audit. Pass an open `conn` to fold this into a
+    caller's transaction (bulk ops); otherwise opens+commits+closes its own."""
+    own = conn is None
+    if own:
+        conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO rule_audit (rule_id, actor, action, before_json, after_json, note, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (rule_id, actor, action,
+             json.dumps(before) if before is not None else None,
+             json.dumps(after) if after is not None else None,
+             note, _now()),
+        )
+        if own:
+            conn.commit()
+    finally:
+        if own:
+            conn.close()
+
+
+def update_host_rule(rule_id: int, *, behavior: Optional[str] = None,
+                      confidence: Optional[float] = None, status: Optional[str] = None,
+                      actor: str = "human", note: Optional[str] = None,
+                      audit_action: str = "edit") -> dict:
+    """Write exactly the given fields to an existing host_rules row (+ updated_at).
+
+    Unlike record_host_rule(), this NEVER bumps confidence - it is the write
+    path for human edits (defect #1, plan-ui-astryx-addendum.md §0). Records a
+    rule_audit row with the before/after state. Raises LookupError if rule_id
+    does not exist, ValueError on invalid status/confidence/behavior."""
+    if status is not None and status not in _ALLOWED_STATUS:
+        raise ValueError(f"status must be one of {sorted(_ALLOWED_STATUS)}, got {status!r}")
+    if behavior is not None:
+        behavior = behavior.strip()
+        if not behavior:
+            raise ValueError("behavior cannot be empty")
+        if len(behavior) > 2000:
+            raise ValueError("behavior must be <= 2000 chars")
+    if confidence is not None:
+        confidence = max(0.0, min(1.0, float(confidence)))
+
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        before_row = conn.execute("SELECT * FROM host_rules WHERE id=?", (rule_id,)).fetchone()
+        if before_row is None:
+            raise LookupError(f"host_rules row {rule_id} not found")
+        before = dict(before_row)
+
+        sets, params = [], []
+        if behavior is not None:
+            sets.append("behavior=?")
+            params.append(behavior)
+        if confidence is not None:
+            sets.append("confidence=?")
+            params.append(confidence)
+        if status is not None:
+            sets.append("status=?")
+            params.append(status)
+        if not sets:
+            return before
+
+        now = _now()
+        sets.append("updated_at=?")
+        params.append(now)
+        params.append(rule_id)
+        conn.execute(f"UPDATE host_rules SET {', '.join(sets)} WHERE id=?", params)
+
+        after = dict(conn.execute("SELECT * FROM host_rules WHERE id=?", (rule_id,)).fetchone())
+        record_rule_audit(rule_id, audit_action, before, after, actor, note, conn=conn)
+        conn.commit()
+        return after
+    finally:
+        conn.close()
+
+
+def create_manual_rule(host: str, pattern: str, behavior: str, *, persona: str = "*",
+                        confidence: float = 0.7, status: str = "active",
+                        actor: str = "human", note: Optional[str] = None) -> int:
+    """Create a new host_rules row directly, source='human_override' always.
+
+    Unlike record_host_rule(), raises ValueError if a row already exists for
+    (host, persona, pattern, source='human_override') instead of silently
+    bumping its confidence (defect #1) - use update_host_rule() to edit an
+    existing row. Returns the new row id."""
+    if status not in _ALLOWED_STATUS:
+        raise ValueError(f"status must be one of {sorted(_ALLOWED_STATUS)}, got {status!r}")
+    behavior = (behavior or "").strip()
+    if not behavior:
+        raise ValueError("behavior cannot be empty")
+    if len(behavior) > 2000:
+        raise ValueError("behavior must be <= 2000 chars")
+    if not pattern:
+        raise ValueError("pattern cannot be empty")
+    confidence = max(0.0, min(1.0, float(confidence)))
+
+    conn = _connect()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM host_rules WHERE host=? AND persona=? AND pattern=? AND source='human_override'",
+            (host, persona, pattern),
+        ).fetchone()
+        if existing:
+            raise ValueError(
+                f"host_rules row already exists for host={host!r} persona={persona!r} "
+                f"pattern={pattern!r} source='human_override' (id={existing[0]}); "
+                f"use update_host_rule() instead"
+            )
+        now = _now()
+        cur = conn.execute(
+            "INSERT INTO host_rules (host, persona, pattern, behavior, source, status, "
+            "confidence, evidence, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 'human_override', ?, ?, ?, ?, ?)",
+            (host, persona, pattern, behavior, status, confidence,
+             json.dumps({"created_by": actor}), now, now),
+        )
+        rule_id = cur.lastrowid
+        record_rule_audit(rule_id, "create", None, {
+            "host": host, "persona": persona, "pattern": pattern, "behavior": behavior,
+            "status": status, "confidence": confidence,
+        }, actor, note, conn=conn)
+        conn.commit()
+        return rule_id
+    finally:
+        conn.close()
+
+
+def bulk_set_status(rule_ids: list[int], status: str, *, actor: str = "human",
+                     note: Optional[str] = None, audit_action: Optional[str] = None) -> int:
+    """Set status on multiple host_rules rows in one transaction (bulk
+    promote/retire from the UI). Unknown ids are skipped, not an error.
+    Returns the number of rows actually changed."""
+    if status not in _ALLOWED_STATUS:
+        raise ValueError(f"status must be one of {sorted(_ALLOWED_STATUS)}, got {status!r}")
+    action = audit_action or {"active": "promote", "retired": "retire",
+                               "shadow": "revert_to_shadow"}[status]
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        changed = 0
+        for rid in rule_ids:
+            before_row = conn.execute("SELECT * FROM host_rules WHERE id=?", (rid,)).fetchone()
+            if before_row is None:
+                continue
+            before = dict(before_row)
+            conn.execute("UPDATE host_rules SET status=?, updated_at=? WHERE id=?", (status, now, rid))
+            after = dict(conn.execute("SELECT * FROM host_rules WHERE id=?", (rid,)).fetchone())
+            record_rule_audit(rid, action, before, after, actor, note, conn=conn)
+            changed += 1
+        conn.commit()
+        return changed
+    finally:
+        conn.close()
+
+
+def delete_host_rule(rule_id: int, *, actor: str = "human", note: Optional[str] = None) -> bool:
+    """Hard-delete one host_rules row. Records the full row in rule_audit.before_json
+    first, so a delete can be manually reversed by reading the audit log. Returns
+    False if the id did not exist."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        before_row = conn.execute("SELECT * FROM host_rules WHERE id=?", (rule_id,)).fetchone()
+        if before_row is None:
+            return False
+        record_rule_audit(rule_id, "delete", dict(before_row), None, actor, note, conn=conn)
+        conn.execute("DELETE FROM host_rules WHERE id=?", (rule_id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def bulk_delete_rules(rule_ids: list[int], *, actor: str = "human",
+                       note: Optional[str] = None, audit_action: str = "delete") -> int:
+    """Hard-delete multiple host_rules rows in one transaction. Unknown ids are
+    skipped. Returns the number of rows actually deleted."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        deleted = 0
+        for rid in rule_ids:
+            before_row = conn.execute("SELECT * FROM host_rules WHERE id=?", (rid,)).fetchone()
+            if before_row is None:
+                continue
+            record_rule_audit(rid, audit_action, dict(before_row), None, actor, note, conn=conn)
+            conn.execute("DELETE FROM host_rules WHERE id=?", (rid,))
+            deleted += 1
+        conn.commit()
+        return deleted
+    finally:
+        conn.close()
 
 
 def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = "") -> str:
