@@ -1,14 +1,14 @@
 # vydra-swiss-survey — pipeline та інтерфейс (детально)
 
-> Статус на 2026-08-08. Живий документ — оновлювати секцію "Статус фаз" при кожному мерджі U3-U6, не чекати кінця міграції. Джерело істини — код; якщо цей файл розходиться з кодом, вір коду і виправ файл.
+> Статус на 2026-08-09. Живий документ — оновлювати секцію "Статус фаз" при кожному мерджі U3-U6, не чекати кінця міграції. Джерело істини — код; якщо цей файл розходиться з кодом, вір коду і виправ файл.
 
 ## 0. Що це за проєкт
 
 Агент проходить швейцарські платні опитування (meinungsplatz.ch, Bilendi, GfK, mriweb...) від імені двох персон (Арно, Аннет), керуючи реальним браузером через Chrome DevTools Protocol. На кожному кроці робить скріншот → Gemma-3-4B vision вирішує ОДНУ дію (клік/ввід/скрол) → дія виконується → повтор. Людина може спостерігати й коригувати в реальному часі через Режим Навчання.
 
-Два окремих UI:
+Два UI, обидва живлять від того самого Flask-процесу:
 - **`/legacy`** (стара Flask HTML-сторінка, `astryx_survey_server.py`) — керування живим опитуванням: старт, Режим Навчання (verify/approve/override), лог.
-- **React SPA** (корінь домену `survey.exodus.pp.ua/`) — перегляд/аудит `host_rules` і трейсів. Наразі READ-ONLY (мутаційний API щойно з'явився, UI під нього ще не написаний — див. §4).
+- **React SPA** (корінь домену `survey.exodus.pp.ua/`) — перегляд/аудит `host_rules` і трейсів (read-only, `/rules` `/traces` `/report`) ТА, з U5, `/ops` — повноцінна HITL-панель (verify/approve/override, live-опитування), паралельна `/legacy`.
 
 ## 1. Наскрізний потік одного опитування
 
@@ -114,7 +114,7 @@ rule_audit(id, rule_id, actor, action, before_json, after_json, note, created_at
 - `bulk_set_status(rule_ids, status, ...)`, `delete_host_rule`, `bulk_delete_rules` — з `rule_audit` записом на кожну зміну.
 
 ### `rules_api.py` — Flask Blueprint, `rules_bp`, зареєстрований в `astryx_survey_server.py:16`
-**U1 (в проді, GET, read-only):** список правил з фільтрами, `/api/rules/<id>`, `/api/rules/compare`, `/api/rules/conflicts`, `/api/traces`, `/api/traces/<run_id>`, `/api/rules/report`, `/api/gate/<host>`.
+**U1 (в проді, GET, read-only):** список правил з фільтрами, `/api/rules/<id>`, `/api/rules/compare`, `/api/rules/conflicts`, `/api/traces`, `/api/traces/<run_id>`, `/api/rules/report.md`, `/api/gate/<host>`.
 
 **U3 (`369e018`, live, токен-гейт перевірено живим смоук-тестом):**
 - `_require_astryx_token` — без `ASTRYX_API_TOKEN` в env → 503 на будь-якому мутуючому маршруті; є токен, заголовок `X-Astryx-Token` не збігається → 401.
@@ -142,13 +142,14 @@ rule_audit(id, rule_id, actor, action, before_json, after_json, note, created_at
 /traces         → Traces.tsx         — список run_traces
 /traces/:runId  → Traces.tsx         — деталі одного прогону
 /report         → Report.tsx (screens/audit/) — markdown/mermaid звіт
+/ops            → SurveyOps.tsx (screens/ops/) — U5, HITL-панель (live-опитування, verify/approve/override)
 *               → redirect → /rules
 ```
 Каркас: `shell/AppShell.tsx` + `shell/Nav.tsx` + `shell/StatusBar.tsx`. API-шар: `api/client.ts` (`getApiBase`/`getAppBasename`/`apiFetch`) + `api/hooks.ts`.
 
 **Спостереження, не досліджено глибше**: `screens/rules/RuleDetail.tsx` і `screens/audit/TraceDetail.tsx` існують як компоненти, але не мають власного `<Route>` в таблиці вище — або орфан, або рендеряться умовно всередині `RulesTable`/`Traces`. Перевірити, якщо береш U3-UI в роботу.
 
-**`/legacy`** — стара Flask HTML-сторінка (`ASTRYX_HTML_TEMPLATE` в `astryx_survey_server.py`), єдине зараз місце, де людина бачить живий прогін опитування і може його коригувати (Режим Навчання: verify/approve/override кнопки). Буде видалено в U6, після того як U5 перенесе цю функціональність у SPA.
+**`/legacy`** — стара Flask HTML-сторінка (`ASTRYX_HTML_TEMPLATE` в `astryx_survey_server.py`). U5 (`f5a0541`) портувала цю функціональність у `/ops` (React), тож `/legacy` тепер паралельний, а не єдиний шлях. Обидва UI б'ють у той самий `/api/survey/*` бекенд. Прибрати `/legacy` планується в U6, АЛЕ навмисно відкладено — жодного реального HITL-прогону через жоден UI ще не було на момент U5 (`run_traces: 0`), тож `/legacy` лишається fallback, поки `/ops` не пройде живу перевірку.
 
 ## 4. Статус фаз (U0-U6, план `docs/plan-ui-astryx-addendum.md`)
 
@@ -158,10 +159,12 @@ rule_audit(id, rule_id, actor, action, before_json, after_json, note, created_at
 | U1 | `rules_api.py` GET + blueprint | ✅ готово, в проді | `rules_api.py` |
 | U2 | `web/` skeleton, read-only екрани | ✅ готово, АЛЕ SPA на `/` не `/app` (архітектурне відхилення від плану) | `web/src/**` |
 | U3 | Мутації host_rules + `X-Astryx-Token` | ✅ live в проді, `369e018` запушено на origin/master 2026-08-08 | `rules_api.py`, `persona_graph_memory.py` |
-| U4 | WAL + `busy_timeout` + `host_gates` + гейт у `bump_rule_outcome` + `POST /api/gate/<host>/approve` | ✅ живий смоук пройдено, `a0ee34f` закомічено локально, ЩЕ НЕ запушено | `rules_api.py`, `persona_graph_memory.py` |
-| U5 | Портувати Режим Навчання (verify/approve/override) у React, жива візуалізація проходження опитування | ❌ не почато — найважливіша відсутня частина | — |
-| U6 | Прибрати `/legacy`, редірект `/` → `/app/ops` | ❌ не почато | — |
+| U4 | WAL + `busy_timeout` + `host_gates` + гейт у `bump_rule_outcome` + `POST /api/gate/<host>/approve` | ✅ live в проді, `a0ee34f` на `origin/master` | `rules_api.py`, `persona_graph_memory.py` |
+| U5 | Портувати Режим Навчання (verify/approve/override) у React (`/ops`), жива візуалізація проходження опитування | ✅ live в проді, `f5a0541` на `origin/master` (2026-08-09). `/legacy` лишається паралельним fallback — **0 реальних HITL-прогонів у БД на момент коміту**, тож `/legacy` НЕ прибирати, поки не пройде хоча б один живий прогін через новий `/ops` | `web/src/screens/ops/SurveyOps.tsx`, `web/src/main.tsx`, `web/src/shell/Nav.tsx` |
+| U6 | Прибрати `/legacy`, редірект `/` → `/ops` | ❌ навмисно відкладено — небезпечно до першого живого HITL-прогону через `/ops` (див. U5) | — |
 
 **U3 верифікація на проді (2026-08-08, виконано перед push):** бекап `survey_graph.db` (`backups/survey_graph.db.pre-u3.20260808_235400`), живий смоук-тест — `PATCH` без токена→503, з неправильним токеном→401, подвійний `PATCH behavior`→confidence НЕ змінюється (0.7→0.7), `POST /api/rules` двічі→409 вдруге, `rule_audit` — 5 тестових мутацій → 5 відповідних рядків. Секрет `ASTRYX_API_TOKEN` згенеровано постійний (`~/.vydra-survey-profiles/astryx_api_token.secret`, chmod 600), вписано в `~/.termux/boot/start-survey-server.sh` для reboot-safety. Запушено `369e018` на `origin/master`.
 
-**U4 верифікація на проді (2026-08-08, писав Oracle, перевіряв телефон):** Oracle без дозволу на python3/git — залишив незастейджені зміни + `commit_msg_u4.txt`. Телефон: `py_compile` OK, бекап `survey_graph.db.pre-u4.20260809_000940`, impact-аналіз через grep-fallback (GitNexus MCP на .184 недоступний для reindex цієї сесії — індекс застарілий на `2be29d1`, SSH-доступу до .184 нема, reindex-тула серед MCP-методів немає), живий смоук — `PRAGMA journal_mode=wal` підтверджено, `host_gates` створена, U1/U3 не зламані, `GET /api/gate/<host>` віддає `playbook_mode`/`gated_by`/`has_completed_run`, `POST /api/gate/<host>/approve` — 401 без токена, 200+UPSERT з токеном, `rule_audit` sentinel `rule_id=0` записався. Тестові рядки прибрано з проду. **НЕ запушено** — чекає разом із docs-комітом (`2c36681`) на підтвердження.
+**U4 верифікація на проді (2026-08-08, писав Oracle, перевіряв телефон):** Oracle без дозволу на python3/git — залишив незастейджені зміни + `commit_msg_u4.txt`. Телефон: `py_compile` OK, бекап `survey_graph.db.pre-u4.20260809_000940`, impact-аналіз через grep-fallback (GitNexus MCP на .184 недоступний для reindex цієї сесії — індекс застарілий на `2be29d1`), живий смоук — `PRAGMA journal_mode=wal` підтверджено, `host_gates` створена, U1/U3 не зламані, `GET /api/gate/<host>` віддає `playbook_mode`/`gated_by`/`has_completed_run`, `POST /api/gate/<host>/approve` — 401 без токена, 200+UPSERT з токеном, `rule_audit` sentinel `rule_id=0` записався. Тестові рядки прибрано з проду. Запушено `a0ee34f` + docs-коміт `2c36681`.
+
+**U5 верифікація на проді (2026-08-09):** написано на Oracle (`claude -p`, дельта переглянута й змержена вручну — `main.tsx`/`Nav.tsx` редагувались паралельно з окремим локальним фіксом мобільної шапки). Новий екран `/ops` (`SurveyOps.tsx`) 1:1 відтворює функціонал `/legacy`: перемикач Режиму Навчання, черга Telegram-завдань, панель активного завдання (countdown, авторизація/стоп), живий скріншот-опитувальник (1200мс polling), approve/override-панель, системний лог, кольоровий статус-бейдж. Бекенд-API не змінювався (`0` нових ендпоінтів — все вже жило в `astryx_survey_server.py` з попередніх фаз). Той самий `useIsNarrow` (matchMedia, 480px), що й у фіксі шапки, застосовано і в `/ops` (grid складається в `1fr` на вузьких екранах). Build (`npm run build`, на телефоні) успішний, live-перевірено curl: `/`, `/ops`, `/legacy`, обидва asset-файли, `/api/survey/status`, `/api/rules` — все віддає 200, `/legacy` побайтово незмінний (19654 байт). Живий стан БД (`run_traces: 0 рядків`, `host_rules: 10 seed-рядків, hits=0/wins=0/losses=0`, `host_gates: порожньо`) підтверджує: жодного реального HITL-циклу через жоден з UI ще не відбулось — це очікується (опитувань нема до понеділка, 2026-08-10), і саме тому U6 навмисно НЕ виконується цим комітом.
