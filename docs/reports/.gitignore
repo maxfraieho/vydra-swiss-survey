@@ -1,0 +1,4 @@
+# Rules snapshots generated via rules_report.py --out docs/reports/...
+# may contain host_rules behavior text; never commit them.
+*
+!.gitignore

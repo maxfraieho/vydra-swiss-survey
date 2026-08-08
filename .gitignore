@@ -3,3 +3,4 @@ __pycache__/
 *.png
 *.log
 survey-agent.pid
+docs/reports/
