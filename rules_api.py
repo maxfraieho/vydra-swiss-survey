@@ -239,16 +239,11 @@ def get_vocabulary():
 
 @rules_bp.route("/api/rules/report.md", methods=["GET"])
 def get_report_md():
-    """GET /api/rules/report.md: Markdown report render.
-    TODO (Phase U0 missing): rules_report.py is not present in this checkout.
-    When rules_report.py (Phase U0) is merged into master, update this route to call
-    rules_report.generate_report() and return Response(report_md, mimetype="text/markdown").
-    """
-    return Response(
-        "# TODO: rules_report.py (Phase U0) is not present in this checkout\n",
-        status=501,
-        mimetype="text/markdown",
-    )
+    """GET /api/rules/report.md: Markdown report render (rules_report.py, phase U0)."""
+    import rules_report
+    data = rules_report.collect()
+    report_md = rules_report.render_markdown(data)
+    return Response(report_md, mimetype="text/markdown")
 
 
 @rules_bp.route("/api/rules/<int:rule_id>", methods=["GET"])
