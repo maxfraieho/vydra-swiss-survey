@@ -335,6 +335,157 @@ def record_run_trace(run_id: str, *, outcome: str, outcome_reason: str,
         conn.close()
 
 
+def list_rules_raw(
+    host: Optional[str | list[str]] = None,
+    persona: Optional[str | list[str]] = None,
+    status: Optional[str | list[str]] = None,
+    source: Optional[str | list[str]] = None,
+    q: Optional[str] = None,
+    sort: Optional[str] = None,
+    order: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: Optional[int] = 0,
+) -> list[dict]:
+    """Raw query on host_rules table without deduplication or precedence sorting."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        query = "SELECT * FROM host_rules WHERE 1=1"
+        params: list = []
+
+        def add_filter(col: str, val):
+            nonlocal query
+            if val is None:
+                return
+            if isinstance(val, str):
+                vals = [v.strip() for v in val.split(",") if v.strip()] if "," in val else [val]
+            elif isinstance(val, (list, tuple, set)):
+                vals = [str(v) for v in val if v is not None]
+            else:
+                vals = [str(val)]
+            if not vals:
+                return
+            placeholders = ",".join("?" for _ in vals)
+            query += f" AND {col} IN ({placeholders})"
+            params.extend(vals)
+
+        add_filter("host", host)
+        add_filter("persona", persona)
+        add_filter("status", status)
+        add_filter("source", source)
+
+        if q:
+            query += " AND (pattern LIKE ? OR behavior LIKE ?)"
+            pattern_q = f"%{q}%"
+            params.extend([pattern_q, pattern_q])
+
+        allowed_sorts = {"confidence", "updated_at", "wins", "created_at", "id", "hits", "losses"}
+        sort_col = sort if sort in allowed_sorts else "id"
+        sort_order = "ASC" if order and str(order).lower() == "asc" else "DESC"
+
+        query += f" ORDER BY {sort_col} {sort_order}"
+
+        if limit is not None and limit > 0:
+            query += " LIMIT ?"
+            params.append(limit)
+            if offset is not None and offset >= 0:
+                query += " OFFSET ?"
+                params.append(offset)
+
+        rows = conn.execute(query, params).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            if d.get("evidence"):
+                try:
+                    d["evidence"] = json.loads(d["evidence"])
+                except Exception:
+                    pass
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+
+def list_traces(
+    host: Optional[str | list[str]] = None,
+    persona: Optional[str | list[str]] = None,
+    outcome: Optional[str | list[str]] = None,
+    limit: Optional[int] = 50,
+    offset: Optional[int] = 0,
+) -> list[dict]:
+    """Query run_traces log table with basic filters."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        query = "SELECT * FROM run_traces WHERE 1=1"
+        params: list = []
+
+        def add_filter(col: str, val):
+            nonlocal query
+            if val is None:
+                return
+            if isinstance(val, str):
+                vals = [v.strip() for v in val.split(",") if v.strip()] if "," in val else [val]
+            elif isinstance(val, (list, tuple, set)):
+                vals = [str(v) for v in val if v is not None]
+            else:
+                vals = [str(val)]
+            if not vals:
+                return
+            placeholders = ",".join("?" for _ in vals)
+            query += f" AND {col} IN ({placeholders})"
+            params.extend(vals)
+
+        add_filter("host", host)
+        add_filter("persona", persona)
+        add_filter("outcome", outcome)
+
+        query += " ORDER BY started_at DESC"
+
+        if limit is not None and limit > 0:
+            query += " LIMIT ?"
+            params.append(limit)
+            if offset is not None and offset >= 0:
+                query += " OFFSET ?"
+                params.append(offset)
+
+        rows = conn.execute(query, params).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            if d.get("steps_json"):
+                try:
+                    d["steps_json"] = json.loads(d["steps_json"])
+                except Exception:
+                    pass
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+
+def get_trace(run_id: str) -> Optional[dict]:
+    """Fetch a single run_traces row by run_id with parsed steps_json."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM run_traces WHERE run_id=?", (run_id,)).fetchone()
+        if row is None:
+            return None
+        d = dict(row)
+        if d.get("steps_json"):
+            try:
+                d["steps_json"] = json.loads(d["steps_json"])
+            except Exception:
+                pass
+        return d
+    finally:
+        conn.close()
+
+
+
+
 def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = "") -> str:
     """Appends known REAL facts to the base persona text, for the model to
     reuse when a later survey asks about the same topic - a consistency
