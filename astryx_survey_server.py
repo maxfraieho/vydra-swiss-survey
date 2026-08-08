@@ -571,6 +571,13 @@ def serve_app(path):
     target_path = os.path.join(dist_dir, path)
     if path and os.path.exists(target_path) and os.path.isfile(target_path):
         return send_from_directory(dist_dir, path)
+    # Router-prefixed asset request (e.g. /app/assets/x.js, /survey/app/assets/x.js):
+    # Vite hashed filenames are globally unique, so resolve by basename under dist/assets/.
+    if path.endswith((".js", ".css", ".map", ".svg", ".png", ".woff", ".woff2")):
+        basename = os.path.basename(path)
+        asset_path = os.path.join(dist_dir, "assets", basename)
+        if os.path.isfile(asset_path):
+            return send_from_directory(os.path.join(dist_dir, "assets"), basename)
     return send_from_directory(dist_dir, "index.html")
 
 @app.route("/legacy")
