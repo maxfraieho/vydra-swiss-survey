@@ -90,11 +90,15 @@ def ensure_tunnel(remote_port: int, local_port: int, wait_seconds: float = 8.0) 
                     f"in {wait_seconds}s — is the corresponding .bat running on the laptop?")
 
 
+_SURVEY_DOMAIN_HINTS = ("meinungsplatz", "bilendi", "survey", "gfk", "maximiles", "cinode", "opinion", "mriweb")
+
+
 class CDPClient:
     def __init__(self, local_port: int):
         self.base = f"http://192.168.3.184:9226"
         self._ids = itertools.count(1)
         self.ws = None
+        self.target_id = None
 
     def attach_or_open_tab(self, url: str) -> bool:
         """Attaches to an existing active tab matching the domain if present,
@@ -108,7 +112,7 @@ class CDPClient:
                 matched = [t for t in tabs if target_host in t.get("url", "")]
                 # Otherwise check general survey domain matches or any active page tab
                 if not matched:
-                    matched = [t for t in tabs if any(d in t.get("url", "").lower() for d in ("meinungsplatz", "bilendi", "survey", "gfk", "maximiles", "cinode", "opinion", "mriweb"))]
+                    matched = [t for t in tabs if any(d in t.get("url", "").lower() for d in _SURVEY_DOMAIN_HINTS)]
                 # No blind tabs[-1] fallback here on purpose: grabbing an
                 # unrelated tab (e.g. someone's Perplexity/manual browsing
                 # tab in the shared CDP pool) hijacks it instead of opening
@@ -116,16 +120,39 @@ class CDPClient:
                 if matched:
                     t = matched[-1]
                     ws_url = t["webSocketDebuggerUrl"]
+                    self.target_id = t["id"]
                     self.ws = create_connection(ws_url, timeout=30)
                     self._send("Page.enable")
                     self._send("Runtime.enable")
                     self._send("DOM.enable")
                     self._send("Page.bringToFront")
+                    self._prune_stray_tabs()
                     return True
         except Exception:
             pass
         self.open_tab(url)
+        self._prune_stray_tabs()
         return False
+
+    def _prune_stray_tabs(self) -> None:
+        """Closes leftover survey-domain tabs from crashed prior runs (a run
+        that got SIGKILLed/OOM-killed skips its `finally: client.close()`,
+        leaving its tab open) so tab count never grows unbounded. Keeps only
+        self.target_id — the tab this instance is currently using."""
+        try:
+            r = requests.get(f"{self.base}/json/list", timeout=5)
+            if not r.ok:
+                return
+            for t in r.json():
+                if t.get("type") != "page" or t.get("id") == self.target_id:
+                    continue
+                if any(d in t.get("url", "").lower() for d in _SURVEY_DOMAIN_HINTS):
+                    try:
+                        requests.get(f"{self.base}/json/close/{t['id']}", timeout=5)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
     def open_tab(self, url: str) -> None:
         try:
@@ -137,6 +164,7 @@ class CDPClient:
             r.raise_for_status()
         target = r.json()
         ws_url = target["webSocketDebuggerUrl"]
+        self.target_id = target["id"]
         self.ws = create_connection(ws_url, timeout=30)
         self._send("Page.enable")
         self._send("Runtime.enable")
@@ -362,3 +390,14 @@ class CDPClient:
             except Exception:
                 pass
             self.ws = None
+        # Actually close the Chrome tab, not just the debugger connection —
+        # leaving self.ws=None but the tab open leaks a tab per run and
+        # starves this 2-core host's CPU (each open tab keeps a live
+        # renderer process; a handful of stale tabs was enough to push
+        # host load average to 6+ and stall unrelated work).
+        if self.target_id is not None:
+            try:
+                requests.get(f"{self.base}/json/close/{self.target_id}", timeout=5)
+            except Exception:
+                pass
+            self.target_id = None
