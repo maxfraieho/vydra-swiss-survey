@@ -13,7 +13,7 @@ from flask import Flask, jsonify, request, render_template_string, send_file
 app = Flask(__name__)
 app.secret_key = "astryx_swiss_survey_secret_key_5005"
 
-TELEGRAM_BOT_TOKEN = "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok"
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok")
 
 PROFILES = {
     "arno": {"name": "Арсен", "label": "Arno (Арсен)"},
@@ -21,6 +21,8 @@ PROFILES = {
 }
 
 PENDING_TASKS = []
+CURRENT_PROC = None
+CURRENT_PROC_LOCK = threading.Lock()
 
 ACTIVE_SURVEY_STATE = {
     "status": "idle", # idle, waiting_auth, running, waiting_verification, finished, error
@@ -147,42 +149,58 @@ def telegram_listener_thread():
 def auto_start_timer_thread():
     while True:
         time.sleep(3)
+        should_start = False
+        profile = None
+        url = None
         with STATE_LOCK:
             if ACTIVE_SURVEY_STATE["status"] == "waiting_auth":
                 now = datetime.now()
                 expires = ACTIVE_SURVEY_STATE["wait_expires_at"]
                 if expires and now >= expires:
-                    add_log("⏳ 10 хвилин очікування вичерпано. Автоматичний запуск опитування в автономному режимі!")
                     ACTIVE_SURVEY_STATE["status"] = "starting"
                     profile = ACTIVE_SURVEY_STATE["profile"]
                     url = ACTIVE_SURVEY_STATE["url"]
-                    threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
+                    should_start = True
+        if should_start:
+            add_log("⏳ 10 хвилин очікування вичерпано. Автоматичний запуск опитування в автономному режимі!")
+            threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
 
 def run_survey_execution(profile: str, url: str):
+    global CURRENT_PROC
     with STATE_LOCK:
         ACTIVE_SURVEY_STATE["status"] = "running"
-    
+
     add_log(f"🚀 Ексклюзивний запуск Gemma 3 4B Survey Agent for {profile}...")
     try:
         cmd = ["bash", os.path.expanduser("~/llm-switch.sh"), "survey", profile, url, "-f"]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        with CURRENT_PROC_LOCK:
+            CURRENT_PROC = proc
         for line in iter(proc.stdout.readline, ''):
             if line:
                 add_log(line.strip())
         proc.wait()
+        with CURRENT_PROC_LOCK:
+            if CURRENT_PROC is proc:
+                CURRENT_PROC = None
         with STATE_LOCK:
             if proc.returncode == 0:
                 ACTIVE_SURVEY_STATE["status"] = "finished"
-                add_log("✅ Опитування успішно завершено.")
             else:
                 ACTIVE_SURVEY_STATE["status"] = "error"
                 ACTIVE_SURVEY_STATE["last_error"] = f"Exit code {proc.returncode}"
-                add_log(f"❌ Завершено з помилкою (код {proc.returncode}).")
+        if proc.returncode == 0:
+            add_log("✅ Опитування успішно завершено.")
+        else:
+            add_log(f"❌ Завершено з помилкою (код {proc.returncode}).")
     except Exception as e:
+        with CURRENT_PROC_LOCK:
+            CURRENT_PROC = None
         with STATE_LOCK:
             ACTIVE_SURVEY_STATE["status"] = "error"
             ACTIVE_SURVEY_STATE["last_error"] = str(e)
-            add_log(f"❌ Помилка виконання: {e}")
+        add_log(f"❌ Помилка виконання: {e}")
+
 
 ASTRYX_HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -191,23 +209,33 @@ ASTRYX_HTML_TEMPLATE = """
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Astryx Swiss Survey Console</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com" onerror="document.documentElement.classList.add('no-tailwind')"></script>
+  <style>
+    /* Fallback baseline (offline / CDN blocked): keeps UI usable without Tailwind */
+    html.no-tailwind body { background:#020617; color:#e2e8f0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; margin:0; }
+    html.no-tailwind header, html.no-tailwind main > div { border:1px solid #1e293b; border-radius:12px; padding:16px; margin-bottom:16px; background:#0f172a; box-sizing:border-box; }
+    html.no-tailwind button { background:#4f46e5; color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; margin:4px 4px 4px 0; font:inherit; }
+    html.no-tailwind input, html.no-tailwind textarea { width:100%; box-sizing:border-box; padding:8px; margin:6px 0; background:#020617; color:#fff; border:1px solid #1e293b; border-radius:8px; }
+    html.no-tailwind img#live-shot { max-width:100%; height:auto; }
+    html.no-tailwind .grid { display:block; }
+    html.no-tailwind #log-box { max-height:260px; overflow-y:auto; }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
-  <header class="bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-20 shadow-xl">
+  <header class="bg-slate-900 border-b border-slate-800 p-4 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 shadow-xl">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-emerald-500 flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-950/50">
         A
       </div>
       <div>
-        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2 flex-wrap">
           Astryx Survey & Training Hub <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-mono border border-indigo-500/40">Port 5005</span>
         </h1>
         <p class="text-xs text-slate-400">meinungsplatz.ch • SOCKS5 Proxy CH (100.66.97.93:1080) • Teacher-Student Trajectory Learning</p>
       </div>
     </div>
-    <div class="flex items-center gap-3">
-      <label class="flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold">
+    <div class="flex flex-wrap items-center gap-3">
+      <label class="flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl text-xs font-semibold">
         <input id="toggle-training" type="checkbox" onchange="toggleTrainingMode(this.checked)" class="rounded text-indigo-500 focus:ring-0 w-4 h-4 bg-slate-950 border-slate-700">
         <span>🎓 Режим Навчання (Пауза & Коригування)</span>
       </label>
@@ -229,7 +257,7 @@ ASTRYX_HTML_TEMPLATE = """
           <button onclick="fetchTelegramTasks()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow transition-all">
             📥 Підтягнути опитування з Telegram
           </button>
-          <button onclick="fetchStatus()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono">Оновити чергу</button>
+          <button onclick="fetchStatus()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono px-2 py-2 -mx-2 -my-1">Оновити чергу</button>
         </div>
       </div>
       <div id="pending-tasks-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -289,7 +317,7 @@ ASTRYX_HTML_TEMPLATE = """
           <h3 class="font-bold text-white text-base flex items-center gap-2">
             📸 Живий скріншот сторінки опитування
           </h3>
-          <button onclick="refreshScreenshot()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono">Оновити</button>
+          <button onclick="refreshScreenshot()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono px-2 py-2 -mx-2 -my-1">Оновити</button>
         </div>
         <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden min-h-[350px] flex items-center justify-center relative">
           <img id="live-shot" src="/api/survey/screenshot/latest" alt="Live Screenshot" class="w-full object-contain max-h-[500px]" onerror="this.style.display='none'; document.getElementById('shot-placeholder').style.display='flex';" onload="this.style.display='block'; document.getElementById('shot-placeholder').style.display='none';" />
@@ -342,7 +370,7 @@ ASTRYX_HTML_TEMPLATE = """
         <h3 class="text-lg font-bold text-white flex items-center gap-2">
           📋 Системний лог та хронологія кроків
         </h3>
-        <button onclick="fetchStatus()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono">Оновити</button>
+        <button onclick="fetchStatus()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono px-2 py-2 -mx-2 -my-1">Оновити</button>
       </div>
       <div id="log-box" class="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 h-64 overflow-y-auto space-y-1">
         <div class="text-slate-600">[Система очікує нових подій...]</div>
@@ -387,15 +415,15 @@ ASTRYX_HTML_TEMPLATE = """
         queueDiv.innerHTML = data.pending_tasks.map(t => {
           const isArno = t.profile === 'arno';
           return `
-            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
-              <div>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+              <div class="min-w-0 flex-1">
                 <span class="text-xs px-2 py-0.5 rounded font-mono font-bold ${isArno ? 'bg-indigo-500/20 text-indigo-400' : 'bg-rose-500/20 text-rose-400'}">
                   ${t.profile_name}
                 </span>
                 <div class="font-extrabold text-sm text-white mt-1">Опитування: ${t.reward} • ${t.duration}</div>
-                <div class="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-xs">${t.url}</div>
+                <div class="text-[11px] text-slate-400 font-mono mt-0.5 truncate">${t.url}</div>
               </div>
-              <button onclick="selectAndAuthorizeTask('${t.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex-shrink-0">
+              <button onclick="selectAndAuthorizeTask('${t.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex-shrink-0">
                 ⚡ Запустити
               </button>
             </div>
@@ -587,10 +615,12 @@ def select_task_api():
         matching = [t for t in PENDING_TASKS if t["id"] == task_id]
         if matching:
             set_active_task_locked(matching[0])
-            add_log(f"⚡ Задачу '{matching[0]['profile_name']}' вибрано для виконання.")
             ACTIVE_SURVEY_STATE["status"] = "starting"
-            threading.Thread(target=run_survey_execution, args=(matching[0]["profile"], matching[0]["url"]), daemon=True).start()
-            return jsonify({"status": "success"})
+            chosen = matching[0]
+    if matching:
+        add_log(f"⚡ Задачу '{chosen['profile_name']}' вибрано для виконання.")
+        threading.Thread(target=run_survey_execution, args=(chosen["profile"], chosen["url"]), daemon=True).start()
+        return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Task not found"}), 404
 
 @app.route("/api/survey/training_mode", methods=["POST"])
@@ -694,19 +724,30 @@ def trigger_api():
 
 @app.route("/api/survey/authorize", methods=["POST"])
 def authorize_api():
+    started = False
     with STATE_LOCK:
         if ACTIVE_SURVEY_STATE["status"] in ("waiting_auth", "idle"):
             profile = ACTIVE_SURVEY_STATE["profile"] or "arno"
             url = ACTIVE_SURVEY_STATE["url"] or "https://meinungsplatz.ch/"
             ACTIVE_SURVEY_STATE["status"] = "starting"
-            add_log("⚡ Авторизація підтверджена! Негайний запуск опитування.")
-            threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
-            return jsonify({"status": "success", "message": "Authorized and started"})
+            started = True
+    if started:
+        add_log("⚡ Авторизація підтверджена! Негайний запуск опитування.")
+        threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
+        return jsonify({"status": "success", "message": "Authorized and started"})
     return jsonify({"status": "error", "message": "Invalid state for authorization"}), 400
 
 @app.route("/api/survey/stop", methods=["POST"])
 def stop_api():
     try:
+        with CURRENT_PROC_LOCK:
+            proc = CURRENT_PROC
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                proc.kill()
         subprocess.run(["bash", os.path.expanduser("~/llm-switch.sh"), "stop"], capture_output=True)
         with STATE_LOCK:
             ACTIVE_SURVEY_STATE["status"] = "idle"

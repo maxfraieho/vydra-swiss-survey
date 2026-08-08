@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import itertools
 import json
+import os
 import subprocess
 import time
 
@@ -30,7 +31,7 @@ SSH_HOST = "192.168.3.184"  # laptop, LAN IP - the Tailscale IP (100.68.179.102)
 # in Termux; SSH to it times out), while the LAN IP answers SSH immediately. Switched
 # 2026-07-27 after confirming both empirically.
 SSH_USER = "vokov"
-SSH_PASS = "0523"
+SSH_PASS = os.environ.get("SWISS_LAPTOP_SSH_PASS", "0523")
 
 # port -> which isolated Swiss-proxied Chrome window on the laptop
 REMOTE_PORTS = {
@@ -108,8 +109,10 @@ class CDPClient:
                 # Otherwise check general survey domain matches or any active page tab
                 if not matched:
                     matched = [t for t in tabs if any(d in t.get("url", "").lower() for d in ("meinungsplatz", "bilendi", "survey", "gfk", "maximiles", "cinode", "opinion", "mriweb"))]
-                if not matched and tabs:
-                    matched = [tabs[-1]]
+                # No blind tabs[-1] fallback here on purpose: grabbing an
+                # unrelated tab (e.g. someone's Perplexity/manual browsing
+                # tab in the shared CDP pool) hijacks it instead of opening
+                # a fresh one — worse than the extra tab.
                 if matched:
                     t = matched[-1]
                     ws_url = t["webSocketDebuggerUrl"]
@@ -138,6 +141,7 @@ class CDPClient:
         self._send("Page.enable")
         self._send("Runtime.enable")
         self._send("DOM.enable")
+        self._send("Page.bringToFront")
 
     def get_current_url(self) -> str:
         try:
@@ -145,7 +149,15 @@ class CDPClient:
             return str(res.get("result", {}).get("value") or "")
         except Exception:
             return ""
-        self._send("Page.bringToFront")
+
+    def page_text(self, limit: int = 2000) -> str:
+        """document.body.innerText, обрізаний до limit символів. При помилці -> ''."""
+        try:
+            res = self._send("Runtime.evaluate", {"expression": "document.body.innerText || ''", "returnByValue": True})
+            result = res.get("result", {}).get("value") or ""
+            return str(result)[:limit]
+        except Exception:
+            return ""
 
     def _send(self, method: str, params: dict | None = None, timeout: float = 30.0) -> dict:
         msg_id = next(self._ids)
@@ -164,9 +176,22 @@ class CDPClient:
 
     def navigate(self, url: str) -> None:
         self._send("Page.navigate", {"url": url})
-        time.sleep(2.0)  # crude but adequate settle time for survey pages
+        deadline = time.time() + 10.0
+        ready = False
+        while time.time() < deadline:
+            try:
+                r = self._send("Runtime.evaluate", {"expression": "document.readyState", "returnByValue": True}, timeout=2.0)
+                if r.get("result", {}).get("value") == "complete":
+                    ready = True
+                    break
+            except Exception:
+                pass
+            time.sleep(0.3)
+        time.sleep(1.0 if ready else 2.0)  # settle time even after 'complete' for async CMP/consent modals
 
     def screenshot(self, path: str) -> str:
+        self._send("Page.bringToFront")
+        time.sleep(0.3)
         result = self._send("Page.captureScreenshot", {"format": "png"})
         png_bytes = base64.b64decode(result["data"])
         with open(path, "wb") as f:

@@ -249,10 +249,6 @@ def main() -> None:
             except Exception as _ve:
                 pass
 
-            except VisionError as e:
-                log(f"Vision error on step {step}: {e} — stopping.")
-                break
-
             action = decision.get("action")
             target = str(decision.get("target_text", ""))
             value = str(decision.get("value", ""))
