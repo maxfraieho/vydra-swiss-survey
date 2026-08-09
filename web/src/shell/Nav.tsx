@@ -83,6 +83,15 @@ export const Nav: React.FC = () => {
           Ops (HITL)
         </NavLink>
       </div>
+
+      {!isNarrow && <div style={{ height: '18px', width: '1px', background: '#1e293b' }} />}
+
+      <div style={groupStyle}>
+        <span style={groupLabelStyle}>⚙️ НАЛАШТУВАННЯ</span>
+        <NavLink to="/settings" style={linkStyle}>
+          Хости, персони, патерни
+        </NavLink>
+      </div>
     </div>
   );
 };

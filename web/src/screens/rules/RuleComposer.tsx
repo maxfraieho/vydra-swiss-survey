@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { createRule } from '../../api/rules';
+import { useResource } from '../../api/hooks';
+import { HostRow, PersonaRow } from '../../api/settings';
 import { RuleDetailData } from './RuleDetail';
 import { BehaviorEditor } from './BehaviorEditor';
 
@@ -9,6 +11,9 @@ export interface RuleComposerProps {
 }
 
 export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel }) => {
+  const { data: hostsData, loading: hostsLoading } = useResource<HostRow[]>('/api/settings/hosts');
+  const { data: personasData, loading: personasLoading } = useResource<PersonaRow[]>('/api/settings/personas');
+
   const [host, setHost] = useState<string>('');
   const [persona, setPersona] = useState<string>('*');
   const [pattern, setPattern] = useState<string>('');
@@ -131,11 +136,10 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
             Хост (Host) <span style={{ color: '#f87171' }}>*</span>
           </label>
-          <input
-            type="text"
+          <select
             value={host}
             onChange={(e) => setHost(e.target.value)}
-            placeholder="e.g. example.com"
+            disabled={hostsLoading}
             style={{
               width: '100%',
               boxSizing: 'border-box',
@@ -146,8 +150,20 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
               color: '#f8fafc',
               fontSize: '13px',
               outline: 'none',
+              cursor: hostsLoading ? 'not-allowed' : 'pointer',
             }}
-          />
+          >
+            <option value="">-- Оберіть хост --</option>
+            {hostsLoading ? (
+              <option disabled>Завантаження...</option>
+            ) : (
+              hostsData?.map((h) => (
+                <option key={h.id} value={h.hostname}>
+                  {h.label || h.hostname}
+                </option>
+              ))
+            )}
+          </select>
           {attemptedSubmit && !host.trim() && (
             <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
           )}
@@ -157,11 +173,10 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
             Персона (Persona)
           </label>
-          <input
-            type="text"
+          <select
             value={persona}
             onChange={(e) => setPersona(e.target.value)}
-            placeholder="*"
+            disabled={personasLoading}
             style={{
               width: '100%',
               boxSizing: 'border-box',
@@ -172,8 +187,20 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
               color: '#f8fafc',
               fontSize: '13px',
               outline: 'none',
+              cursor: personasLoading ? 'not-allowed' : 'pointer',
             }}
-          />
+          >
+            <option value="*">* (усі персони)</option>
+            {personasLoading ? (
+              <option disabled>Завантаження...</option>
+            ) : (
+              personasData?.map((p) => (
+                <option key={p.id || p.key} value={p.key}>
+                  {p.label ? `${p.key} (${p.label})` : p.key}
+                </option>
+              ))
+            )}
+          </select>
         </div>
       </div>
 
