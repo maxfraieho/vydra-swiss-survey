@@ -1,0 +1,12 @@
+/* Astryx's Markdown component caps GFM table column min-width at 120px
+   (Markdown.tsx computeTableColumnMinWidths), regardless of actual content
+   length. rules_report.py's behavior column holds full sentences, so a
+   120px column crushes it to one word per line. The wrapper already sets
+   overflow-x: auto (Markdown.tsx tableWrapper), so widening columns just
+   lets it scroll horizontally instead of crushing text vertically. */
+@layer components {
+  .astryx-markdown-table th,
+  .astryx-markdown-table td {
+    min-width: 220px !important;
+  }
+}

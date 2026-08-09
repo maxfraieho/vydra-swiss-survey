@@ -7,6 +7,7 @@ import './styles/layers.css';
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import './theme/theme.css';
+import './styles/markdown-table.css';
 
 import { neutralTheme } from './theme/neutralTheme';
 import { Theme } from '@astryxdesign/core/theme';
