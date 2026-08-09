@@ -1,5 +1,6 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
+import { Markdown } from '../../ui/Markdown';
 
 export const Report: React.FC = () => {
   const { data: reportMd, loading, error } = useResource<string>('/api/rules/report.md');
@@ -32,23 +33,13 @@ export const Report: React.FC = () => {
       </div>
 
       <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
-        <pre
-          style={{
-            margin: 0,
-            fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
-            fontSize: '13px',
-            lineHeight: '1.6',
-            color: '#e2e8f0',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            background: '#020617',
-            padding: '20px',
-            borderRadius: '8px',
-            border: '1px solid #1e293b',
-          }}
-        >
-          {reportMd || 'Звіт порожній.'}
-        </pre>
+        <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px' }}>
+          {reportMd && reportMd.trim() !== '' ? (
+            <Markdown source={reportMd} />
+          ) : (
+            <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Звіт порожній.</span>
+          )}
+        </div>
       </div>
     </div>
   );

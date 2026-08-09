@@ -1,6 +1,7 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
 import { Link } from 'react-router';
+import { Markdown } from '../../ui/Markdown';
 
 export interface LinkedTrace {
   run_id: string;
@@ -123,7 +124,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
         <div style={{ background: '#020617', padding: '10px', borderRadius: '8px', border: '1px solid #1e293b' }}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
-          <span style={{ color: '#38bdf8', fontWeight: 600, fontFamily: 'monospace' }}>{rule.behavior}</span>
+          <Markdown source={rule.behavior} variant="compact" />
         </div>
         <div style={{ background: '#020617', padding: '10px', borderRadius: '8px', border: '1px solid #1e293b' }}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Джерело / Confidence</span>

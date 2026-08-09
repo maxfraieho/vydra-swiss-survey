@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
+import { Markdown } from '../../ui/Markdown';
 
 export interface CompareResult {
   pattern: string;
@@ -121,7 +122,7 @@ export const Compare: React.FC = () => {
                       <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</td>
                       <td style={{ padding: '10px 14px', color: '#e2e8f0', fontWeight: 600 }}>{r.host}</td>
                       <td style={{ padding: '10px 14px', color: '#e2e8f0' }}>{r.persona}</td>
-                      <td style={{ padding: '10px 14px', color: '#38bdf8', fontFamily: 'monospace' }}>{r.behavior}</td>
+                      <td style={{ padding: '10px 14px' }}><Markdown source={r.behavior} variant="compact" /></td>
                       <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>{r.source}</td>
                       <td style={{ padding: '10px 14px' }}>
                         <span

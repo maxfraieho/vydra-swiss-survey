@@ -1,6 +1,7 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
+import { Markdown } from '../../ui/Markdown';
 
 export interface ConflictGroup {
   host: string;
@@ -96,7 +97,7 @@ export const Conflicts: React.FC = () => {
                       <tr key={r.id} style={{ borderBottom: '1px solid #1e293b' }}>
                         <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</td>
                         <td style={{ padding: '8px 12px', color: '#f8fafc', fontWeight: 600 }}>{r.source}</td>
-                        <td style={{ padding: '8px 12px', color: '#38bdf8', fontFamily: 'monospace' }}>{r.behavior}</td>
+                        <td style={{ padding: '8px 12px' }}><Markdown source={r.behavior} variant="compact" /></td>
                         <td style={{ padding: '8px 12px', color: '#cbd5e1' }}>{r.status}</td>
                         <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</td>
                         <td style={{ padding: '8px 12px' }}>
