@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
+import { Layout, LayoutContent } from '@astryxdesign/core/Layout';
 import { getAstryxToken, setAstryxToken, clearAstryxToken } from '../api/token';
 import { useIsNarrow } from './useIsNarrow';
 
@@ -13,6 +15,7 @@ export const TokenField: React.FC = () => {
   const isNarrow = useIsNarrow();
   const [token, setToken] = useState<string | null>(() => getAstryxToken());
   const [draft, setDraft] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   if (token) {
     return (
@@ -31,14 +34,52 @@ export const TokenField: React.FC = () => {
     );
   }
 
+  const submit = () => {
+    if (!draft.trim()) return;
+    setAstryxToken(draft.trim(), true);
+    setToken(draft.trim());
+    setDraft('');
+    setDialogOpen(false);
+  };
+
+  if (isNarrow) {
+    return (
+      <div style={{ marginLeft: 'auto' }}>
+        <Button label="🔑" variant="ghost" size="sm" onClick={() => setDialogOpen(true)} />
+        <Dialog isOpen={dialogOpen} onOpenChange={setDialogOpen} variant="standard" width={320} purpose="form">
+          <Layout
+            header={<DialogHeader title="X-Astryx-Token" onOpenChange={setDialogOpen} />}
+            content={
+              <LayoutContent>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit();
+                  }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+                >
+                  <TextInput
+                    type="password"
+                    label="X-Astryx-Token"
+                    value={draft}
+                    onChange={(value) => setDraft(value)}
+                    placeholder="X-Astryx-Token"
+                  />
+                  <Button type="submit" label="OK" variant="primary" />
+                </form>
+              </LayoutContent>
+            }
+          />
+        </Dialog>
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!draft.trim()) return;
-        setAstryxToken(draft.trim(), true);
-        setToken(draft.trim());
-        setDraft('');
+        submit();
       }}
       style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}
     >
@@ -48,9 +89,8 @@ export const TokenField: React.FC = () => {
         isLabelHidden
         value={draft}
         onChange={(value) => setDraft(value)}
-        placeholder={isNarrow ? 'Токен' : 'X-Astryx-Token'}
+        placeholder="X-Astryx-Token"
         size="sm"
-        width={isNarrow ? '80px' : undefined}
       />
       <Button type="submit" label="OK" variant="primary" size="sm" />
     </form>
