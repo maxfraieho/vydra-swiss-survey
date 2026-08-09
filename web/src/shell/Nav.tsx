@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router';
 import { useIsNarrow } from './useIsNarrow';
+import { TokenField } from './TokenField';
 
 export const Nav: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -92,6 +93,8 @@ export const Nav: React.FC = () => {
           Хости, персони, патерни
         </NavLink>
       </div>
+
+      <TokenField />
     </div>
   );
 };
