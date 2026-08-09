@@ -286,7 +286,7 @@ def get_vocabulary():
     try:
         import reflection
         return jsonify({
-            "topic_keywords": getattr(reflection, "TOPIC_KEYWORDS", {}),
+            "topic_keywords": list(getattr(reflection, "TOPIC_KEYWORDS", {}).keys()),
             "qualifying_polarity": getattr(reflection, "QUALIFYING_POLARITY", {}),
         })
     except Exception as e:
