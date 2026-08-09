@@ -48,16 +48,16 @@ export interface SurveyStatus {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
-  waiting_auth: { bg: 'rgba(245, 158, 11, 0.15)', fg: '#fbbf24' },
+  waiting_auth: { bg: 'rgba(245, 158, 11, 0.15)', fg: 'var(--color-text-yellow)' },
   waiting_verification: { bg: 'rgba(168, 85, 247, 0.15)', fg: '#c084fc' },
   running: { bg: 'rgba(99, 102, 241, 0.15)', fg: '#818cf8' },
   starting: { bg: 'rgba(99, 102, 241, 0.15)', fg: '#818cf8' },
-  finished: { bg: 'rgba(16, 185, 129, 0.15)', fg: '#34d399' },
-  error: { bg: 'rgba(239, 68, 68, 0.15)', fg: '#f87171' },
+  finished: { bg: 'rgba(16, 185, 129, 0.15)', fg: 'var(--color-text-green)' },
+  error: { bg: 'rgba(239, 68, 68, 0.15)', fg: 'var(--color-text-red)' },
 };
 
 function statusColor(status: string): { bg: string; fg: string } {
-  return STATUS_COLORS[status] || { bg: 'rgba(148, 163, 184, 0.15)', fg: '#94a3b8' };
+  return STATUS_COLORS[status] || { bg: 'rgba(148, 163, 184, 0.15)', fg: 'var(--color-text-disabled)' };
 }
 
 function formatCountdown(totalSeconds: number): string {
@@ -82,7 +82,7 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const buttonStyle: React.CSSProperties = {
   background: '#6366f1',
-  color: '#f8fafc',
+  color: 'var(--color-text-primary)',
   border: 'none',
   borderRadius: '8px',
   padding: '8px 14px',
@@ -93,20 +93,20 @@ const buttonStyle: React.CSSProperties = {
 
 const secondaryButtonStyle: React.CSSProperties = {
   ...buttonStyle,
-  background: '#334155',
+  background: 'var(--color-border)',
 };
 
 const dangerButtonStyle: React.CSSProperties = {
   ...buttonStyle,
-  background: '#dc2626',
+  background: 'var(--color-border-red)',
 };
 
 const inputStyle: React.CSSProperties = {
-  background: '#020617',
-  border: '1px solid #334155',
+  background: 'var(--color-background-page)',
+  border: '1px solid var(--color-border)',
   borderRadius: '8px',
   padding: '8px 12px',
-  color: '#f8fafc',
+  color: 'var(--color-text-primary)',
   fontSize: '13px',
   width: '100%',
   boxSizing: 'border-box',
@@ -248,7 +248,7 @@ export const SurveyOps: React.FC = () => {
           {status?.status || 'idle'}
         </span>
         {statusError && (
-          <span style={{ fontSize: '12px', color: '#f87171' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>
             Помилка опитування статусу: {statusError.message}
           </span>
         )}
@@ -256,7 +256,7 @@ export const SurveyOps: React.FC = () => {
 
       {/* Training mode toggle */}
       <Card padding={4} style={cardStyle}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#f8fafc', fontSize: '13px', fontWeight: 600 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: 600 }}>
           <input
             type="checkbox"
             checked={Boolean(status?.training_mode)}
@@ -281,7 +281,7 @@ export const SurveyOps: React.FC = () => {
         </div>
 
         {(!status?.pending_tasks || status.pending_tasks.length === 0) && (
-          <div style={{ color: '#64748b', fontSize: '13px', padding: '12px 0' }}>
+          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', padding: '12px 0' }}>
             Черга порожня.
           </div>
         )}
@@ -294,17 +294,17 @@ export const SurveyOps: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: '#020617',
-                border: '1px solid #1e293b',
+                background: 'var(--color-background-page)',
+                border: '1px solid var(--color-border-emphasized)',
                 borderRadius: '8px',
                 padding: '10px 14px',
               }}
             >
               <div>
-                <div style={{ color: '#f8fafc', fontWeight: 600, fontSize: '13px' }}>
+                <div style={{ color: 'var(--color-text-primary)', fontWeight: 600, fontSize: '13px' }}>
                   {task.profile_name} — {task.reward} ({task.duration})
                 </div>
-                <div style={{ color: '#64748b', fontSize: '11px', wordBreak: 'break-all' }}>{task.url}</div>
+                <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', wordBreak: 'break-all' }}>{task.url}</div>
               </div>
               <button
                 style={buttonStyle}
@@ -322,7 +322,7 @@ export const SurveyOps: React.FC = () => {
       <Card padding={4}>
         <Heading level={2} style={sectionTitleStyle}>Активне завдання</Heading>
         {!status?.active_task_id && (
-          <div style={{ color: '#64748b', fontSize: '13px' }}>Немає активного завдання.</div>
+          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>Немає активного завдання.</div>
         )}
         {status?.active_task_id && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -330,11 +330,11 @@ export const SurveyOps: React.FC = () => {
               <strong>{status.profile}</strong> — {status.reward} ({status.duration})
             </div>
             {status.url && (
-              <div style={{ color: '#64748b', fontSize: '11px', wordBreak: 'break-all' }}>{status.url}</div>
+              <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', wordBreak: 'break-all' }}>{status.url}</div>
             )}
 
             {status.status === 'waiting_auth' && countdown > 0 && (
-              <div style={{ color: '#fbbf24', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}>
+              <div style={{ color: 'var(--color-text-yellow)', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}>
                 {formatCountdown(countdown)}
               </div>
             )}
@@ -353,7 +353,7 @@ export const SurveyOps: React.FC = () => {
           </div>
         )}
         {status?.last_error && (
-          <div style={{ marginTop: '10px', color: '#f87171', fontSize: '12px' }}>
+          <div style={{ marginTop: '10px', color: 'var(--color-text-red)', fontSize: '12px' }}>
             Помилка: {status.last_error}
           </div>
         )}
@@ -365,8 +365,8 @@ export const SurveyOps: React.FC = () => {
           <Heading level={2} style={sectionTitleStyle}>Живий скріншот</Heading>
           <div
             style={{
-              background: '#020617',
-              border: '1px solid #1e293b',
+              background: 'var(--color-background-page)',
+              border: '1px solid var(--color-border-emphasized)',
               borderRadius: '8px',
               minHeight: '280px',
               display: 'flex',
@@ -392,7 +392,7 @@ export const SurveyOps: React.FC = () => {
                   style={{ display: 'none' }}
                   alt=""
                 />
-                <span style={{ color: '#64748b', fontSize: '13px' }}>
+                <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
                   Скріншот очікує першого кроку
                 </span>
               </>
@@ -424,7 +424,7 @@ export const SurveyOps: React.FC = () => {
                 ✅ Затвердити рішення Gemma
               </button>
 
-              <div style={{ height: '1px', background: '#1e293b', margin: '8px 0' }} />
+              <div style={{ height: '1px', background: 'var(--color-background-muted)', margin: '8px 0' }} />
 
               <input
                 type="text"
@@ -449,7 +449,7 @@ export const SurveyOps: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div style={{ color: '#64748b', fontSize: '13px' }}>
+            <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
               Немає кроку, що очікує верифікації.
             </div>
           )}
@@ -462,15 +462,15 @@ export const SurveyOps: React.FC = () => {
         <div
           ref={logRef}
           style={{
-            background: '#020617',
-            border: '1px solid #1e293b',
+            background: 'var(--color-background-page)',
+            border: '1px solid var(--color-border-emphasized)',
             borderRadius: '8px',
             padding: '10px 12px',
             maxHeight: '220px',
             overflowY: 'auto',
             fontFamily: 'monospace',
             fontSize: '12px',
-            color: '#94a3b8',
+            color: 'var(--color-text-disabled)',
           }}
         >
           {status?.log_history?.length ? (

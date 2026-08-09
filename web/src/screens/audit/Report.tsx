@@ -18,7 +18,7 @@ export const Report: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+      <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
         Генерація Markdown/Mermaid звіту правил...
       </div>
     );
@@ -27,7 +27,7 @@ export const Report: React.FC = () => {
   if (error) {
     return (
       <Card padding={5}>
-        <Text type="body" style={{ color: '#f87171' }}>Помилка завантаження звіту: {error.message}</Text>
+        <Text type="body" style={{ color: 'var(--color-text-red)' }}>Помилка завантаження звіту: {error.message}</Text>
       </Card>
     );
   }
@@ -37,7 +37,7 @@ export const Report: React.FC = () => {
       <Card padding={5}>
         <Heading level={2}>Звіт про стан системи знань (Knowledge Report)</Heading>
         <Text type="supporting" color="secondary">
-          Згенеровано автоматично через API U0 (<code style={{ color: '#38bdf8' }}>rules_report.py</code>).
+          Згенеровано автоматично через API U0 (<code style={{ color: 'var(--color-accent)' }}>rules_report.py</code>).
         </Text>
       </Card>
 
@@ -46,7 +46,7 @@ export const Report: React.FC = () => {
           {reportMd && reportMd.trim() !== '' ? (
             <DetailsMarkdown headingLevelStart={4} components={MARKDOWN_COMPONENTS}>{reportMd}</DetailsMarkdown>
           ) : (
-            <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Звіт порожній.</span>
+            <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic', fontSize: '13px' }}>Звіт порожній.</span>
           )}
         </Card>
       </Card>

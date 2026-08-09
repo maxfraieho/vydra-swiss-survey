@@ -68,11 +68,11 @@ export const Traces: React.FC = () => {
           value={hostFilter}
           onChange={(e) => updateParam('host', e.target.value)}
           style={{
-            background: '#020617',
-            border: '1px solid #334155',
+            background: 'var(--color-background-page)',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             padding: '8px 12px',
-            color: '#f8fafc',
+            color: 'var(--color-text-primary)',
             fontSize: '13px',
           }}
         />
@@ -81,11 +81,11 @@ export const Traces: React.FC = () => {
           value={personaFilter}
           onChange={(e) => updateParam('persona', e.target.value)}
           style={{
-            background: '#020617',
-            border: '1px solid #334155',
+            background: 'var(--color-background-page)',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             padding: '8px 12px',
-            color: '#f8fafc',
+            color: 'var(--color-text-primary)',
             fontSize: '13px',
           }}
         >
@@ -98,11 +98,11 @@ export const Traces: React.FC = () => {
           value={outcomeFilter}
           onChange={(e) => updateParam('outcome', e.target.value)}
           style={{
-            background: '#020617',
-            border: '1px solid #334155',
+            background: 'var(--color-background-page)',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             padding: '8px 12px',
-            color: '#f8fafc',
+            color: 'var(--color-text-primary)',
             fontSize: '13px',
           }}
         >
@@ -116,8 +116,8 @@ export const Traces: React.FC = () => {
           <button
             onClick={() => setSearchParams(new URLSearchParams())}
             style={{
-              background: '#334155',
-              color: '#f8fafc',
+              background: 'var(--color-border)',
+              color: 'var(--color-text-primary)',
               border: 'none',
               borderRadius: '8px',
               padding: '8px 12px',
@@ -139,21 +139,21 @@ export const Traces: React.FC = () => {
       {/* Grid: Table + Side Panel */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : (selectedRunId ? '1fr 450px' : '1fr'), gap: '20px' }}>
         <Card padding={0}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Heading level={2} style={{ fontSize: '15px' }}>
               Прогони Агента (Traces) ({traces?.length || 0})
             </Heading>
-            {loading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Оновлення...</span>}
+            {loading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Оновлення...</span>}
           </div>
 
           {error && (
-            <div style={{ padding: '20px', color: '#f87171', fontSize: '13px' }}>
+            <div style={{ padding: '20px', color: 'var(--color-text-red)', fontSize: '13px' }}>
               Помилка завантаження прогонів: {error.message}
             </div>
           )}
 
           {!loading && traces && traces.length === 0 && (
-            <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
               Жодного прогону не знайдено за обраними фільтрами.
             </div>
           )}
@@ -176,11 +176,11 @@ export const Traces: React.FC = () => {
                     <TableRow
                       key={t.run_id}
                       onClick={() => handleSelectTrace(t.run_id)}
-                      style={{ cursor: 'pointer', background: isSelected ? '#1e293b' : undefined }}
+                      style={{ cursor: 'pointer', background: isSelected ? 'var(--color-background-muted)' : undefined }}
                     >
-                      <TableCell style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-all' }}>{t.run_id}</TableCell>
+                      <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-all' }}>{t.run_id}</TableCell>
                       <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{t.host}</TableCell>
-                      <TableCell style={{ color: '#cbd5e1' }}>{t.persona}</TableCell>
+                      <TableCell style={{ color: 'var(--color-text-secondary)' }}>{t.persona}</TableCell>
                       <TableCell>
                         <span
                           style={{
@@ -190,13 +190,13 @@ export const Traces: React.FC = () => {
                             borderRadius: '4px',
                             textTransform: 'uppercase',
                             background: t.outcome === 'success' || t.outcome === 'finished' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: t.outcome === 'success' || t.outcome === 'finished' ? '#34d399' : '#f87171',
+                            color: t.outcome === 'success' || t.outcome === 'finished' ? 'var(--color-text-green)' : 'var(--color-text-red)',
                           }}
                         >
                           {t.outcome || 'unknown'}
                         </span>
                       </TableCell>
-                      <TableCell style={{ color: '#64748b', fontSize: '12px' }}>{t.created_at || '-'}</TableCell>
+                      <TableCell style={{ color: 'var(--color-text-tertiary)', fontSize: '12px' }}>{t.created_at || '-'}</TableCell>
                     </TableRow>
                   );
                 })}
