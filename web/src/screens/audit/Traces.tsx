@@ -7,6 +7,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } f
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { ClickableCard } from '@astryxdesign/core/ClickableCard';
+import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 
 export interface TraceSummary {
   run_id: string;
@@ -158,7 +160,46 @@ export const Traces: React.FC = () => {
             </div>
           )}
 
-          {traces && traces.length > 0 && (
+          {traces && traces.length > 0 && isNarrow && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+              {traces.map((t) => {
+                const isSelected = selectedRunId === t.run_id;
+                const isOk = t.outcome === 'success' || t.outcome === 'finished';
+                return (
+                  <ClickableCard
+                    key={t.run_id}
+                    label={`Прогін ${t.run_id}`}
+                    onClick={() => handleSelectTrace(t.run_id)}
+                    style={{ background: isSelected ? 'var(--color-background-muted)' : undefined }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600, wordBreak: 'break-all' }}>{t.run_id}</span>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          background: isOk ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: isOk ? 'var(--color-text-green)' : 'var(--color-text-red)',
+                        }}
+                      >
+                        {t.outcome || 'unknown'}
+                      </span>
+                    </div>
+                    <MetadataList columns={1} label={{ position: 'start' }}>
+                      <MetadataListItem label="Хост">{t.host}</MetadataListItem>
+                      <MetadataListItem label="Персона">{t.persona}</MetadataListItem>
+                      <MetadataListItem label="Дата/Час">{t.created_at || '-'}</MetadataListItem>
+                    </MetadataList>
+                  </ClickableCard>
+                );
+              })}
+            </div>
+          )}
+
+          {traces && traces.length > 0 && !isNarrow && (
             <Table hasHover density="compact">
               <TableHeader>
                 <TableRow isHeaderRow>

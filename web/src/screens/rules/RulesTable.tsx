@@ -10,6 +10,8 @@ import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { ClickableCard } from '@astryxdesign/core/ClickableCard';
+import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 
 export interface FacetsData {
   hosts: { name: string; count: number; by_status: Record<string, number> }[];
@@ -255,7 +257,47 @@ export const RulesTable: React.FC = () => {
             </div>
           )}
 
-          {rules && rules.length > 0 && (
+          {rules && rules.length > 0 && isNarrow && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+              {rules.map((r) => {
+                const isSelected = selectedRuleId === r.id;
+                const statusVariant: BadgeVariant = r.status === 'active' ? 'success' : r.status === 'shadow' ? 'warning' : 'neutral';
+                return (
+                  <ClickableCard
+                    key={r.id}
+                    label={`Правило #${r.id}`}
+                    onClick={() => {
+                      setSelectedRuleId(r.id);
+                      setComposing(false);
+                    }}
+                    style={{ background: isSelected ? 'var(--color-background-muted)' : undefined }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {r.effective ? (
+                          <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
+                        ) : (
+                          <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
+                        )}
+                        <Badge variant={statusVariant} label={r.status} />
+                      </div>
+                    </div>
+                    <MetadataList columns={1} label={{ position: 'start' }}>
+                      <MetadataListItem label="Хост">{r.host}</MetadataListItem>
+                      <MetadataListItem label="Патерн">{r.pattern}</MetadataListItem>
+                      <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
+                    </MetadataList>
+                    <div style={{ marginTop: '8px' }}>
+                      <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
+                    </div>
+                  </ClickableCard>
+                );
+              })}
+            </div>
+          )}
+
+          {rules && rules.length > 0 && !isNarrow && (
             <Table hasHover density="compact">
               <TableHeader>
                 <TableRow isHeaderRow>
