@@ -3,19 +3,19 @@ import { parseGraphLR, type GraphNode } from './mermaidParse';
 import { useIsNarrow } from '../shell/useIsNarrow';
 
 const STATUS_STYLE: Record<'active' | 'shadow' | 'retired', { bg: string; color: string }> = {
-  active: { bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399' },
-  shadow: { bg: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' },
+  active: { bg: 'rgba(16, 185, 129, 0.15)', color: 'var(--color-text-green)' },
+  shadow: { bg: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-text-yellow)' },
   retired: { bg: 'rgba(107, 114, 128, 0.15)', color: '#9ca3af' },
 };
 
 const FALLBACK_PRE_STYLE: React.CSSProperties = {
-  background: '#020617',
-  border: '1px solid #1e293b',
+  background: 'var(--color-background-page)',
+  border: '1px solid var(--color-border-emphasized)',
   overflowX: 'auto',
   whiteSpace: 'pre',
   padding: 12,
   borderRadius: 8,
-  color: '#cbd5e1',
+  color: 'var(--color-text-secondary)',
   fontSize: 12,
   margin: 0,
 };
@@ -38,7 +38,7 @@ export const MermaidTree: React.FC<{ src: string }> = ({ src }) => {
     return (
       <div>
         <pre style={FALLBACK_PRE_STYLE}>{src}</pre>
-        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
           граф не розпізнано — показано як текст
         </div>
       </div>
@@ -65,8 +65,8 @@ export const MermaidTree: React.FC<{ src: string }> = ({ src }) => {
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 10,
-          background: '#1e293b',
-          color: '#f8fafc',
+          background: 'var(--color-background-muted)',
+          color: 'var(--color-text-primary)',
           fontWeight: 700,
           padding: '6px 12px',
           borderRadius: 8,
@@ -77,7 +77,7 @@ export const MermaidTree: React.FC<{ src: string }> = ({ src }) => {
       >
         <span>{rootNode.label.join(' ')}</span>
         {moreId && (
-          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontWeight: 400 }}>
             {nodeById.get(moreId)!.label.join(' ')}
           </span>
         )}
@@ -92,16 +92,16 @@ export const MermaidTree: React.FC<{ src: string }> = ({ src }) => {
               key={pid}
               style={{
                 background: '#0f172a',
-                border: '1px solid #1e293b',
+                border: '1px solid var(--color-border-emphasized)',
                 borderRadius: 8,
                 padding: 10,
               }}
             >
-              <div style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: 13 }}>
+              <div style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontSize: 13 }}>
                 {pNode.label[0]}
               </div>
               {pNode.label[1] && (
-                <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 6 }}>
+                <div style={{ color: 'var(--color-text-disabled)', fontSize: 12, marginBottom: 6 }}>
                   {pNode.label[1]}
                 </div>
               )}
@@ -110,7 +110,7 @@ export const MermaidTree: React.FC<{ src: string }> = ({ src }) => {
                   const bNode = nodeById.get(bid)!;
                   const palette = bNode.statusClass
                     ? STATUS_STYLE[bNode.statusClass]
-                    : { bg: '#1e293b', color: '#94a3b8' };
+                    : { bg: 'var(--color-background-muted)', color: 'var(--color-text-disabled)' };
                   return (
                     <span
                       key={bid}

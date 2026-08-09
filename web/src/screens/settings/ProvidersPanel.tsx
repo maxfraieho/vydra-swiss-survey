@@ -77,21 +77,21 @@ export const ProvidersPanel: React.FC = () => {
     <VStack gap={5}>
       {/* Table Card */}
       <Card padding={0} style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Heading level={3} style={{ fontSize: '15px' }}>
             Провайдери ({providers?.length || 0})
           </Heading>
-          {providersLoading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Завантаження...</span>}
+          {providersLoading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Завантаження...</span>}
         </div>
 
         {providersError && (
-          <div style={{ padding: '16px 20px', color: '#f87171', fontSize: '13px' }}>
+          <div style={{ padding: '16px 20px', color: 'var(--color-text-red)', fontSize: '13px' }}>
             ⚠️ Помилка завантаження провайдерів: {providersError.message}
           </div>
         )}
 
         {!providersLoading && providers && providers.length === 0 && (
-          <div style={{ padding: '24px 20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>
+          <div style={{ padding: '24px 20px', color: 'var(--color-text-tertiary)', fontSize: '13px', textAlign: 'center' }}>
             Провайдери відсутні. Створіть першого провайдера за допомогою форми нижче.
           </div>
         )}
@@ -111,11 +111,11 @@ export const ProvidersPanel: React.FC = () => {
             <TableBody>
               {providers.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{p.id}</TableCell>
-                  <TableCell style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{p.key}</TableCell>
-                  <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{p.label}</TableCell>
-                  <TableCell style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'break-all' }}>{p.url_pattern || '—'}</TableCell>
-                  <TableCell style={{ color: '#94a3b8', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{p.note || '—'}</TableCell>
+                  <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{p.id}</TableCell>
+                  <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600 }}>{p.key}</TableCell>
+                  <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.label}</TableCell>
+                  <TableCell style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'break-all' }}>{p.url_pattern || '—'}</TableCell>
+                  <TableCell style={{ color: 'var(--color-text-disabled)', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{p.note || '—'}</TableCell>
                   <TableCell style={{ textAlign: 'right' }}>
                     <button
                       type="button"
@@ -130,9 +130,9 @@ export const ProvidersPanel: React.FC = () => {
                         fontSize: '12px',
                         fontWeight: 600,
                         cursor: 'pointer',
-                        border: '1px solid #dc2626',
+                        border: '1px solid var(--color-border-red)',
                         background: 'rgba(239, 68, 68, 0.1)',
-                        color: '#f87171',
+                        color: 'var(--color-text-red)',
                       }}
                     >
                       Вилучити
@@ -164,9 +164,9 @@ export const ProvidersPanel: React.FC = () => {
             style={{
               padding: '10px 12px',
               background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid #dc2626',
+              border: '1px solid var(--color-border-red)',
               borderRadius: '8px',
-              color: '#f87171',
+              color: 'var(--color-text-red)',
               fontSize: '13px',
             }}
           >

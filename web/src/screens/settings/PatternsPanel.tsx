@@ -88,21 +88,21 @@ export const PatternsPanel: React.FC = () => {
     <VStack gap={5}>
       {/* Table Card */}
       <Card padding={0} style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Heading level={3} style={{ fontSize: '15px' }}>
             Патерни ({patterns?.length || 0})
           </Heading>
-          {patternsLoading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Завантаження...</span>}
+          {patternsLoading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Завантаження...</span>}
         </div>
 
         {patternsError && (
-          <div style={{ padding: '16px 20px', color: '#f87171', fontSize: '13px' }}>
+          <div style={{ padding: '16px 20px', color: 'var(--color-text-red)', fontSize: '13px' }}>
             ⚠️ Помилка завантаження патернів: {patternsError.message}
           </div>
         )}
 
         {!patternsLoading && patterns && patterns.length === 0 && (
-          <div style={{ padding: '24px 20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>
+          <div style={{ padding: '24px 20px', color: 'var(--color-text-tertiary)', fontSize: '13px', textAlign: 'center' }}>
             Патерни відсутні. Створіть перший патерн за допомогою форми нижче.
           </div>
         )}
@@ -124,10 +124,10 @@ export const PatternsPanel: React.FC = () => {
                 const isBuiltin = p.is_builtin === 1;
                 return (
                   <TableRow key={p.id || p.key}>
-                    <TableCell style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{p.key}</TableCell>
-                    <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{p.label || '—'}</TableCell>
-                    <TableCell style={{ color: '#cbd5e1', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{formatKeywords(p.keywords)}</TableCell>
-                    <TableCell style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '12px' }}>{p.qualifying_polarity || '—'}</TableCell>
+                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600 }}>{p.key}</TableCell>
+                    <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.label || '—'}</TableCell>
+                    <TableCell style={{ color: 'var(--color-text-secondary)', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{formatKeywords(p.keywords)}</TableCell>
+                    <TableCell style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontSize: '12px' }}>{p.qualifying_polarity || '—'}</TableCell>
                     <TableCell>
                       <Badge variant={isBuiltin ? 'info' : 'neutral'} label={isBuiltin ? 'вбудований' : 'користувацький'} />
                     </TableCell>
@@ -147,9 +147,9 @@ export const PatternsPanel: React.FC = () => {
                           fontWeight: 600,
                           cursor: isBuiltin ? 'not-allowed' : 'pointer',
                           opacity: isBuiltin ? 0.4 : 1,
-                          border: isBuiltin ? '1px solid #334155' : '1px solid #dc2626',
-                          background: isBuiltin ? '#1e293b' : 'rgba(239, 68, 68, 0.1)',
-                          color: isBuiltin ? '#64748b' : '#f87171',
+                          border: isBuiltin ? '1px solid var(--color-border)' : '1px solid var(--color-border-red)',
+                          background: isBuiltin ? 'var(--color-background-muted)' : 'rgba(239, 68, 68, 0.1)',
+                          color: isBuiltin ? 'var(--color-text-tertiary)' : 'var(--color-text-red)',
                         }}
                       >
                         Вилучити
@@ -182,9 +182,9 @@ export const PatternsPanel: React.FC = () => {
             style={{
               padding: '10px 12px',
               background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid #dc2626',
+              border: '1px solid var(--color-border-red)',
               borderRadius: '8px',
-              color: '#f87171',
+              color: 'var(--color-text-red)',
               fontSize: '13px',
             }}
           >

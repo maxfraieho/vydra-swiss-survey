@@ -26,7 +26,7 @@ export const SettingsPage: React.FC = () => {
         }}
       >
         <div>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             ⚙️ КЕРУВАННЯ
           </span>
           <Heading level={2} style={{ marginTop: '4px', fontSize: '18px' }}>

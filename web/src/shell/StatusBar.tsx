@@ -57,9 +57,9 @@ export const StatusBar: React.FC = () => {
   };
 
   return (
-    <div style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: isNarrow ? '6px 12px' : '8px 24px' }}>
+    <div style={{ background: '#0f172a', borderBottom: '1px solid var(--color-border-emphasized)', padding: isNarrow ? '6px 12px' : '8px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ fontSize: '12px', color: '#64748b', minWidth: 0 }}>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', minWidth: 0 }}>
           meinungsplatz.ch • SOCKS5 Proxy CH
         </div>
 

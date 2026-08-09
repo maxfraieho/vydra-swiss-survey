@@ -132,16 +132,16 @@ export const PersonasPanel: React.FC = () => {
           <Button type="button" variant="secondary" label="+ Нова" onClick={handleNewPersona} />
         </div>
 
-        {personasLoading && <div style={{ color: '#94a3b8', fontSize: '13px' }}>Завантаження...</div>}
+        {personasLoading && <div style={{ color: 'var(--color-text-disabled)', fontSize: '13px' }}>Завантаження...</div>}
 
         {personasError && (
-          <div style={{ color: '#f87171', fontSize: '13px' }}>
+          <div style={{ color: 'var(--color-text-red)', fontSize: '13px' }}>
             ⚠️ {personasError.message}
           </div>
         )}
 
         {personas && personas.length === 0 && !personasLoading && (
-          <div style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
             Персони відсутні.
           </div>
         )}
@@ -153,8 +153,8 @@ export const PersonasPanel: React.FC = () => {
               key={p.key}
               onClick={() => handleSelectPersona(p)}
               style={{
-                background: isSelected ? '#1e293b' : '#020617',
-                border: isSelected ? '1px solid #38bdf8' : '1px solid #1e293b',
+                background: isSelected ? 'var(--color-background-muted)' : 'var(--color-background-page)',
+                border: isSelected ? '1px solid var(--color-accent)' : '1px solid var(--color-border-emphasized)',
                 borderRadius: '8px',
                 padding: '12px',
                 cursor: 'pointer',
@@ -165,7 +165,7 @@ export const PersonasPanel: React.FC = () => {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '13px', fontFamily: 'monospace' }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '13px', fontFamily: 'monospace' }}>
                   {p.key}
                 </span>
                 <span
@@ -176,13 +176,13 @@ export const PersonasPanel: React.FC = () => {
                     borderRadius: '4px',
                     textTransform: 'uppercase',
                     background: p.active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                    color: p.active ? '#34d399' : '#9ca3af',
+                    color: p.active ? 'var(--color-text-green)' : '#9ca3af',
                   }}
                 >
                   {p.active ? 'Активна' : 'Неактивна'}
                 </span>
               </div>
-              <div style={{ fontSize: '12px', color: '#cbd5e1' }}>{p.label}</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{p.label}</div>
             </div>
           );
         })}
@@ -198,9 +198,9 @@ export const PersonasPanel: React.FC = () => {
           gap: '16px',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-emphasized)', paddingBottom: '12px' }}>
           <div>
-            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
               {selectedKey ? 'Редагування' : 'Створення'}
             </span>
             <Heading level={3} style={{ marginTop: '2px', fontSize: '16px' }}>
@@ -217,9 +217,9 @@ export const PersonasPanel: React.FC = () => {
             style={{
               padding: '10px 12px',
               background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid #dc2626',
+              border: '1px solid var(--color-border-red)',
               borderRadius: '8px',
-              color: '#f87171',
+              color: 'var(--color-text-red)',
               fontSize: '13px',
             }}
           >
@@ -268,14 +268,14 @@ export const PersonasPanel: React.FC = () => {
             placeholder="Введіть опис персони у форматі Markdown..."
             rows={8}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#94a3b8' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: 'var(--color-text-disabled)' }}>
             {charCount} символів
           </div>
         </div>
 
         {/* Live Preview Block */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
+          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-disabled)' }}>
             Попередній перегляд Markdown
           </label>
           <Card
@@ -290,7 +290,7 @@ export const PersonasPanel: React.FC = () => {
             {contentMd && contentMd.trim() !== '' ? (
               <Markdown headingLevelStart={4}>{contentMd}</Markdown>
             ) : (
-              <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>
+              <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic', fontSize: '13px' }}>
                 Попередній перегляд з'явиться тут при введенні тексту...
               </span>
             )}
