@@ -10,6 +10,8 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+
 export const HostsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
   const { data: hosts, loading: hostsLoading, error: hostsError, refetch: refetchHosts } =
@@ -25,6 +27,8 @@ export const HostsPanel: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [hostToDelete, setHostToDelete] = useState<HostRow | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,18 +59,6 @@ export const HostsPanel: React.FC = () => {
       setSubmitError(err?.message || 'Не вдалося створити хост');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (host: HostRow) => {
-    if (!window.confirm(`Вилучити хост "${host.hostname}"?`)) {
-      return;
-    }
-    try {
-      await deleteHost(host.id);
-      refetchHosts();
-    } catch (err: any) {
-      alert(`Помилка вилучення: ${err?.message || err}`);
     }
   };
 
@@ -127,7 +119,10 @@ export const HostsPanel: React.FC = () => {
                     <TableCell style={{ textAlign: 'right' }}>
                       <button
                         type="button"
-                        onClick={() => handleDelete(h)}
+                        onClick={() => {
+                          setHostToDelete(h);
+                          setConfirmDeleteOpen(true);
+                        }}
                         style={{
                           padding: '4px 10px',
                           minHeight: '44px',
@@ -230,6 +225,26 @@ export const HostsPanel: React.FC = () => {
         </div>
       </form>
       </Card>
+
+      <AlertDialog
+        isOpen={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={hostToDelete ? `Вилучити хост "${hostToDelete.hostname}"?` : ''}
+        description="Цю дію неможливо скасувати."
+        actionLabel="Вилучити"
+        onAction={async () => {
+          if (!hostToDelete) return;
+          try {
+            await deleteHost(hostToDelete.id);
+            refetchHosts();
+          } catch (err: any) {
+            alert(`Помилка вилучення: ${err?.message || err}`);
+          } finally {
+            setConfirmDeleteOpen(false);
+            setHostToDelete(null);
+          }
+        }}
+      />
     </VStack>
   );
 };

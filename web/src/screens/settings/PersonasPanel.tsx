@@ -9,6 +9,7 @@ import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 
 export const PersonasPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -25,6 +26,7 @@ export const PersonasPanel: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
 
   // When personas load or selectedKey changes, sync form if editing existing
   const selectedPersona = personas?.find((p) => p.key === selectedKey) || null;
@@ -95,19 +97,7 @@ export const PersonasPanel: React.FC = () => {
 
   const handleDelete = async () => {
     if (!selectedKey) return;
-    if (!window.confirm(`Вилучити персону "${selectedKey}"?`)) {
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await deletePersona(selectedKey);
-      handleNewPersona();
-      refetchPersonas();
-    } catch (err: any) {
-      setSubmitError(err?.message || 'Не вдалося вилучити персону');
-    } finally {
-      setSubmitting(false);
-    }
+    setConfirmDeleteOpen(true);
   };
 
   const charCount = contentMd.length;
@@ -308,6 +298,29 @@ export const PersonasPanel: React.FC = () => {
         </div>
       </form>
       </Card>
+
+      <AlertDialog
+        isOpen={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={selectedKey ? `Вилучити персону "${selectedKey}"?` : ''}
+        description="Цю дію неможливо скасувати."
+        actionLabel="Вилучити"
+        isActionLoading={submitting}
+        onAction={async () => {
+          if (!selectedKey) return;
+          setSubmitting(true);
+          try {
+            await deletePersona(selectedKey);
+            handleNewPersona();
+            refetchPersonas();
+          } catch (err: any) {
+            setSubmitError(err?.message || 'Не вдалося вилучити персону');
+          } finally {
+            setSubmitting(false);
+            setConfirmDeleteOpen(false);
+          }
+        }}
+      />
     </div>
   );
 };

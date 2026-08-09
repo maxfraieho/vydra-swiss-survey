@@ -8,6 +8,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 
 export const ProvidersPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -22,6 +23,8 @@ export const ProvidersPanel: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [providerToDelete, setProviderToDelete] = useState<ProviderRow | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,16 +64,9 @@ export const ProvidersPanel: React.FC = () => {
     }
   };
 
-  const handleDelete = async (prov: ProviderRow) => {
-    if (!window.confirm(`Вилучити провайдера "${prov.label}" (${prov.key})?`)) {
-      return;
-    }
-    try {
-      await deleteProvider(prov.id);
-      refetchProviders();
-    } catch (err: any) {
-      alert(`Помилка вилучення: ${err?.message || err}`);
-    }
+  const handleDelete = (prov: ProviderRow) => {
+    setProviderToDelete(prov);
+    setConfirmDeleteOpen(true);
   };
 
   return (
@@ -222,6 +218,26 @@ export const ProvidersPanel: React.FC = () => {
         </div>
       </form>
       </Card>
+
+      <AlertDialog
+        isOpen={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={providerToDelete ? `Вилучити провайдера "${providerToDelete.label}" (${providerToDelete.key})?` : ''}
+        description="Цю дію неможливо скасувати."
+        actionLabel="Вилучити"
+        onAction={async () => {
+          if (!providerToDelete) return;
+          try {
+            await deleteProvider(providerToDelete.id);
+            refetchProviders();
+          } catch (err: any) {
+            alert(`Помилка вилучення: ${err?.message || err}`);
+          } finally {
+            setConfirmDeleteOpen(false);
+            setProviderToDelete(null);
+          }
+        }}
+      />
     </VStack>
   );
 };

@@ -10,6 +10,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 
 export const PatternsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -24,6 +25,8 @@ export const PatternsPanel: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+  const [patternToDelete, setPatternToDelete] = useState<PatternRow | null>(null);
 
   const formatKeywords = (kwStr: string): string => {
     if (!kwStr) return '—';
@@ -73,15 +76,8 @@ export const PatternsPanel: React.FC = () => {
 
   const handleDelete = async (pattern: PatternRow) => {
     if (pattern.is_builtin === 1) return;
-    if (!window.confirm(`Вилучити патерн "${pattern.key}"?`)) {
-      return;
-    }
-    try {
-      await deletePattern(pattern.key);
-      refetchPatterns();
-    } catch (err: any) {
-      alert(`Помилка вилучення: ${err?.message || err}`);
-    }
+    setPatternToDelete(pattern);
+    setConfirmDeleteOpen(true);
   };
 
   return (
@@ -243,6 +239,26 @@ export const PatternsPanel: React.FC = () => {
         </div>
       </form>
       </Card>
+
+      <AlertDialog
+        isOpen={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={patternToDelete ? `Вилучити патерн "${patternToDelete.key}"?` : ''}
+        description="Цю дію неможливо скасувати."
+        actionLabel="Вилучити"
+        onAction={async () => {
+          if (!patternToDelete) return;
+          try {
+            await deletePattern(patternToDelete.key);
+            refetchPatterns();
+          } catch (err: any) {
+            alert(`Помилка вилучення: ${err?.message || err}`);
+          } finally {
+            setConfirmDeleteOpen(false);
+            setPatternToDelete(null);
+          }
+        }}
+      />
     </VStack>
   );
 };
