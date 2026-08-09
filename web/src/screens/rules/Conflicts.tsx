@@ -27,7 +27,7 @@ export const Conflicts: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+      <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
         Завантаження перевірки конфліктів джерел...
       </div>
     );
@@ -36,7 +36,7 @@ export const Conflicts: React.FC = () => {
   if (error) {
     return (
       <Card padding={5}>
-        <Text type="body" style={{ color: '#f87171' }}>Помилка перевірки конфліктів: {error.message}</Text>
+        <Text type="body" style={{ color: 'var(--color-text-red)' }}>Помилка перевірки конфліктів: {error.message}</Text>
       </Card>
     );
   }
@@ -58,8 +58,8 @@ export const Conflicts: React.FC = () => {
               padding: '6px 14px',
               borderRadius: '8px',
               background: data && data.count > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-              border: `1px solid ${data && data.count > 0 ? '#dc2626' : '#059669'}`,
-              color: data && data.count > 0 ? '#f87171' : '#34d399',
+              border: `1px solid ${data && data.count > 0 ? 'var(--color-border-red)' : '#059669'}`,
+              color: data && data.count > 0 ? 'var(--color-text-red)' : 'var(--color-text-green)',
               fontWeight: 700,
               fontSize: '13px',
             }}
@@ -71,7 +71,7 @@ export const Conflicts: React.FC = () => {
 
       {data && data.conflicts.length === 0 ? (
         <Card padding={5}>
-          <Text type="body" display="block" style={{ textAlign: 'center', padding: '20px 0', color: '#34d399', fontWeight: 600 }}>
+          <Text type="body" display="block" style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-green)', fontWeight: 600 }}>
             ✅ Конфліктів між джерелами не виявлено. Усі правила узгоджені!
           </Text>
         </Card>
@@ -83,8 +83,8 @@ export const Conflicts: React.FC = () => {
                 <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#ef4444', color: '#fff', textTransform: 'uppercase' }}>
                   КОНФЛІКТ #{idx + 1}
                 </span>
-                <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: 700 }}>
-                  {group.host} • {group.persona} • <code style={{ color: '#38bdf8' }}>{group.pattern}</code>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-primary)', fontWeight: 700 }}>
+                  {group.host} • {group.persona} • <code style={{ color: 'var(--color-accent)' }}>{group.pattern}</code>
                 </span>
               </div>
 
@@ -102,18 +102,18 @@ export const Conflicts: React.FC = () => {
                 <TableBody>
                   {group.rules.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</TableCell>
-                      <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{r.source}</TableCell>
+                      <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</TableCell>
+                      <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{r.source}</TableCell>
                       <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
                         <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
                       </TableCell>
-                      <TableCell style={{ color: '#cbd5e1' }}>{r.status}</TableCell>
-                      <TableCell style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</TableCell>
+                      <TableCell style={{ color: 'var(--color-text-secondary)' }}>{r.status}</TableCell>
+                      <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{r.confidence}</TableCell>
                       <TableCell>
                         {r.effective ? (
-                          <span style={{ color: '#60a5fa', fontWeight: 700 }}>✅ win</span>
+                          <span style={{ color: 'var(--color-text-blue)', fontWeight: 700 }}>✅ win</span>
                         ) : (
-                          <span style={{ color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
+                          <span style={{ color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
                         )}
                       </TableCell>
                     </TableRow>

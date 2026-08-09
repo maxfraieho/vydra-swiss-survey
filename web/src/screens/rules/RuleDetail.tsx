@@ -43,7 +43,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
 
   if (!ruleId) {
     return (
-      <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+      <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
         Оберіть правило зі списку для перегляду деталей
       </div>
     );
@@ -51,7 +51,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+      <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
         Завантаження деталей правила #{ruleId}...
       </div>
     );
@@ -59,7 +59,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
 
   if (error || !rule) {
     return (
-      <div style={{ padding: '24px', color: '#f87171', fontSize: '13px' }}>
+      <div style={{ padding: '24px', color: 'var(--color-text-red)', fontSize: '13px' }}>
         Помилка завантаження правила #{ruleId}: {error?.message || 'Не знайдено'}
       </div>
     );
@@ -67,9 +67,9 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
 
   return (
     <Card padding={5}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid var(--color-border-emphasized)', paddingBottom: '12px' }}>
         <div>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
             Правило #{rule.id}
           </span>
           <Heading level={3} style={{ marginTop: '4px', fontSize: '18px' }}>
@@ -82,7 +82,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#94a3b8',
+              color: 'var(--color-text-disabled)',
               fontSize: '20px',
               cursor: 'pointer',
               padding: '4px 8px',
@@ -107,7 +107,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
             borderRadius: '4px',
             textTransform: 'uppercase',
             background: rule.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : rule.status === 'shadow' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-            color: rule.status === 'active' ? '#34d399' : rule.status === 'shadow' ? '#fbbf24' : '#9ca3af',
+            color: rule.status === 'active' ? 'var(--color-text-green)' : rule.status === 'shadow' ? 'var(--color-text-yellow)' : '#9ca3af',
             border: `1px solid ${rule.status === 'active' ? '#059669' : rule.status === 'shadow' ? '#d97706' : '#4b5563'}`,
           }}
         >
@@ -121,46 +121,46 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
             padding: '3px 8px',
             borderRadius: '4px',
             background: rule.effective ? 'rgba(59, 130, 246, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-            color: rule.effective ? '#60a5fa' : '#f87171',
-            border: `1px solid ${rule.effective ? '#2563eb' : '#dc2626'}`,
+            color: rule.effective ? 'var(--color-text-blue)' : 'var(--color-text-red)',
+            border: `1px solid ${rule.effective ? '#2563eb' : 'var(--color-border-red)'}`,
           }}
         >
           {rule.effective ? '✅ Ефективне' : `⚠️ Затінене #${rule.shadowed_by}`}
         </span>
 
-        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: '#1e293b', color: '#cbd5e1' }}>
+        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
           Хост: <strong>{rule.host}</strong>
         </span>
 
-        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: '#1e293b', color: '#cbd5e1' }}>
+        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
           Персона: <strong>{rule.persona}</strong>
         </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
         <Card variant="muted" padding={3}>
-          <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
+          <span style={{ color: 'var(--color-text-tertiary)', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
           <Markdown density="compact" headingLevelStart={4}>{rule.behavior}</Markdown>
         </Card>
         <Card variant="muted" padding={3}>
-          <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Джерело / Confidence</span>
+          <span style={{ color: 'var(--color-text-tertiary)', display: 'block', fontSize: '11px' }}>Джерело / Confidence</span>
           <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{rule.source} ({rule.confidence})</span>
         </Card>
       </div>
 
       {rule.evidence && (
         <div style={{ marginBottom: '16px' }}>
-          <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
             Докази (Evidence)
           </span>
           <pre
             style={{
-              background: '#020617',
-              border: '1px solid #1e293b',
+              background: 'var(--color-background-page)',
+              border: '1px solid var(--color-border-emphasized)',
               borderRadius: '8px',
               padding: '12px',
               fontSize: '11px',
-              color: '#cbd5e1',
+              color: 'var(--color-text-secondary)',
               overflowX: 'auto',
               maxHeight: '180px',
               margin: 0,
@@ -173,7 +173,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
 
       {rule.linked_traces && rule.linked_traces.length > 0 && (
         <div>
-          <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
             Пов'язані прогони (Traces)
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -184,17 +184,17 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  background: '#020617',
-                  border: '1px solid #1e293b',
+                  background: 'var(--color-background-page)',
+                  border: '1px solid var(--color-border-emphasized)',
                   padding: '8px 12px',
                   borderRadius: '6px',
-                  color: '#60a5fa',
+                  color: 'var(--color-text-blue)',
                   textDecoration: 'none',
                   fontSize: '12px',
                 }}
               >
                 <span>{t.run_id}</span>
-                <span style={{ color: '#64748b' }}>{t.outcome || 'trace'}</span>
+                <span style={{ color: 'var(--color-text-tertiary)' }}>{t.outcome || 'trace'}</span>
               </Link>
             ))}
           </div>

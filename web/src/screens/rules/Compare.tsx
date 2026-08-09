@@ -50,11 +50,11 @@ export const Compare: React.FC = () => {
             onChange={(e) => setInputPattern(e.target.value)}
             style={{
               flex: 1,
-              background: '#020617',
-              border: '1px solid #334155',
+              background: 'var(--color-background-page)',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
               padding: '10px 14px',
-              color: '#f8fafc',
+              color: 'var(--color-text-primary)',
               fontSize: '13px',
             }}
           />
@@ -77,14 +77,14 @@ export const Compare: React.FC = () => {
       </Card>
 
       {loading && (
-        <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
           Завантаження порівняння для "{patternParam}"...
         </div>
       )}
 
       {error && (
         <Card padding={5}>
-          <Text type="body" style={{ color: '#f87171' }}>Помилка порівняння: {error.message}</Text>
+          <Text type="body" style={{ color: 'var(--color-text-red)' }}>Помилка порівняння: {error.message}</Text>
         </Card>
       )}
 
@@ -98,14 +98,14 @@ export const Compare: React.FC = () => {
 
       {data && (
         <Card padding={0}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)' }}>
             <Heading level={3} style={{ fontSize: '15px' }}>
               Результати для патерну "{data.pattern}" ({data.count} правил)
             </Heading>
           </div>
 
           {data.rules.length === 0 ? (
-            <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
               Жодного правила не знайдено для цього патерну.
             </div>
           ) : (
@@ -125,13 +125,13 @@ export const Compare: React.FC = () => {
               <TableBody>
                 {data.rules.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</TableCell>
+                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</TableCell>
                     <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
                     <TableCell style={{ color: '#e2e8f0' }}>{r.persona}</TableCell>
                     <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
                       <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
                     </TableCell>
-                    <TableCell style={{ color: '#cbd5e1' }}>{r.source}</TableCell>
+                    <TableCell style={{ color: 'var(--color-text-secondary)' }}>{r.source}</TableCell>
                     <TableCell>
                       <span
                         style={{
@@ -141,7 +141,7 @@ export const Compare: React.FC = () => {
                           borderRadius: '4px',
                           textTransform: 'uppercase',
                           background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                          color: r.status === 'active' ? '#34d399' : '#fbbf24',
+                          color: r.status === 'active' ? 'var(--color-text-green)' : 'var(--color-text-yellow)',
                         }}
                       >
                         {r.status}
@@ -149,12 +149,12 @@ export const Compare: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       {r.effective ? (
-                        <span style={{ fontSize: '11px', color: '#60a5fa' }}>✅ win</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-blue)' }}>✅ win</span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
                       )}
                     </TableCell>
-                    <TableCell style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</TableCell>
+                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{r.confidence}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

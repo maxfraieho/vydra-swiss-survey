@@ -95,7 +95,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                   border: '1px solid #d97706',
                   borderRadius: '8px',
                   padding: '12px',
-                  color: '#fbbf24',
+                  color: 'var(--color-text-yellow)',
                   fontSize: '13px',
                 }}
               >
@@ -109,8 +109,8 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                   <div
                     key={idx}
                     style={{
-                      background: '#020617',
-                      border: '1px solid #1e293b',
+                      background: 'var(--color-background-page)',
+                      border: '1px solid var(--color-border-emphasized)',
                       borderRadius: '8px',
                       padding: '12px',
                       display: 'flex',
@@ -119,11 +119,11 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '14px' }}>
                         {rule.name || '(без назви)'}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '12px', color: '#38bdf8', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--color-accent)', fontFamily: 'monospace' }}>
                           {rule.suggestedPattern || '(не вказано)'}
                         </span>
                         {!rule.patternIsKnown && (
@@ -134,7 +134,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                               padding: '2px 6px',
                               borderRadius: '4px',
                               background: 'rgba(245, 158, 11, 0.15)',
-                              color: '#fbbf24',
+                              color: 'var(--color-text-yellow)',
                               border: '1px solid #d97706',
                             }}
                           >
@@ -145,7 +145,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                     </div>
 
                     {rule.warnings.length > 0 && (
-                      <div style={{ fontSize: '12px', color: '#fbbf24', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-yellow)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         {rule.warnings.map((w, wIdx) => (
                           <div key={wIdx}>⚠️ {w}</div>
                         ))}
@@ -167,19 +167,19 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                 {parseResult.globalUnparsed.length > 0 && (
                   <div
                     style={{
-                      background: '#020617',
+                      background: 'var(--color-background-page)',
                       border: '1px solid rgba(245, 158, 11, 0.3)',
                       borderRadius: '8px',
                       padding: '12px',
                       fontSize: '12px',
-                      color: '#cbd5e1',
+                      color: 'var(--color-text-secondary)',
                     }}
                   >
-                    <div style={{ color: '#fbbf24', fontWeight: 700, marginBottom: '6px' }}>
+                    <div style={{ color: 'var(--color-text-yellow)', fontWeight: 700, marginBottom: '6px' }}>
                       Нерозпізнані рядки:
                     </div>
                     {parseResult.globalUnparsed.map((u, uIdx) => (
-                      <div key={uIdx} style={{ fontFamily: 'monospace', fontSize: '11px', color: '#94a3b8' }}>
+                      <div key={uIdx} style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-text-disabled)' }}>
                         L{u.line}: "{u.text}" — {u.reason}
                       </div>
                     ))}
@@ -193,7 +193,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
 
       {/* 2. Live preview */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
+        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-disabled)' }}>
           Попередній перегляд
         </label>
         <Card
@@ -203,7 +203,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
           {behavior && behavior.trim() !== '' ? (
             <Markdown headingLevelStart={4}>{behavior}</Markdown>
           ) : (
-            <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>
+            <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic', fontSize: '13px' }}>
               Попередній перегляд з'явиться тут при введенні тексту...
             </span>
           )}

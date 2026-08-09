@@ -93,11 +93,11 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingBottom: '12px',
-          borderBottom: '1px solid #1e293b',
+          borderBottom: '1px solid var(--color-border-emphasized)',
         }}
       >
         <div>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
             Створення
           </span>
           <Heading level={3} style={{ marginTop: '4px' }}>
@@ -110,7 +110,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#94a3b8',
+            color: 'var(--color-text-disabled)',
             fontSize: '20px',
             cursor: 'pointer',
             padding: '4px 8px',
@@ -131,9 +131,9 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           style={{
             padding: '10px 12px',
             background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid #dc2626',
+            border: '1px solid var(--color-border-red)',
             borderRadius: '8px',
-            color: '#f87171',
+            color: 'var(--color-text-red)',
             fontSize: '13px',
           }}
         >
@@ -175,7 +175,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           onPatternChange={setPattern}
         />
         {attemptedSubmit && (!pattern.trim() || !behavior.trim()) && (
-          <div style={{ fontSize: '11px', color: '#f87171', marginTop: '6px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-red)', marginTop: '6px' }}>
             {!pattern.trim() && !behavior.trim()
               ? "Оберіть патерн та введіть інструкцію поведінки"
               : !pattern.trim()
