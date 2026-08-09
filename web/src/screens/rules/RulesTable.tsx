@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { RuleDetail } from './RuleDetail';
+import { RuleComposer } from './RuleComposer';
 import { Markdown } from '../../ui/Markdown';
 
 export interface FacetsData {
@@ -27,6 +28,7 @@ export interface RuleRow {
 export const RulesTable: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
+  const [composing, setComposing] = useState<boolean>(false);
 
   const hostFilter = searchParams.get('host') || '';
   const personaFilter = searchParams.get('persona') || '';
@@ -45,7 +47,7 @@ export const RulesTable: React.FC = () => {
 
   const rulesEndpoint = `/api/rules?${queryParams.toString()}`;
 
-  const { data: rules, loading: rulesLoading, error: rulesError } = useResource<RuleRow[]>(rulesEndpoint);
+  const { data: rules, loading: rulesLoading, error: rulesError, refetch: refetchRules } = useResource<RuleRow[]>(rulesEndpoint);
   const { data: facets } = useResource<FacetsData>('/api/rules/facets');
 
   const updateParam = (key: string, value: string) => {
@@ -194,14 +196,36 @@ export const RulesTable: React.FC = () => {
       </div>
 
       {/* Main Grid: Table (left) + Master-Detail (right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedRuleId ? '1fr 420px' : '1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: (selectedRuleId || composing) ? '1fr 420px' : '1fr', gap: '20px' }}>
         {/* Rules Table */}
         <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
               База Правил ({rules?.length || 0})
             </h2>
-            {rulesLoading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Оновлення...</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {rulesLoading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Оновлення...</span>}
+              <button
+                type="button"
+                onClick={() => {
+                  setComposing(true);
+                  setSelectedRuleId(null);
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1px solid #38bdf8',
+                  background: '#1e293b',
+                  color: '#38bdf8',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                + Нове правило
+              </button>
+            </div>
           </div>
 
           {rulesError && (
@@ -236,7 +260,10 @@ export const RulesTable: React.FC = () => {
                     return (
                       <tr
                         key={r.id}
-                        onClick={() => setSelectedRuleId(r.id)}
+                        onClick={() => {
+                          setSelectedRuleId(r.id);
+                          setComposing(false);
+                        }}
                         style={{
                           borderBottom: '1px solid #1e293b',
                           cursor: 'pointer',
@@ -281,9 +308,20 @@ export const RulesTable: React.FC = () => {
         </div>
 
         {/* Master-Detail Side Panel */}
-        {selectedRuleId && (
+        {(selectedRuleId || composing) && (
           <div>
-            <RuleDetail ruleId={selectedRuleId} onClose={() => setSelectedRuleId(null)} />
+            {composing ? (
+              <RuleComposer
+                onCreated={(result) => {
+                  setComposing(false);
+                  setSelectedRuleId(result.id);
+                  refetchRules();
+                }}
+                onCancel={() => setComposing(false)}
+              />
+            ) : selectedRuleId ? (
+              <RuleDetail ruleId={selectedRuleId} onClose={() => setSelectedRuleId(null)} />
+            ) : null}
           </div>
         )}
       </div>
