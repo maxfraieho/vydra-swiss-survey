@@ -34,11 +34,9 @@ export const HostsPanel: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttemptedSubmit(true);
-    setSubmitError(null);
 
     const trimmedHostname = hostname.trim();
     if (!trimmedHostname) {
-      setSubmitError("Будь ласка, вкажіть назву хоста (hostname)");
       return;
     }
 

@@ -41,11 +41,9 @@ export const PatternsPanel: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttemptedSubmit(true);
-    setSubmitError(null);
 
     const trimmedKey = key.trim();
     if (!trimmedKey) {
-      setSubmitError("Будь ласка, вкажіть ключ патерна (key)");
       return;
     }
 

@@ -38,7 +38,6 @@ export const PersonasPanel: React.FC = () => {
     setLabel(p.label);
     setContentMd(p.content_md || '');
     setActive(p.active);
-    setSubmitError(null);
     setAttemptedSubmit(false);
   };
 
@@ -48,14 +47,12 @@ export const PersonasPanel: React.FC = () => {
     setLabel('');
     setContentMd('');
     setActive(1);
-    setSubmitError(null);
     setAttemptedSubmit(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttemptedSubmit(true);
-    setSubmitError(null);
 
     const trimmedKey = key.trim();
     const trimmedLabel = label.trim();
@@ -65,7 +62,6 @@ export const PersonasPanel: React.FC = () => {
     if (!trimmedLabel) missing.push('Назва (label)');
 
     if (missing.length > 0) {
-      setSubmitError(`Будь ласка, заповніть обов'язкові поля: ${missing.join(', ')}`);
       return;
     }
 

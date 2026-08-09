@@ -39,7 +39,6 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAttemptedSubmit(true);
-    setSubmitError(null);
 
     const trimmedHost = host.trim();
     const trimmedPattern = pattern.trim();
@@ -51,7 +50,6 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
     if (!trimmedBehavior) missingFields.push('Поведінка');
 
     if (missingFields.length > 0) {
-      setSubmitError(`Будь ласка, заповніть обов'язкові поля: ${missingFields.join(', ')}`);
       return;
     }
 

@@ -30,7 +30,6 @@ export const ProvidersPanel: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttemptedSubmit(true);
-    setSubmitError(null);
 
     const trimmedKey = key.trim();
     const trimmedLabel = label.trim();
@@ -40,7 +39,6 @@ export const ProvidersPanel: React.FC = () => {
     if (!trimmedLabel) missing.push('Назва (label)');
 
     if (missing.length > 0) {
-      setSubmitError(`Будь ласка, заповніть обов'язкові поля: ${missing.join(', ')}`);
       return;
     }
 
