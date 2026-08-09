@@ -4,6 +4,7 @@ import { useResource } from '../../api/hooks';
 import { HostRow, PersonaRow } from '../../api/settings';
 import { RuleDetailData } from './RuleDetail';
 import { BehaviorEditor } from './BehaviorEditor';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 
 export interface RuleComposerProps {
   onCreated: (rule: RuleDetailData) => void;
@@ -11,6 +12,7 @@ export interface RuleComposerProps {
 }
 
 export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel }) => {
+  const isNarrow = useIsNarrow();
   const { data: hostsData, loading: hostsLoading } = useResource<HostRow[]>('/api/settings/hosts');
   const { data: personasData, loading: personasLoading } = useResource<PersonaRow[]>('/api/settings/personas');
 
@@ -108,6 +110,11 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
             fontSize: '20px',
             cursor: 'pointer',
             padding: '4px 8px',
+            minHeight: '44px',
+            minWidth: '44px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           ✕
@@ -131,7 +138,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
       )}
 
       {/* 2-col Grid: Host & Persona */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
             Хост (Host) <span style={{ color: '#f87171' }}>*</span>
@@ -224,7 +231,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
       </div>
 
       {/* 2-col Grid: Confidence & Status */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
@@ -309,6 +316,10 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           onClick={onCancel}
           style={{
             padding: '8px 16px',
+            minHeight: '44px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             borderRadius: '6px',
             fontSize: '13px',
             fontWeight: 600,
@@ -326,6 +337,10 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           disabled={isSubmitDisabled}
           style={{
             padding: '8px 18px',
+            minHeight: '44px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             borderRadius: '6px',
             fontSize: '13px',
             fontWeight: 600,

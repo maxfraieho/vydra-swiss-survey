@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 import { TraceDetail } from './TraceDetail';
 
 export interface TraceSummary {
@@ -12,6 +13,7 @@ export interface TraceSummary {
 }
 
 export const Traces: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const { runId: routeRunId } = useParams<{ runId?: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -117,6 +119,10 @@ export const Traces: React.FC = () => {
               fontSize: '12px',
               fontWeight: 600,
               cursor: 'pointer',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             Скинути фільтри
@@ -125,7 +131,7 @@ export const Traces: React.FC = () => {
       </div>
 
       {/* Grid: Table + Side Panel */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedRunId ? '1fr 450px' : '1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : (selectedRunId ? '1fr 450px' : '1fr'), gap: '20px' }}>
         <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>

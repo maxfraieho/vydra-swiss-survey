@@ -2,6 +2,7 @@ import React from 'react';
 import { useResource } from '../../api/hooks';
 import { Link } from 'react-router';
 import { Markdown } from '../../ui/Markdown';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 
 export interface LinkedTrace {
   run_id: string;
@@ -33,6 +34,7 @@ interface RuleDetailProps {
 }
 
 export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
+  const isNarrow = useIsNarrow();
   const { data: rule, loading, error } = useResource<RuleDetailData>(
     ruleId ? `/api/rules/${ruleId}` : null
   );
@@ -75,7 +77,19 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
         {onClose && (
           <button
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer', padding: '4px 8px' }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '20px',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              minHeight: '44px',
+              minWidth: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             ✕
           </button>
@@ -121,7 +135,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
         <div style={{ background: '#020617', padding: '10px', borderRadius: '8px', border: '1px solid #1e293b' }}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
           <Markdown source={rule.behavior} variant="compact" />

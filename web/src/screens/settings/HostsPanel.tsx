@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { HostRow, ProviderRow, createHost, deleteHost } from '../../api/settings';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 
 export const HostsPanel: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const { data: hosts, loading: hostsLoading, error: hostsError, refetch: refetchHosts } =
     useResource<HostRow[]>('/api/settings/hosts');
 
@@ -122,6 +124,10 @@ export const HostsPanel: React.FC = () => {
                           onClick={() => handleDelete(h)}
                           style={{
                             padding: '4px 10px',
+                            minHeight: '44px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             borderRadius: '4px',
                             fontSize: '12px',
                             fontWeight: 600,
@@ -175,7 +181,7 @@ export const HostsPanel: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
               Hostname <span style={{ color: '#f87171' }}>*</span>
@@ -226,7 +232,7 @@ export const HostsPanel: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
               Провайдер
@@ -286,6 +292,10 @@ export const HostsPanel: React.FC = () => {
             disabled={submitting}
             style={{
               padding: '8px 18px',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: '6px',
               fontSize: '13px',
               fontWeight: 600,

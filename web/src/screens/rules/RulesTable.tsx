@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleDetail } from './RuleDetail';
 import { RuleComposer } from './RuleComposer';
 import { Markdown } from '../../ui/Markdown';
@@ -26,6 +27,7 @@ export interface RuleRow {
 }
 
 export const RulesTable: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
   const [composing, setComposing] = useState<boolean>(false);
@@ -188,6 +190,10 @@ export const RulesTable: React.FC = () => {
               fontSize: '12px',
               fontWeight: 600,
               cursor: 'pointer',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             Скинути фільтри
@@ -196,7 +202,7 @@ export const RulesTable: React.FC = () => {
       </div>
 
       {/* Main Grid: Table (left) + Master-Detail (right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: (selectedRuleId || composing) ? '1fr 420px' : '1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : ((selectedRuleId || composing) ? '1fr 420px' : '1fr'), gap: '20px' }}>
         {/* Rules Table */}
         <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -221,6 +227,10 @@ export const RulesTable: React.FC = () => {
                   background: '#1e293b',
                   color: '#38bdf8',
                   transition: 'all 0.15s ease',
+                  minHeight: '44px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 + Нове правило

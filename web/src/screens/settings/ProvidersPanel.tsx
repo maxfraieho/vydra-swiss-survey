@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { ProviderRow, createProvider, deleteProvider } from '../../api/settings';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 
 export const ProvidersPanel: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const { data: providers, loading: providersLoading, error: providersError, refetch: refetchProviders } =
     useResource<ProviderRow[]>('/api/settings/providers');
 
@@ -115,6 +117,10 @@ export const ProvidersPanel: React.FC = () => {
                         onClick={() => handleDelete(p)}
                         style={{
                           padding: '4px 10px',
+                          minHeight: '44px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           borderRadius: '4px',
                           fontSize: '12px',
                           fontWeight: 600,
@@ -167,7 +173,7 @@ export const ProvidersPanel: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
               Key (Ідентифікатор) <span style={{ color: '#f87171' }}>*</span>
@@ -221,7 +227,7 @@ export const ProvidersPanel: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
               URL Pattern <span style={{ fontWeight: 400, color: '#64748b' }}>(необов'язково)</span>
@@ -275,6 +281,10 @@ export const ProvidersPanel: React.FC = () => {
             disabled={submitting}
             style={{
               padding: '8px 18px',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               borderRadius: '6px',
               fontSize: '13px',
               fontWeight: 600,

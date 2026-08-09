@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useResource } from '../../api/hooks';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 import { PersonaRow, createPersona, updatePersona, deletePersona } from '../../api/settings';
 import { Markdown } from '../../ui/Markdown';
 
 export const PersonasPanel: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const { data: personas, loading: personasLoading, error: personasError, refetch: refetchPersonas } =
     useResource<PersonaRow[]>('/api/settings/personas');
 
@@ -105,7 +107,7 @@ export const PersonasPanel: React.FC = () => {
   const charCount = contentMd.length;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '20px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '320px 1fr', gap: '20px' }}>
       {/* Left Column: Cards List */}
       <div
         style={{
@@ -136,6 +138,10 @@ export const PersonasPanel: React.FC = () => {
               border: '1px solid #38bdf8',
               background: '#1e293b',
               color: '#38bdf8',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             + Нова
@@ -233,6 +239,10 @@ export const PersonasPanel: React.FC = () => {
                 border: '1px solid #dc2626',
                 background: 'rgba(239, 68, 68, 0.1)',
                 color: '#f87171',
+                minHeight: '44px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               Вилучити персону
@@ -256,7 +266,7 @@ export const PersonasPanel: React.FC = () => {
         )}
 
         {/* Form Inputs: Key, Label, Active */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr 120px', gap: '12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
               Key (Ідентифікатор) <span style={{ color: '#f87171' }}>*</span>
@@ -409,6 +419,10 @@ export const PersonasPanel: React.FC = () => {
               background: '#1e293b',
               color: '#38bdf8',
               transition: 'all 0.15s ease',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             {submitting ? 'Збереження...' : selectedKey ? 'Зберегти зміни' : 'Створити персону'}
