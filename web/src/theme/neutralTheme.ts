@@ -128,10 +128,11 @@ export const neutralTheme = defineTheme({
     '--color-background-body': ['#f1f1f1', '#1b1b1b'],
     '--color-background-card': ['#ffffff', '#1b1b1b'],
     '--color-background-popover': ['#ffffff', '#1b1b1b'],
-    '--color-background-muted': ['#f1f1f1', '#1b1b1b'],
+    '--color-background-muted': '#1e293b',
+    '--color-background-page': '#020617',
 
     // Accent + neutral surface tints (sit alongside backgrounds)
-    '--color-accent': ['#262626', '#ebebeb'],
+    '--color-accent': '#38bdf8',
     '--color-accent-muted': ['#f1f1f1', '#262626'],
     '--color-neutral': ['#0000000F', '#FFFFFF1A'],
 
@@ -141,12 +142,13 @@ export const neutralTheme = defineTheme({
     '--color-overlay-pressed': ['#0000001A', '#FFFFFF1A'],
 
     // Text
-    '--color-text-primary': ['#171717', '#fafafa'],
+    '--color-text-primary': '#f8fafc',
     // Light secondary is neutral-600 (#525252), not 500 (#737373): 500 only
     // reaches 4.19:1 on the T95 body (#f1f1f1), just under WCAG AA 4.5:1.
     // 600 clears it (6.9:1 on body, 7.8:1 on card). Dark stays neutral-400.
-    '--color-text-secondary': ['#525252', '#a3a3a3'],
-    '--color-text-disabled': ['#a3a3a3', '#525252'],
+    '--color-text-secondary': '#cbd5e1',
+    '--color-text-tertiary': '#64748b',
+    '--color-text-disabled': '#94a3b8',
     '--color-text-accent': ['#262626', '#ebebeb'],
     '--color-on-dark': '#ffffff',
     '--color-on-light': '#171717',
@@ -197,8 +199,8 @@ export const neutralTheme = defineTheme({
     '--color-warning-muted': ['#f8da9d', '#deb4333D'],
 
     // Border
-    '--color-border': ['#00000014', '#FFFFFF1A'],
-    '--color-border-emphasized': ['#d4d4d4', '#525252'],
+    '--color-border': '#334155',
+    '--color-border-emphasized': '#1e293b',
 
     // Effects
     '--color-skeleton': ['#ebebeb', '#525252'],
@@ -238,9 +240,9 @@ export const neutralTheme = defineTheme({
 
     // Red  H=22 — source #eb183a
     '--color-background-red': ['#facecb', '#ff9e973D'],
-    '--color-border-red': ['#e6bab8', '#ff6f6c'],
+    '--color-border-red': '#dc2626',
     '--color-icon-red': ['#89001a', '#ff9e97'],
-    '--color-text-red': ['#89001a', '#ffc6c1'],
+    '--color-text-red': '#f87171',
 
     // Orange  H=55 — source #d57113
     '--color-background-orange': ['#fad0b5', '#ffa2583D'],
@@ -260,13 +262,13 @@ export const neutralTheme = defineTheme({
     '--color-background-yellow': ['#f8da9d', '#deb4333D'],
     '--color-border-yellow': ['#e4c279', '#c0990e'],
     '--color-icon-yellow': ['#584400', '#deb433'],
-    '--color-text-yellow': ['#584400', '#fdcf4f'],
+    '--color-text-yellow': '#fbbf24',
 
     // Green  H=144 — source #358a3a
     '--color-background-green': ['#c5e5c0', '#84c9803D'],
     '--color-border-green': ['#b2d1ac', '#69ad67'],
     '--color-icon-green': ['#0c5700', '#84c980'],
-    '--color-text-green': ['#0c5700', '#9fe59b'],
+    '--color-text-green': '#34d399',
 
     // Teal  H=180 — source #0c7365
     // Light pastel uses L=0.87 C=0.065 (a step darker + less chroma than
@@ -292,7 +294,7 @@ export const neutralTheme = defineTheme({
     '--color-background-blue': ['#c4ddfb', '#9eb7ff3D'],
     '--color-border-blue': ['#b1c9e7', '#6d9cfe'],
     '--color-icon-blue': ['#00458c', '#9eb7ff'],
-    '--color-text-blue': ['#00458c', '#c7d3ff'],
+    '--color-text-blue': '#60a5fa',
 
     // Purple  H=320 — source #980fb2
     '--color-background-purple': ['#eccef3', '#f297ff3D'],
