@@ -3,6 +3,11 @@ import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '../../ui/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { HStack } from '@astryxdesign/core/HStack';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
 
 export interface ConflictGroup {
   host: string;
@@ -30,23 +35,23 @@ export const Conflicts: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: '20px', color: '#f87171', fontSize: '13px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}>
-        Помилка перевірки конфліктів: {error.message}
-      </div>
+      <Card padding={5}>
+        <Text type="body" style={{ color: '#f87171' }}>Помилка перевірки конфліктів: {error.message}</Text>
+      </Card>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <VStack gap={5}>
+      <Card padding={5}>
+        <HStack justify="space-between" align="center">
           <div>
-            <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+            <Heading level={2} style={{ marginBottom: '4px' }}>
               Конфлікти джерел знань (Source Conflicts)
-            </h2>
-            <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+            </Heading>
+            <Text type="body" color="secondary" display="block">
               Групи (host, persona, pattern), які мають різну поведінку від різних джерел.
-            </p>
+            </Text>
           </div>
           <div
             style={{
@@ -61,17 +66,19 @@ export const Conflicts: React.FC = () => {
           >
             {data?.count || 0} Конфліктів
           </div>
-        </div>
-      </div>
+        </HStack>
+      </Card>
 
       {data && data.conflicts.length === 0 ? (
-        <div style={{ padding: '40px', textAlign: 'center', background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', color: '#34d399', fontSize: '14px', fontWeight: 600 }}>
-          ✅ Конфліктів між джерелами не виявлено. Усі правила узгоджені!
-        </div>
+        <Card padding={5}>
+          <Text type="body" display="block" style={{ textAlign: 'center', padding: '20px 0', color: '#34d399', fontWeight: 600 }}>
+            ✅ Конфліктів між джерелами не виявлено. Усі правила узгоджені!
+          </Text>
+        </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <VStack gap={4}>
           {data?.conflicts.map((group, idx) => (
-            <div key={idx} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px' }}>
+            <Card key={idx} padding={4}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#ef4444', color: '#fff', textTransform: 'uppercase' }}>
                   КОНФЛІКТ #{idx + 1}
@@ -113,10 +120,10 @@ export const Conflicts: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </Card>
           ))}
-        </div>
+        </VStack>
       )}
-    </div>
+    </VStack>
   );
 };

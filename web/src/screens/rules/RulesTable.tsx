@@ -7,6 +7,9 @@ import { RuleComposer } from './RuleComposer';
 import { Markdown } from '../../ui/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Heading } from '@astryxdesign/core/Heading';
 
 export interface FacetsData {
   hosts: { name: string; count: number; by_status: Record<string, number> }[];
@@ -65,9 +68,9 @@ export const RulesTable: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <VStack gap={5}>
       {/* Search & Filter Bar */}
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+      <Card padding={4} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
         <input
           type="text"
           placeholder="🔍 Пошук за патерном або поведінкою..."
@@ -201,16 +204,16 @@ export const RulesTable: React.FC = () => {
             Скинути фільтри
           </button>
         )}
-      </div>
+      </Card>
 
       {/* Main Grid: Table (left) + Master-Detail (right) */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : ((selectedRuleId || composing) ? '1fr 420px' : '1fr'), gap: '20px' }}>
         {/* Rules Table */}
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
+        <Card padding={0} style={{ overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+            <Heading level={2} style={{ fontSize: '15px' }}>
               База Правил ({rules?.length || 0})
-            </h2>
+            </Heading>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {rulesLoading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Оновлення...</span>}
               <button
@@ -299,7 +302,7 @@ export const RulesTable: React.FC = () => {
               </TableBody>
             </Table>
           )}
-        </div>
+        </Card>
 
         {/* Master-Detail Side Panel */}
         {(selectedRuleId || composing) && (
@@ -319,6 +322,6 @@ export const RulesTable: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </VStack>
   );
 };

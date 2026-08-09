@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { TabList } from '@astryxdesign/core/TabList';
 import { Tab } from '@astryxdesign/core/TabList';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Heading } from '@astryxdesign/core/Heading';
 import { HostsPanel } from './HostsPanel';
 import { PersonasPanel } from './PersonasPanel';
 import { PatternsPanel } from './PatternsPanel';
@@ -12,14 +15,11 @@ export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('hosts');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <VStack gap={5}>
       {/* Header & Tab Bar */}
-      <div
+      <Card
+        padding={4}
         style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
-          borderRadius: '12px',
-          padding: '16px 20px',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
@@ -29,9 +29,9 @@ export const SettingsPage: React.FC = () => {
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             ⚙️ КЕРУВАННЯ
           </span>
-          <h2 style={{ margin: '4px 0 0 0', fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+          <Heading level={2} style={{ marginTop: '4px', fontSize: '18px' }}>
             Налаштування
-          </h2>
+          </Heading>
         </div>
 
         <TabList value={activeTab} onChange={(v) => setActiveTab(v as SettingsTab)}>
@@ -40,13 +40,13 @@ export const SettingsPage: React.FC = () => {
           <Tab value="patterns" label="Патерни" />
           <Tab value="providers" label="Провайдери" />
         </TabList>
-      </div>
+      </Card>
 
       {/* Active Panel View */}
       {activeTab === 'hosts' && <HostsPanel />}
       {activeTab === 'personas' && <PersonasPanel />}
       {activeTab === 'patterns' && <PatternsPanel />}
       {activeTab === 'providers' && <ProvidersPanel />}
-    </div>
+    </VStack>
   );
 };

@@ -5,6 +5,7 @@ import { parseDrakonPseudocode, ParsedRule, ParseResult } from './drakonPseudoco
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
 
 export interface BehaviorEditorProps {
   behavior: string;
@@ -195,14 +196,9 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
         <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
           Попередній перегляд
         </label>
-        <div
-          style={{
-            background: '#0f172a',
-            border: '1px solid #1e293b',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            minHeight: '48px',
-          }}
+        <Card
+          padding={4}
+          style={{ minHeight: '48px' }}
         >
           {behavior && behavior.trim() !== '' ? (
             <Markdown source={behavior} />
@@ -211,7 +207,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
               Попередній перегляд з'явиться тут при введенні тексту...
             </span>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* 3. Pattern select */}

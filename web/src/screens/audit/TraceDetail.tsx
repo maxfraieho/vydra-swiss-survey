@@ -1,5 +1,8 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
+import { Card } from '@astryxdesign/core/Card';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
 
 export interface TraceData {
   run_id: string;
@@ -59,15 +62,15 @@ export const TraceDetail: React.FC<TraceDetailProps> = ({ runId, onClose }) => {
   }
 
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
+    <Card padding={5}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
         <div>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+          <Text type="supporting" color="secondary">
             Прогін (Trace)
-          </span>
-          <h3 style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: 700, color: '#f8fafc', fontFamily: 'monospace' }}>
+          </Text>
+          <Heading level={3} style={{ marginTop: '4px', fontFamily: 'monospace' }}>
             {trace.run_id}
-          </h3>
+          </Heading>
         </div>
         {onClose && (
           <button
@@ -135,6 +138,6 @@ export const TraceDetail: React.FC<TraceDetailProps> = ({ runId, onClose }) => {
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };

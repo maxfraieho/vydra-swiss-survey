@@ -3,6 +3,8 @@ import { useResource } from '../../api/hooks';
 import { Link } from 'react-router';
 import { Markdown } from '../../ui/Markdown';
 import { useIsNarrow } from '../../shell/useIsNarrow';
+import { Card } from '@astryxdesign/core/Card';
+import { Heading } from '@astryxdesign/core/Heading';
 
 export interface LinkedTrace {
   run_id: string;
@@ -64,15 +66,15 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
   }
 
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', spaceY: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #1e293b', pb: '12px' }}>
+    <Card padding={5}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
         <div>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
             Правило #{rule.id}
           </span>
-          <h3 style={{ margin: '4px 0 0 0', fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+          <Heading level={3} style={{ marginTop: '4px', fontSize: '18px' }}>
             {rule.pattern}
-          </h3>
+          </Heading>
         </div>
         {onClose && (
           <button
@@ -136,14 +138,14 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
-        <div style={{ background: '#020617', padding: '10px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+        <Card variant="muted" padding={3}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
           <Markdown source={rule.behavior} variant="compact" />
-        </div>
-        <div style={{ background: '#020617', padding: '10px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+        </Card>
+        <Card variant="muted" padding={3}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Джерело / Confidence</span>
           <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{rule.source} ({rule.confidence})</span>
-        </div>
+        </Card>
       </div>
 
       {rule.evidence && (
@@ -198,6 +200,6 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 };

@@ -4,6 +4,10 @@ import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '../../ui/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
 
 export interface CompareResult {
   pattern: string;
@@ -29,14 +33,14 @@ export const Compare: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+    <VStack gap={5}>
+      <Card padding={5}>
+        <Heading level={2} style={{ marginBottom: '8px' }}>
           Порівняння патернів правил (Compare)
-        </h2>
-        <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#94a3b8' }}>
+        </Heading>
+        <Text type="body" color="secondary" display="block" style={{ marginBottom: '16px' }}>
           Порівняйте поведінку одного патерну між різними хостами, профайлами та джерелами.
-        </p>
+        </Text>
 
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px' }}>
           <input
@@ -70,7 +74,7 @@ export const Compare: React.FC = () => {
             Порівняти
           </button>
         </form>
-      </div>
+      </Card>
 
       {loading && (
         <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
@@ -79,23 +83,25 @@ export const Compare: React.FC = () => {
       )}
 
       {error && (
-        <div style={{ padding: '20px', color: '#f87171', fontSize: '13px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}>
-          Помилка порівняння: {error.message}
-        </div>
+        <Card padding={5}>
+          <Text type="body" style={{ color: '#f87171' }}>Помилка порівняння: {error.message}</Text>
+        </Card>
       )}
 
       {!patternParam && (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '13px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}>
-          💡 Введіть назву патерну у полі вище для порівняння.
-        </div>
+        <Card padding={5}>
+          <Text type="body" color="secondary" display="block" style={{ textAlign: 'center', padding: '20px 0' }}>
+            💡 Введіть назву патерну у полі вище для порівняння.
+          </Text>
+        </Card>
       )}
 
       {data && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
+        <Card padding={0}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+            <Heading level={3} style={{ fontSize: '15px' }}>
               Результати для патерну "{data.pattern}" ({data.count} правил)
-            </h3>
+            </Heading>
           </div>
 
           {data.rules.length === 0 ? (
@@ -154,8 +160,8 @@ export const Compare: React.FC = () => {
               </TableBody>
             </Table>
           )}
-        </div>
+        </Card>
       )}
-    </div>
+    </VStack>
   );
 };

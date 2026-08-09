@@ -9,6 +9,9 @@ import { Selector } from '@astryxdesign/core/Selector';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Button } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
 
 export interface RuleComposerProps {
   onCreated: (rule: RuleDetailData) => void;
@@ -74,13 +77,10 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
   const isSubmitDisabled = submitting || isHostEmpty;
 
   return (
+    <Card padding={5}>
     <form
       onSubmit={handleSubmit}
       style={{
-        background: '#0f172a',
-        border: '1px solid #1e293b',
-        borderRadius: '12px',
-        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
@@ -100,9 +100,9 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
             Створення
           </span>
-          <h3 style={{ margin: '4px 0 0 0', fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+          <Heading level={3} style={{ marginTop: '4px' }}>
             Нове правило
-          </h3>
+          </Heading>
         </div>
         <button
           type="button"
@@ -231,5 +231,6 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
         />
       </div>
     </form>
+    </Card>
   );
 };

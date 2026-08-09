@@ -7,6 +7,8 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
+import { Heading } from '@astryxdesign/core/Heading';
 
 export const PersonasPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -113,12 +115,9 @@ export const PersonasPanel: React.FC = () => {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '320px 1fr', gap: '20px' }}>
       {/* Left Column: Cards List */}
-      <div
+      <Card
+        padding={4}
         style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
-          borderRadius: '12px',
-          padding: '16px',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
@@ -127,9 +126,9 @@ export const PersonasPanel: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+          <Heading level={3} style={{ fontSize: '15px' }}>
             Персони ({personas?.length || 0})
-          </h3>
+          </Heading>
           <Button type="button" variant="secondary" label="+ Нова" onClick={handleNewPersona} />
         </div>
 
@@ -187,16 +186,13 @@ export const PersonasPanel: React.FC = () => {
             </div>
           );
         })}
-      </div>
+      </Card>
 
       {/* Right Column: Persona Editor */}
+      <Card padding={5}>
       <form
         onSubmit={handleSave}
         style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
-          borderRadius: '12px',
-          padding: '20px',
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
@@ -207,9 +203,9 @@ export const PersonasPanel: React.FC = () => {
             <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
               {selectedKey ? 'Редагування' : 'Створення'}
             </span>
-            <h3 style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 700, color: '#f8fafc' }}>
+            <Heading level={3} style={{ marginTop: '2px', fontSize: '16px' }}>
               {selectedKey ? `Персона: ${selectedKey}` : 'Нова персона'}
-            </h3>
+            </Heading>
           </div>
           {selectedKey && (
             <Button type="button" variant="destructive" label="Вилучити персону" onClick={handleDelete} />
@@ -282,12 +278,10 @@ export const PersonasPanel: React.FC = () => {
           <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
             Попередній перегляд Markdown
           </label>
-          <div
+          <Card
+            variant="muted"
+            padding={4}
             style={{
-              background: '#020617',
-              border: '1px solid #1e293b',
-              borderRadius: '8px',
-              padding: '12px 16px',
               minHeight: '60px',
               maxHeight: '300px',
               overflowY: 'auto',
@@ -300,7 +294,7 @@ export const PersonasPanel: React.FC = () => {
                 Попередній перегляд з'явиться тут при введенні тексту...
               </span>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Submit row */}
@@ -313,6 +307,7 @@ export const PersonasPanel: React.FC = () => {
           />
         </div>
       </form>
+      </Card>
     </div>
   );
 };

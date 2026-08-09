@@ -4,6 +4,9 @@ import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { TraceDetail } from './TraceDetail';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Heading } from '@astryxdesign/core/Heading';
 
 export interface TraceSummary {
   run_id: string;
@@ -55,9 +58,10 @@ export const Traces: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <VStack gap={5}>
       {/* Filters Bar */}
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+      <Card padding={4}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
         <input
           type="text"
           placeholder="Фільтр за хостом..."
@@ -130,14 +134,15 @@ export const Traces: React.FC = () => {
           </button>
         )}
       </div>
+      </Card>
 
       {/* Grid: Table + Side Panel */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : (selectedRunId ? '1fr 450px' : '1fr'), gap: '20px' }}>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
+        <Card padding={0}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+            <Heading level={2} style={{ fontSize: '15px' }}>
               Прогони Агента (Traces) ({traces?.length || 0})
-            </h2>
+            </Heading>
             {loading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Оновлення...</span>}
           </div>
 
@@ -198,7 +203,7 @@ export const Traces: React.FC = () => {
               </TableBody>
             </Table>
           )}
-        </div>
+        </Card>
 
         {selectedRunId && (
           <div>
@@ -212,6 +217,6 @@ export const Traces: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </VStack>
   );
 };

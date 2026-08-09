@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { apiFetch, getApiBase } from '../../api/client';
 import { usePolling } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Heading } from '@astryxdesign/core/Heading';
 
 export interface PendingDecision {
   action: string;
@@ -67,17 +70,14 @@ function formatCountdown(totalSeconds: number): string {
 }
 
 const cardStyle: React.CSSProperties = {
-  background: '#0f172a',
-  border: '1px solid #1e293b',
-  borderRadius: '12px',
-  padding: '16px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  margin: '0 0 12px 0',
   fontSize: '15px',
-  fontWeight: 700,
-  color: '#f8fafc',
+  marginBottom: '12px',
 };
 
 const buttonStyle: React.CSSProperties = {
@@ -228,12 +228,12 @@ export const SurveyOps: React.FC = () => {
   const screenshotSrc = `${getApiBase()}/api/survey/screenshot/latest?t=${screenshotTs}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <VStack gap={5}>
       {/* Status badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+        <Heading level={1} style={{ fontSize: '18px' }}>
           🎓 Режим Навчання — HITL Опитування
-        </h1>
+        </Heading>
         <span
           style={{
             fontSize: '11px',
@@ -255,7 +255,7 @@ export const SurveyOps: React.FC = () => {
       </div>
 
       {/* Training mode toggle */}
-      <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <Card padding={4} style={cardStyle}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#f8fafc', fontSize: '13px', fontWeight: 600 }}>
           <input
             type="checkbox"
@@ -265,12 +265,12 @@ export const SurveyOps: React.FC = () => {
           />
           🎓 Режим Навчання (Пауза &amp; Коригування)
         </label>
-      </div>
+      </Card>
 
       {/* Queue from Telegram */}
-      <div style={cardStyle}>
+      <Card padding={4}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <h2 style={sectionTitleStyle}>Черга опитувань з Telegram</h2>
+          <Heading level={2} style={sectionTitleStyle}>Черга опитувань з Telegram</Heading>
           <button
             style={secondaryButtonStyle}
             onClick={handleFetchTelegram}
@@ -316,11 +316,11 @@ export const SurveyOps: React.FC = () => {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Active task */}
-      <div style={cardStyle}>
-        <h2 style={sectionTitleStyle}>Активне завдання</h2>
+      <Card padding={4}>
+        <Heading level={2} style={sectionTitleStyle}>Активне завдання</Heading>
         {!status?.active_task_id && (
           <div style={{ color: '#64748b', fontSize: '13px' }}>Немає активного завдання.</div>
         )}
@@ -357,12 +357,12 @@ export const SurveyOps: React.FC = () => {
             Помилка: {status.last_error}
           </div>
         )}
-      </div>
+      </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
         {/* Live screenshot */}
-        <div style={cardStyle}>
-          <h2 style={sectionTitleStyle}>Живий скріншот</h2>
+        <Card padding={4}>
+          <Heading level={2} style={sectionTitleStyle}>Живий скріншот</Heading>
           <div
             style={{
               background: '#020617',
@@ -398,11 +398,11 @@ export const SurveyOps: React.FC = () => {
               </>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Human training panel */}
-        <div style={cardStyle}>
-          <h2 style={sectionTitleStyle}>Панель навчання людини</h2>
+        <Card padding={4}>
+          <Heading level={2} style={sectionTitleStyle}>Панель навчання людини</Heading>
 
           {status?.pending_decision ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -453,12 +453,12 @@ export const SurveyOps: React.FC = () => {
               Немає кроку, що очікує верифікації.
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* System log */}
-      <div style={cardStyle}>
-        <h2 style={sectionTitleStyle}>Системний лог</h2>
+      <Card padding={4}>
+        <Heading level={2} style={sectionTitleStyle}>Системний лог</Heading>
         <div
           ref={logRef}
           style={{
@@ -479,7 +479,7 @@ export const SurveyOps: React.FC = () => {
             <div style={{ color: '#475569' }}>Лог порожній.</div>
           )}
         </div>
-      </div>
-    </div>
+      </Card>
+    </VStack>
   );
 };

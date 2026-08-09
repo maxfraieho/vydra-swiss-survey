@@ -5,6 +5,9 @@ import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
+import { Card } from '@astryxdesign/core/Card';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Heading } from '@astryxdesign/core/Heading';
 
 export const ProvidersPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -71,13 +74,13 @@ export const ProvidersPanel: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <VStack gap={5}>
       {/* Table Card */}
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
+      <Card padding={0} style={{ overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+          <Heading level={3} style={{ fontSize: '15px' }}>
             Провайдери ({providers?.length || 0})
-          </h3>
+          </Heading>
           {providersLoading && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Завантаження...</span>}
         </div>
 
@@ -140,24 +143,21 @@ export const ProvidersPanel: React.FC = () => {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
 
       {/* Creation Form Card */}
+      <Card padding={5}>
       <form
         onSubmit={handleCreate}
         style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
-          borderRadius: '12px',
-          padding: '20px',
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
         }}
       >
-        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>
+        <Heading level={4} style={{ fontSize: '14px' }}>
           + Додати провайдера
-        </h4>
+        </Heading>
 
         {submitError && (
           <div
@@ -221,6 +221,7 @@ export const ProvidersPanel: React.FC = () => {
           />
         </div>
       </form>
-    </div>
+      </Card>
+    </VStack>
   );
 };

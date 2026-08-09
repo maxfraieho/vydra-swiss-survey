@@ -1,6 +1,10 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
 import { Markdown } from '../../ui/Markdown';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Card } from '@astryxdesign/core/Card';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
 
 export const Report: React.FC = () => {
   const { data: reportMd, loading, error } = useResource<string>('/api/rules/report.md');
@@ -15,32 +19,30 @@ export const Report: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: '20px', color: '#f87171', fontSize: '13px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}>
-        Помилка завантаження звіту: {error.message}
-      </div>
+      <Card padding={5}>
+        <Text type="body" style={{ color: '#f87171' }}>Помилка завантаження звіту: {error.message}</Text>
+      </Card>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-        <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
-          Звіт про стан системи знань (Knowledge Report)
-        </h2>
-        <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+    <VStack gap={5}>
+      <Card padding={5}>
+        <Heading level={2}>Звіт про стан системи знань (Knowledge Report)</Heading>
+        <Text type="supporting" color="secondary">
           Згенеровано автоматично через API U0 (<code style={{ color: '#38bdf8' }}>rules_report.py</code>).
-        </p>
-      </div>
+        </Text>
+      </Card>
 
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '24px' }}>
-        <div style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '20px' }}>
+      <Card padding={6}>
+        <Card variant="muted" padding={5}>
           {reportMd && reportMd.trim() !== '' ? (
             <Markdown source={reportMd} />
           ) : (
             <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Звіт порожній.</span>
           )}
-        </div>
-      </div>
-    </div>
+        </Card>
+      </Card>
+    </VStack>
   );
 };
