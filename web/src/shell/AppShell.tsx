@@ -4,7 +4,7 @@ import { AppShell as AstryxAppShell } from '@astryxdesign/core/AppShell';
 import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav';
 import { StatusBar } from './StatusBar';
 import { Nav } from './Nav';
-import { TokenField } from './TokenField';
+import { LockButton } from './LockButton';
 import { useIsNarrow } from './useIsNarrow';
 
 export const AppShell: React.FC = () => {
@@ -14,7 +14,7 @@ export const AppShell: React.FC = () => {
       topNav={
         <TopNav
           heading={<TopNavHeading heading={isNarrow ? 'Astryx' : 'Astryx Swiss Survey Console'} />}
-          endContent={<TokenField />}
+          endContent={<LockButton />}
         />
       }
       sideNav={<Nav />}

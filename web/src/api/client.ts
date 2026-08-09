@@ -1,5 +1,6 @@
 import { ApiError } from './errors';
-import { getAstryxToken } from './token';
+
+let reloading = false;
 
 export function getApiBase(): string {
   const pathname = window.location.pathname;
@@ -27,15 +28,18 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  const token = getAstryxToken();
-  if (token) headers.set('X-Astryx-Token', token);
 
   const response = await fetch(url, {
     ...options,
+    credentials: 'same-origin',
     headers,
   });
 
   if (!response.ok) {
+    if (response.status === 401 && !reloading) {
+      reloading = true;
+      location.reload();
+    }
     let body: any = null;
     try { body = await response.json(); } catch { /* non-JSON error page */ }
     throw new ApiError(

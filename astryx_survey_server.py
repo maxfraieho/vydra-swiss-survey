@@ -8,14 +8,46 @@ import urllib.parse
 import threading
 import subprocess
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, request, render_template_string, send_file
+from flask import Flask, jsonify, request, render_template_string, send_file, render_template, make_response
 from rules_api import rules_bp
 from settings_api import settings_bp
+from auth import auth_bp, is_authed, _site_secret
 
 app = Flask(__name__)
 app.secret_key = "astryx_swiss_survey_secret_key_5005"
+app.register_blueprint(auth_bp)
 app.register_blueprint(rules_bp)
 app.register_blueprint(settings_bp)
+
+
+@app.before_request
+def global_auth_gate():
+    if request.path in ("/api/auth", "/api/auth/logout"):
+        return None
+
+    if is_authed(request):
+        return None
+
+    if not _site_secret():
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "server not configured"}), 503
+        resp = make_response(render_template("gate.html", error="server not configured"), 503)
+        resp.headers["Cache-Control"] = "no-store, must-revalidate"
+        resp.headers["Vary"] = "Cookie"
+        return resp
+
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "unauthorized"}), 401
+
+    if request.path.endswith((".js", ".css", ".map", ".svg", ".png", ".woff", ".woff2")):
+        resp = make_response("", 404)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    resp = make_response(render_template("gate.html"), 200)
+    resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    resp.headers["Vary"] = "Cookie"
+    return resp
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok")
 

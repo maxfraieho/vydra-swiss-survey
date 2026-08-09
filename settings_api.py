@@ -11,7 +11,6 @@ import threading
 import requests
 from flask import Blueprint, jsonify, request
 import persona_graph_memory
-from rules_api import _require_astryx_token
 from vision import get_vision_backend, ProxyVisionBackend, LocalLlamaVisionBackend, VisionError
 
 settings_bp = Blueprint("settings_api", __name__)
@@ -29,7 +28,6 @@ def get_hosts():
 
 
 @settings_bp.route("/api/settings/hosts", methods=["POST"])
-@_require_astryx_token
 def create_host():
     try:
         data = request.get_json(silent=True) or {}
@@ -48,7 +46,6 @@ def create_host():
 
 
 @settings_bp.route("/api/settings/hosts/<int:id>", methods=["PATCH"])
-@_require_astryx_token
 def update_host(id: int):
     try:
         data = request.get_json(silent=True) or {}
@@ -63,7 +60,6 @@ def update_host(id: int):
 
 
 @settings_bp.route("/api/settings/hosts/<int:id>", methods=["DELETE"])
-@_require_astryx_token
 def delete_host(id: int):
     try:
         ok = persona_graph_memory.delete_host(id)
@@ -86,7 +82,6 @@ def get_providers():
 
 
 @settings_bp.route("/api/settings/providers", methods=["POST"])
-@_require_astryx_token
 def create_provider():
     try:
         data = request.get_json(silent=True) or {}
@@ -105,7 +100,6 @@ def create_provider():
 
 
 @settings_bp.route("/api/settings/providers/<int:id>", methods=["PATCH"])
-@_require_astryx_token
 def update_provider(id: int):
     try:
         data = request.get_json(silent=True) or {}
@@ -120,7 +114,6 @@ def update_provider(id: int):
 
 
 @settings_bp.route("/api/settings/providers/<int:id>", methods=["DELETE"])
-@_require_astryx_token
 def delete_provider(id: int):
     try:
         ok = persona_graph_memory.delete_provider(id)
@@ -143,7 +136,6 @@ def get_personas():
 
 
 @settings_bp.route("/api/settings/personas", methods=["POST"])
-@_require_astryx_token
 def create_persona():
     try:
         data = request.get_json(silent=True) or {}
@@ -162,7 +154,6 @@ def create_persona():
 
 
 @settings_bp.route("/api/settings/personas/<key>", methods=["PATCH"])
-@_require_astryx_token
 def update_persona(key: str):
     try:
         data = request.get_json(silent=True) or {}
@@ -177,7 +168,6 @@ def update_persona(key: str):
 
 
 @settings_bp.route("/api/settings/personas/<key>", methods=["DELETE"])
-@_require_astryx_token
 def delete_persona(key: str):
     try:
         ok = persona_graph_memory.delete_persona(key)
@@ -200,7 +190,6 @@ def get_patterns():
 
 
 @settings_bp.route("/api/settings/patterns", methods=["POST"])
-@_require_astryx_token
 def create_pattern():
     try:
         data = request.get_json(silent=True) or {}
@@ -219,7 +208,6 @@ def create_pattern():
 
 
 @settings_bp.route("/api/settings/patterns/<key>", methods=["PATCH"])
-@_require_astryx_token
 def update_pattern(key: str):
     try:
         data = request.get_json(silent=True) or {}
@@ -234,7 +222,6 @@ def update_pattern(key: str):
 
 
 @settings_bp.route("/api/settings/patterns/<key>", methods=["DELETE"])
-@_require_astryx_token
 def delete_pattern(key: str):
     try:
         ok = persona_graph_memory.delete_pattern(key)
@@ -262,9 +249,8 @@ _PROBE_STATE = {
 
 
 @settings_bp.route("/api/settings/ai-source", methods=["GET"])
-@_require_astryx_token
-# Intentionally uses @_require_astryx_token on GET, deviating from other GET endpoints,
-# because this endpoint exposes secret-configured state (token_configured).
+# Auth enforced globally by astryx_survey_server.py's before_request gate.
+# This endpoint exposes secret-configured state (token_configured).
 def get_ai_source_config():
     try:
         cfg_str = persona_graph_memory.get_setting("ai_source_config")
@@ -282,7 +268,6 @@ def get_ai_source_config():
 
 
 @settings_bp.route("/api/settings/ai-source", methods=["PUT"])
-@_require_astryx_token
 def update_ai_source_config():
     try:
         data = request.get_json(silent=True) or {}
@@ -322,7 +307,6 @@ def update_ai_source_config():
 
 
 @settings_bp.route("/api/settings/ai-source/test", methods=["POST"])
-@_require_astryx_token
 def test_ai_source():
     try:
         data = request.get_json(silent=True) or {}
@@ -381,7 +365,6 @@ def test_ai_source():
 
 
 @settings_bp.route("/api/settings/ai-source/probe-models", methods=["POST"])
-@_require_astryx_token
 def start_probe_models():
     global _PROBE_STATE
     # Check if a survey execution or probe is already running
@@ -478,7 +461,6 @@ def start_probe_models():
 
 
 @settings_bp.route("/api/settings/ai-source/probe-status", methods=["GET"])
-@_require_astryx_token
 def get_probe_status():
     with _PROBE_LOCK:
         return jsonify(_PROBE_STATE)

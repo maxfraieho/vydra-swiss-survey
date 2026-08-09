@@ -24,6 +24,9 @@ import { SettingsPage } from './screens/settings/SettingsPage';
 
 const basename = getAppBasename();
 
+localStorage.removeItem('astryx_api_token');
+sessionStorage.removeItem('astryx_api_token');
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Theme theme={neutralTheme}>

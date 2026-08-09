@@ -263,7 +263,8 @@ def main() -> None:
                                                  "page_text": ptxt[:2000],
                                                  "pattern": topic
                                              }).encode("utf-8"),
-                                             headers={"Content-Type": "application/json"})
+                                             headers={"Content-Type": "application/json",
+                                                      "X-Astryx-Token": os.environ.get("ASTRYX_API_TOKEN", "")})
                 resp = urllib.request.urlopen(req, timeout=300)
                 verif_res = _json.loads(resp.read().decode("utf-8"))
                 if verif_res.get("override_action"):

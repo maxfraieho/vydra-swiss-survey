@@ -6,7 +6,6 @@ adds PATCH/POST mutation endpoints, all gated behind X-Astryx-Token. Phase U4
 """
 from __future__ import annotations
 
-import functools
 import json
 import os
 import sqlite3
@@ -24,28 +23,6 @@ from persona_graph_memory import (
 )
 
 rules_bp = Blueprint("rules_api", __name__)
-
-
-def _require_astryx_token(fn):
-    """Gate a mutating route behind a shared secret (plan §2.1 "Безпека").
-
-    If ASTRYX_API_TOKEN is unset in the environment, the route always answers
-    503 (mutations disabled) rather than 401 - the plan calls this "no token
-    in env -> mutating routes return 503", implemented here as an always-503
-    response instead of conditional blueprint registration, since Flask routes
-    are bound at import time; the effect at the HTTP boundary is the same."""
-
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
-        token = os.environ.get("ASTRYX_API_TOKEN")
-        if not token:
-            return jsonify({"error": "mutations disabled: ASTRYX_API_TOKEN not set"}), 503
-        supplied = request.headers.get("X-Astryx-Token")
-        if not supplied or supplied != token:
-            return jsonify({"error": "invalid or missing X-Astryx-Token"}), 401
-        return fn(*args, **kwargs)
-
-    return wrapper
 
 
 def _actor_from_request() -> str:
@@ -459,12 +436,11 @@ def get_host_gate(host: str):
 
 
 # ---------------------------------------------------------------------------
-# Phase U3 — mutations. All routes below require X-Astryx-Token (see
-# _require_astryx_token) and only ever touch host_rules + rule_audit.
+# Phase U3 — mutations. Auth is enforced globally by astryx_survey_server.py's
+# before_request gate; these routes only touch host_rules + rule_audit.
 # ---------------------------------------------------------------------------
 
 @rules_bp.route("/api/rules/<int:rule_id>", methods=["PATCH"])
-@_require_astryx_token
 def patch_rule(rule_id: int):
     """PATCH /api/rules/<id>: {behavior?, confidence?, status?, note?} ->
     update_host_rule(). Never bumps confidence (defect #1) - writes exactly
@@ -487,7 +463,6 @@ def patch_rule(rule_id: int):
 
 
 @rules_bp.route("/api/rules", methods=["POST"])
-@_require_astryx_token
 def create_rule():
     """POST /api/rules: manual proactive rule creation. source='human_override'
     always. {host, pattern, behavior, persona?, confidence?, status?, note?}."""
@@ -510,7 +485,6 @@ def create_rule():
 
 
 @rules_bp.route("/api/rules/bulk", methods=["POST"])
-@_require_astryx_token
 def bulk_rules():
     """POST /api/rules/bulk: {ids[], op: promote|retire|delete, note?} in one
     transaction - partial failures (unknown ids) are skipped, not half-applied."""
@@ -536,7 +510,6 @@ def bulk_rules():
 
 
 @rules_bp.route("/api/rules/<int:rule_id>/resolve_conflict", methods=["POST"])
-@_require_astryx_token
 def resolve_conflict(rule_id: int):
     """POST /api/rules/<id>/resolve_conflict: {winner_id, loser_action: retire|delete, note?}.
 
@@ -596,7 +569,6 @@ def resolve_conflict(rule_id: int):
 
 
 @rules_bp.route("/api/gate/<path:host>/approve", methods=["POST"])
-@_require_astryx_token
 def approve_host_gate(host: str):
     """POST /api/gate/<host>/approve: {playbook_mode?, promote_reviewed_shadow?, note?}.
 
