@@ -1,4 +1,8 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router';
+import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
+import { Banner } from '@astryxdesign/core/Banner';
+import { Button } from '@astryxdesign/core/Button';
 import { usePolling } from '../api/hooks';
 import { useIsNarrow } from './useIsNarrow';
 
@@ -35,114 +39,50 @@ export const StatusBar: React.FC = () => {
     }
   }, [status, isWaitingVerification]);
 
-  const getStatusColor = () => {
-    switch (status) {
+  const getBadgeVariant = (s: SurveyStatus['status']): BadgeVariant => {
+    switch (s) {
       case 'waiting_verification':
-        return '#ef4444';
+        return 'error';
       case 'running':
-        return '#3b82f6';
+        return 'info';
       case 'waiting_auth':
-        return '#f59e0b';
+        return 'warning';
       case 'finished':
-        return '#10b981';
+        return 'success';
       case 'error':
-        return '#f43f5e';
+        return 'error';
       default:
-        return '#6b7280';
+        return 'neutral';
     }
   };
 
   return (
-    <div style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: isNarrow ? '10px 12px' : '12px 24px' }}>
+    <div style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: isNarrow ? '6px 12px' : '8px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-          <div
-            style={{
-              width: '36px',
-              height: '36px',
-              flexShrink: 0,
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '18px',
-            }}
-          >
-            A
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: isNarrow ? '6px' : '8px' }}>
-              <span style={{ fontWeight: 700, fontSize: isNarrow ? '14px' : '16px', color: '#f8fafc' }}>
-                Astryx Swiss Survey Console
-              </span>
-              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: '#1e293b', color: '#94a3b8', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                /app (U2)
-              </span>
-            </div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>
-              meinungsplatz.ch • SOCKS5 Proxy CH
-            </div>
-          </div>
+        <div style={{ fontSize: '12px', color: '#64748b', minWidth: 0 }}>
+          meinungsplatz.ch • SOCKS5 Proxy CH
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155' }}>
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: getStatusColor(),
-                boxShadow: isWaitingVerification ? '0 0 8px #ef4444' : 'none',
-              }}
-            />
-            <span style={{ color: '#e2e8f0', fontWeight: 600, textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>
-              {status}
-            </span>
-            {profile && <span style={{ color: '#94a3b8', fontSize: '11px' }}>({profile})</span>}
-          </div>
-        </div>
+        <Badge
+          variant={getBadgeVariant(status)}
+          label={`${status}${profile ? ` (${profile})` : ''}`}
+        />
       </div>
 
       {isWaitingVerification && (
-        <div
-          style={{
-            marginTop: '12px',
-            padding: '10px 16px',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid #ef4444',
-            borderRadius: '8px',
-            color: '#fca5a5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '8px',
-            fontSize: '13px',
-          }}
-        >
-          <div>
-            <strong>⚠️ HITL Verification Required:</strong> Agent is waiting at step {statusData?.pending_step || '?'}.
-          </div>
-          <a
-            href="/"
-            style={{
-              background: '#ef4444',
-              color: '#fff',
-              padding: '4px 12px',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontWeight: 700,
-              fontSize: '12px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            → До кроку у Режимі Навчання (/)
-          </a>
-        </div>
+        <Banner
+          status="error"
+          title="⚠️ HITL Verification Required"
+          description={`Agent is waiting at step ${statusData?.pending_step || '?'}.`}
+          endContent={
+            <Button
+              as={Link}
+              href="/"
+              label="До кроку у Режимі Навчання"
+              variant="secondary"
+            />
+          }
+        />
       )}
     </div>
   );

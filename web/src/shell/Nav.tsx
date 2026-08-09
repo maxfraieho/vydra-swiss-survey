@@ -1,100 +1,26 @@
 import React from 'react';
-import { NavLink } from 'react-router';
-import { useIsNarrow } from './useIsNarrow';
-import { TokenField } from './TokenField';
+import { SideNav, SideNavSection, SideNavItem } from '@astryxdesign/core/SideNav';
+import { Link, useLocation } from 'react-router';
 
 export const Nav: React.FC = () => {
-  const isNarrow = useIsNarrow();
-
-  const linkStyle = ({ isActive }: { isActive: boolean }) => ({
-    padding: isNarrow ? '6px 10px' : '8px 16px',
-    borderRadius: '6px',
-    textDecoration: 'none',
-    fontSize: isNarrow ? '12px' : '13px',
-    fontWeight: isActive ? 700 : 500,
-    color: isActive ? '#f8fafc' : '#94a3b8',
-    background: isActive ? '#334155' : 'transparent',
-    transition: 'all 0.15s ease',
-    whiteSpace: 'nowrap' as const,
-  });
-
-  const groupStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: isNarrow ? '4px' : '8px',
-    // On phones each group takes its own row instead of fighting for
-    // horizontal space with the other group.
-    flexBasis: isNarrow ? '100%' : 'auto',
-  };
-
-  const groupLabelStyle: React.CSSProperties = {
-    fontSize: '11px',
-    fontWeight: 800,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '0.8px',
-    paddingRight: '4px',
-    whiteSpace: 'nowrap',
-  };
-
+  const { pathname } = useLocation();
   return (
-    <div
-      style={{
-        background: '#090d16',
-        borderBottom: '1px solid #1e293b',
-        padding: isNarrow ? '8px 12px' : '8px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: isNarrow ? '6px' : '24px',
-      }}
-    >
-      <div style={groupStyle}>
-        <span style={groupLabelStyle}>🧠 ЗНАННЯ</span>
-        <NavLink to="/rules" end style={linkStyle}>
-          Правила
-        </NavLink>
-        <NavLink to="/rules/compare" style={linkStyle}>
-          Порівняння
-        </NavLink>
-        <NavLink to="/rules/conflicts" style={linkStyle}>
-          Конфлікти
-        </NavLink>
-      </div>
-
-      {/* Vertical divider only makes sense while both groups share a row. */}
-      {!isNarrow && <div style={{ height: '18px', width: '1px', background: '#1e293b' }} />}
-
-      <div style={groupStyle}>
-        <span style={groupLabelStyle}>🔍 АУДИТ</span>
-        <NavLink to="/traces" style={linkStyle}>
-          Прогони (Traces)
-        </NavLink>
-        <NavLink to="/report" style={linkStyle}>
-          Звіт (Report)
-        </NavLink>
-      </div>
-
-      {!isNarrow && <div style={{ height: '18px', width: '1px', background: '#1e293b' }} />}
-
-      <div style={groupStyle}>
-        <span style={groupLabelStyle}>🎓 ОПИТУВАННЯ</span>
-        <NavLink to="/ops" style={linkStyle}>
-          Ops (HITL)
-        </NavLink>
-      </div>
-
-      {!isNarrow && <div style={{ height: '18px', width: '1px', background: '#1e293b' }} />}
-
-      <div style={groupStyle}>
-        <span style={groupLabelStyle}>⚙️ НАЛАШТУВАННЯ</span>
-        <NavLink to="/settings" style={linkStyle}>
-          Хости, персони, патерни
-        </NavLink>
-      </div>
-
-      <TokenField />
-    </div>
+    <SideNav>
+      <SideNavSection title="🧠 Знання">
+        <SideNavItem as={Link} href="/rules" label="Правила" isSelected={pathname === '/rules'} />
+        <SideNavItem as={Link} href="/rules/compare" label="Порівняння" isSelected={pathname === '/rules/compare'} />
+        <SideNavItem as={Link} href="/rules/conflicts" label="Конфлікти" isSelected={pathname === '/rules/conflicts'} />
+      </SideNavSection>
+      <SideNavSection title="🔍 Аудит">
+        <SideNavItem as={Link} href="/traces" label="Прогони (Traces)" isSelected={pathname.startsWith('/traces')} />
+        <SideNavItem as={Link} href="/report" label="Звіт (Report)" isSelected={pathname === '/report'} />
+      </SideNavSection>
+      <SideNavSection title="🎓 Опитування">
+        <SideNavItem as={Link} href="/ops" label="Ops (HITL)" isSelected={pathname === '/ops'} />
+      </SideNavSection>
+      <SideNavSection title="⚙️ Налаштування">
+        <SideNavItem as={Link} href="/settings" label="Хости, персони, патерни" isSelected={pathname === '/settings'} />
+      </SideNavSection>
+    </SideNav>
   );
 };

@@ -1,35 +1,32 @@
 import React, { useState } from 'react';
+import { Badge } from '@astryxdesign/core/Badge';
+import { Button } from '@astryxdesign/core/Button';
+import { TextInput } from '@astryxdesign/core/TextInput';
 import { getAstryxToken, setAstryxToken, clearAstryxToken } from '../api/token';
+import { useIsNarrow } from './useIsNarrow';
 
 // Single-operator token entry: apiFetch (api/client.ts) already attaches
 // X-Astryx-Token from getAstryxToken() to every request. Nothing in the UI
 // ever called setAstryxToken, so the header was always empty and every
 // mutating request 401'd. This is the one place that fills it in.
 export const TokenField: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const [token, setToken] = useState<string | null>(() => getAstryxToken());
   const [draft, setDraft] = useState('');
 
   if (token) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
-        <span style={{ fontSize: '12px', color: '#4ade80' }}>🔑 токен активний</span>
-        <button
+        <Badge variant="success" label={isNarrow ? '🔑' : '🔑 токен активний'} />
+        <Button
+          label="вийти"
+          variant="ghost"
+          size="sm"
           onClick={() => {
             clearAstryxToken();
             setToken(null);
           }}
-          style={{
-            fontSize: '11px',
-            color: '#94a3b8',
-            background: 'transparent',
-            border: '1px solid #334155',
-            borderRadius: '4px',
-            padding: '3px 8px',
-            cursor: 'pointer',
-          }}
-        >
-          вийти
-        </button>
+        />
       </div>
     );
   }
@@ -45,35 +42,17 @@ export const TokenField: React.FC = () => {
       }}
       style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}
     >
-      <input
+      <TextInput
         type="password"
+        label="X-Astryx-Token"
+        isLabelHidden
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="X-Astryx-Token"
-        style={{
-          fontSize: '12px',
-          background: '#0f172a',
-          border: '1px solid #334155',
-          borderRadius: '4px',
-          padding: '4px 8px',
-          color: '#e2e8f0',
-          width: '140px',
-        }}
+        onChange={(value) => setDraft(value)}
+        placeholder={isNarrow ? 'Токен' : 'X-Astryx-Token'}
+        size="sm"
+        width={isNarrow ? '80px' : undefined}
       />
-      <button
-        type="submit"
-        style={{
-          fontSize: '11px',
-          color: '#e2e8f0',
-          background: '#334155',
-          border: 'none',
-          borderRadius: '4px',
-          padding: '4px 10px',
-          cursor: 'pointer',
-        }}
-      >
-        OK
-      </button>
+      <Button type="submit" label="OK" variant="primary" size="sm" />
     </form>
   );
 };
