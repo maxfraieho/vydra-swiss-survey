@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { parseDrakonPseudocode, ParsedRule, ParseResult } from './drakonPseudocode';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Selector } from '@astryxdesign/core/Selector';
@@ -201,7 +201,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
           style={{ minHeight: '48px' }}
         >
           {behavior && behavior.trim() !== '' ? (
-            <Markdown source={behavior} />
+            <Markdown headingLevelStart={4}>{behavior}</Markdown>
           ) : (
             <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>
               Попередній перегляд з'явиться тут при введенні тексту...

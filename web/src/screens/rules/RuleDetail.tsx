@@ -1,7 +1,7 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
 import { Link } from 'react-router';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -140,7 +140,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
         <Card variant="muted" padding={3}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
-          <Markdown source={rule.behavior} variant="compact" />
+          <Markdown density="compact" headingLevelStart={4}>{rule.behavior}</Markdown>
         </Card>
         <Card variant="muted" padding={3}>
           <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Джерело / Confidence</span>

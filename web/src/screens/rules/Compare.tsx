@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -129,7 +129,7 @@ export const Compare: React.FC = () => {
                     <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
                     <TableCell style={{ color: '#e2e8f0' }}>{r.persona}</TableCell>
                     <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                      <Markdown source={r.behavior} variant="compact" />
+                      <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
                     </TableCell>
                     <TableCell style={{ color: '#cbd5e1' }}>{r.source}</TableCell>
                     <TableCell>

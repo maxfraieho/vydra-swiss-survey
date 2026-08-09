@@ -4,7 +4,7 @@ import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleDetail } from './RuleDetail';
 import { RuleComposer } from './RuleComposer';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
@@ -285,7 +285,7 @@ export const RulesTable: React.FC = () => {
                       <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
                       <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{r.pattern}</TableCell>
                       <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                        <Markdown source={r.behavior} variant="compact" />
+                        <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
                       </TableCell>
                       <TableCell><Badge variant={statusVariant} label={r.status} /></TableCell>
                       <TableCell>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { PersonaRow, createPersona, updatePersona, deletePersona } from '../../api/settings';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Selector } from '@astryxdesign/core/Selector';
@@ -288,7 +288,7 @@ export const PersonasPanel: React.FC = () => {
             }}
           >
             {contentMd && contentMd.trim() !== '' ? (
-              <Markdown source={contentMd} />
+              <Markdown headingLevelStart={4}>{contentMd}</Markdown>
             ) : (
               <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>
                 Попередній перегляд з'явиться тут при введенні тексту...

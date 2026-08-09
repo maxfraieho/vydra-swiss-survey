@@ -1,7 +1,7 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -105,7 +105,7 @@ export const Conflicts: React.FC = () => {
                       <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</TableCell>
                       <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{r.source}</TableCell>
                       <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                        <Markdown source={r.behavior} variant="compact" />
+                        <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
                       </TableCell>
                       <TableCell style={{ color: '#cbd5e1' }}>{r.status}</TableCell>
                       <TableCell style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</TableCell>

@@ -1,10 +1,17 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
-import { Markdown } from '../../ui/Markdown';
+import { Markdown } from '@astryxdesign/core/Markdown';
+import { CodeBlock } from '@astryxdesign/core/CodeBlock';
+import { MermaidTree } from '../../ui/MermaidTree';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+
+const ReportCode: React.FC<{ code: string; language?: string }> = ({ code, language }) =>
+  language === 'mermaid' ? <MermaidTree src={code} /> : <CodeBlock code={code} language={language} isCollapsible />;
+
+const MARKDOWN_COMPONENTS = { code: ReportCode };
 
 export const Report: React.FC = () => {
   const { data: reportMd, loading, error } = useResource<string>('/api/rules/report.md');
@@ -37,7 +44,7 @@ export const Report: React.FC = () => {
       <Card padding={6}>
         <Card variant="muted" padding={5}>
           {reportMd && reportMd.trim() !== '' ? (
-            <Markdown source={reportMd} />
+            <Markdown headingLevelStart={4} components={MARKDOWN_COMPONENTS}>{reportMd}</Markdown>
           ) : (
             <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Звіт порожній.</span>
           )}
