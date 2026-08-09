@@ -53,7 +53,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8090499262:AAEQkYpCcW
 
 PROFILES = {
     "arno": {"name": "Арсен", "label": "Arno (Арсен)"},
-    "annette": {"name": "Олена", "label": "Annette (Олена)"}
+    "annet": {"name": "Олена", "label": "Annette (Олена)"}
 }
 
 PENDING_TASKS = []
@@ -111,7 +111,7 @@ def push_task_from_text(text: str):
     if "Арсена" in text or "Arno" in text or "Арсен" in text:
         profile = "arno"
     elif "Олени" in text or "Annette" in text or "Олена" in text:
-        profile = "annette"
+        profile = "annet"
         
     if not profile:
         return None

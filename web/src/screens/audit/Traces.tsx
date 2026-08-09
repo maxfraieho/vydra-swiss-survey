@@ -90,7 +90,7 @@ export const Traces: React.FC = () => {
         >
           <option value="">Усі Персони</option>
           <option value="arno">Arno (Арсен)</option>
-          <option value="annette">Annette (Олена)</option>
+          <option value="annet">Annette (Олена)</option>
         </select>
 
         <select
