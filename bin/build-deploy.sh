@@ -41,15 +41,16 @@ log "BUILD OK: $(basename "$BUNDLE_JS")"
 # into type="<hash>-module", the browser ignores the tag, and the SPA never
 # mounts (blank dark screen on every route).
 INDEX_HTML="$DIST_DIR/index.html"
-if command grep -q 'data-cfasync="false"' "$INDEX_HTML"; then
-    log "PATCH SKIP: data-cfasync already present"
+MODULE_TAG_PATTERN='<script type="module" crossorigin src="[^"]*" data-cfasync="false"></script>'
+if command grep -qE "$MODULE_TAG_PATTERN" "$INDEX_HTML"; then
+    log "PATCH SKIP: module script tag already has data-cfasync"
 elif command grep -q '<script type="module" crossorigin src="[^"]*"></script>' "$INDEX_HTML"; then
     sed -i 's#<script type="module" crossorigin src="\([^"]*\)"></script>#<script type="module" crossorigin src="\1" data-cfasync="false"></script>#' "$INDEX_HTML"
-    if ! command grep -q 'data-cfasync="false"' "$INDEX_HTML"; then
-        log "PATCH FAILED: data-cfasync not present after sed"
+    if ! command grep -qE "$MODULE_TAG_PATTERN" "$INDEX_HTML"; then
+        log "PATCH FAILED: module script tag lacks data-cfasync after sed"
         exit 1
     fi
-    log "PATCH OK: data-cfasync=\"false\" injected (Rocket Loader guard)"
+    log "PATCH OK: data-cfasync=\"false\" injected on module script tag (Rocket Loader guard)"
 else
     log "PATCH FAILED: expected module script tag not found in $INDEX_HTML"
     exit 1

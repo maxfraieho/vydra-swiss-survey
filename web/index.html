@@ -8,6 +8,26 @@
   </head>
   <body style="margin: 0; background: #020617;">
     <div id="root"></div>
+    <script data-cfasync="false">
+      window.__vydraErrors = [];
+      window.addEventListener('error', function (e) {
+        window.__vydraErrors.push('Error: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var reason = e.reason && e.reason.stack ? e.reason.stack : e.reason;
+        window.__vydraErrors.push('UnhandledRejection: ' + reason);
+      });
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && root.children.length === 0) {
+          var pre = document.createElement('pre');
+          pre.style.cssText = 'color:#f87171;background:#0f172a;padding:16px;white-space:pre-wrap;font-size:12px;';
+          pre.textContent = 'Vydra diagnostics: root did not mount.\n' +
+            (window.__vydraErrors.length ? window.__vydraErrors.join('\n') : 'No window errors captured.');
+          document.body.appendChild(pre);
+        }
+      }, 3000);
+    </script>
     <script type="module" src="/src/main.tsx" data-cfasync="false"></script>
   </body>
 </html>
