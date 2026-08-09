@@ -8,6 +8,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useToast } from '@astryxdesign/core/Toast';
 
@@ -92,7 +93,47 @@ export const ProvidersPanel: React.FC = () => {
           </div>
         )}
 
-        {providers && providers.length > 0 && (
+        {providers && providers.length > 0 && isNarrow && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+            {providers.map((p) => (
+              <Card key={p.id} padding={4}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.label}</span>
+                  <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{p.id}</span>
+                </div>
+                <MetadataList columns={1} label={{ position: 'start' }}>
+                  <MetadataListItem label="Key">{p.key}</MetadataListItem>
+                  <MetadataListItem label="URL Pattern">{p.url_pattern || '—'}</MetadataListItem>
+                  <MetadataListItem label="Примітка">{p.note || '—'}</MetadataListItem>
+                </MetadataList>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p)}
+                    style={{
+                      padding: '4px 10px',
+                      minHeight: '44px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid var(--color-border-red)',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: 'var(--color-text-red)',
+                    }}
+                  >
+                    Вилучити
+                  </button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {providers && providers.length > 0 && !isNarrow && (
           <Table hasHover density="compact">
             <TableHeader>
               <TableRow isHeaderRow>

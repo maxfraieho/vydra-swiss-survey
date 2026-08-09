@@ -10,6 +10,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useToast } from '@astryxdesign/core/Toast';
 
@@ -103,7 +104,52 @@ export const PatternsPanel: React.FC = () => {
           </div>
         )}
 
-        {patterns && patterns.length > 0 && (
+        {patterns && patterns.length > 0 && isNarrow && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+            {patterns.map((p) => {
+              const isBuiltin = p.is_builtin === 1;
+              return (
+                <Card key={p.id || p.key} padding={4}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600 }}>{p.key}</span>
+                    <Badge variant={isBuiltin ? 'info' : 'neutral'} label={isBuiltin ? 'вбудований' : 'користувацький'} />
+                  </div>
+                  <MetadataList columns={1} label={{ position: 'start' }}>
+                    <MetadataListItem label="Label">{p.label || '—'}</MetadataListItem>
+                    <MetadataListItem label="Keywords">{formatKeywords(p.keywords)}</MetadataListItem>
+                    <MetadataListItem label="Polarity">{p.qualifying_polarity || '—'}</MetadataListItem>
+                  </MetadataList>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      disabled={isBuiltin}
+                      onClick={() => handleDelete(p)}
+                      style={{
+                        padding: '4px 10px',
+                        minHeight: '44px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: isBuiltin ? 'not-allowed' : 'pointer',
+                        opacity: isBuiltin ? 0.4 : 1,
+                        border: isBuiltin ? '1px solid var(--color-border)' : '1px solid var(--color-border-red)',
+                        background: isBuiltin ? 'var(--color-background-muted)' : 'rgba(239, 68, 68, 0.1)',
+                        color: isBuiltin ? 'var(--color-text-tertiary)' : 'var(--color-text-red)',
+                      }}
+                    >
+                      Вилучити
+                    </button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {patterns && patterns.length > 0 && !isNarrow && (
           <Table hasHover density="compact">
             <TableHeader>
               <TableRow isHeaderRow>
