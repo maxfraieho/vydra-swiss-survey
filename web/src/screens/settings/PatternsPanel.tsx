@@ -4,6 +4,9 @@ import { PatternRow, createPattern, deletePattern } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Badge } from '@astryxdesign/core/Badge';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { Selector } from '@astryxdesign/core/Selector';
+import { Button } from '@astryxdesign/core/Button';
 
 export const PatternsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -190,131 +193,53 @@ export const PatternsPanel: React.FC = () => {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Key (Ідентифікатор) <span style={{ color: '#f87171' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="e.g. tobacco"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: attemptedSubmit && !key.trim() ? '1px solid #f87171' : '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-            {attemptedSubmit && !key.trim() && (
-              <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-            )}
-          </div>
+          <TextInput
+            label="Key (Ідентифікатор)"
+            isRequired
+            value={key}
+            onChange={setKey}
+            placeholder="e.g. tobacco"
+            status={attemptedSubmit && !key.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Label (Назва)
-            </label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Тютюн та паління"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-          </div>
+          <TextInput
+            label="Label (Назва)"
+            isOptional
+            value={label}
+            onChange={setLabel}
+            placeholder="e.g. Тютюн та паління"
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Keywords (через кому)
-            </label>
-            <input
-              type="text"
-              value={keywordsText}
-              onChange={(e) => setKeywordsText(e.target.value)}
-              placeholder="e.g. tobacco, smoking, cigarette"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-          </div>
+          <TextInput
+            label="Keywords (через кому)"
+            isOptional
+            value={keywordsText}
+            onChange={setKeywordsText}
+            placeholder="e.g. tobacco, smoking, cigarette"
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Qualifying Polarity
-            </label>
-            <select
-              value={qualifyingPolarity}
-              onChange={(e) => setQualifyingPolarity(e.target.value)}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">— не вказано —</option>
-              <option value="affirm">affirm</option>
-              <option value="deny">deny</option>
-              <option value="not_fully_healthy">not_fully_healthy</option>
-            </select>
-          </div>
+          <Selector
+            label="Qualifying Polarity"
+            value={qualifyingPolarity || undefined}
+            onChange={(v) => setQualifyingPolarity(v || '')}
+            placeholder="— не вказано —"
+            options={[
+              { value: 'affirm', label: 'affirm' },
+              { value: 'deny', label: 'deny' },
+              { value: 'not_fully_healthy', label: 'not_fully_healthy' },
+            ]}
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-          <button
+          <Button
             type="submit"
-            disabled={submitting}
-            style={{
-              padding: '8px 18px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              opacity: submitting ? 0.5 : 1,
-              border: '1px solid #38bdf8',
-              background: '#1e293b',
-              color: '#38bdf8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {submitting ? 'Збереження...' : 'Створити патерн'}
-          </button>
+            variant="primary"
+            isDisabled={submitting}
+            label={submitting ? 'Збереження...' : 'Створити патерн'}
+          />
         </div>
       </form>
     </div>

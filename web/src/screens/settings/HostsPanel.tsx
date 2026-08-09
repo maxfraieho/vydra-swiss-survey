@@ -3,6 +3,9 @@ import { useResource } from '../../api/hooks';
 import { HostRow, ProviderRow, createHost, deleteHost } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { Selector } from '@astryxdesign/core/Selector';
+import { Button } from '@astryxdesign/core/Button';
 
 export const HostsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -181,133 +184,49 @@ export const HostsPanel: React.FC = () => {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Hostname <span style={{ color: '#f87171' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
-              placeholder="e.g. example.com"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: attemptedSubmit && !hostname.trim() ? '1px solid #f87171' : '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-            {attemptedSubmit && !hostname.trim() && (
-              <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-            )}
-          </div>
+          <TextInput
+            label="Hostname"
+            isRequired
+            value={hostname}
+            onChange={setHostname}
+            placeholder="e.g. example.com"
+            status={attemptedSubmit && !hostname.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Label (Назва)
-            </label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Example Survey Panel"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-          </div>
+          <TextInput
+            label="Label (Назва)"
+            isOptional
+            value={label}
+            onChange={setLabel}
+            placeholder="e.g. Example Survey Panel"
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Провайдер
-            </label>
-            <select
-              value={providerId}
-              onChange={(e) => setProviderId(e.target.value)}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">— без провайдера —</option>
-              {providers?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label} ({p.key})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Selector
+            label="Провайдер"
+            value={providerId || undefined}
+            onChange={(v) => setProviderId(v || '')}
+            placeholder="— без провайдера —"
+            options={(providers ?? []).map((p) => ({ value: String(p.id), label: `${p.label} (${p.key})` }))}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Примітка (Note)
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Короткий коментар..."
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-          </div>
+          <TextInput
+            label="Примітка (Note)"
+            isOptional
+            value={note}
+            onChange={setNote}
+            placeholder="Короткий коментар..."
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-          <button
+          <Button
             type="submit"
-            disabled={submitting}
-            style={{
-              padding: '8px 18px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              opacity: submitting ? 0.5 : 1,
-              border: '1px solid #38bdf8',
-              background: '#1e293b',
-              color: '#38bdf8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {submitting ? 'Збереження...' : 'Створити хост'}
-          </button>
+            variant="primary"
+            isDisabled={submitting}
+            label={submitting ? 'Збереження...' : 'Створити хост'}
+          />
         </div>
       </form>
     </div>

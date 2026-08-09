@@ -3,6 +3,8 @@ import { useResource } from '../../api/hooks';
 import { ProviderRow, createProvider, deleteProvider } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { Button } from '@astryxdesign/core/Button';
 
 export const ProvidersPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -173,130 +175,50 @@ export const ProvidersPanel: React.FC = () => {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Key (Ідентифікатор) <span style={{ color: '#f87171' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="e.g. qualtrics"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: attemptedSubmit && !key.trim() ? '1px solid #f87171' : '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-            {attemptedSubmit && !key.trim() && (
-              <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-            )}
-          </div>
+          <TextInput
+            label="Key (Ідентифікатор)"
+            isRequired
+            value={key}
+            onChange={setKey}
+            placeholder="e.g. qualtrics"
+            status={attemptedSubmit && !key.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Label (Назва) <span style={{ color: '#f87171' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Qualtrics Surveys"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: attemptedSubmit && !label.trim() ? '1px solid #f87171' : '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-            {attemptedSubmit && !label.trim() && (
-              <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-            )}
-          </div>
+          <TextInput
+            label="Label (Назва)"
+            isRequired
+            value={label}
+            onChange={setLabel}
+            placeholder="e.g. Qualtrics Surveys"
+            status={attemptedSubmit && !label.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              URL Pattern <span style={{ fontWeight: 400, color: '#64748b' }}>(необов'язково)</span>
-            </label>
-            <input
-              type="text"
-              value={urlPattern}
-              onChange={(e) => setUrlPattern(e.target.value)}
-              placeholder="e.g. %qualtrics.com%"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-          </div>
+          <TextInput
+            label="URL Pattern"
+            isOptional
+            value={urlPattern}
+            onChange={setUrlPattern}
+            placeholder="e.g. %qualtrics.com%"
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Примітка (Note)
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Короткий коментар..."
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-          </div>
+          <TextInput
+            label="Примітка (Note)"
+            isOptional
+            value={note}
+            onChange={setNote}
+            placeholder="Короткий коментар..."
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-          <button
+          <Button
             type="submit"
-            disabled={submitting}
-            style={{
-              padding: '8px 18px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              opacity: submitting ? 0.5 : 1,
-              border: '1px solid #38bdf8',
-              background: '#1e293b',
-              color: '#38bdf8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {submitting ? 'Збереження...' : 'Створити провайдера'}
-          </button>
+            variant="primary"
+            isDisabled={submitting}
+            label={submitting ? 'Збереження...' : 'Створити провайдера'}
+          />
         </div>
       </form>
     </div>

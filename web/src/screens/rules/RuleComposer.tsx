@@ -5,6 +5,10 @@ import { HostRow, PersonaRow } from '../../api/settings';
 import { RuleDetailData } from './RuleDetail';
 import { BehaviorEditor } from './BehaviorEditor';
 import { useIsNarrow } from '../../shell/useIsNarrow';
+import { Selector } from '@astryxdesign/core/Selector';
+import { TextArea } from '@astryxdesign/core/TextArea';
+import { Slider } from '@astryxdesign/core/Slider';
+import { Button } from '@astryxdesign/core/Button';
 
 export interface RuleComposerProps {
   onCreated: (rule: RuleDetailData) => void;
@@ -139,76 +143,27 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
 
       {/* 2-col Grid: Host & Persona */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-            Хост (Host) <span style={{ color: '#f87171' }}>*</span>
-          </label>
-          <select
-            value={host}
-            onChange={(e) => setHost(e.target.value)}
-            disabled={hostsLoading}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              background: '#020617',
-              border: attemptedSubmit && !host.trim() ? '1px solid #f87171' : '1px solid #334155',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: '#f8fafc',
-              fontSize: '13px',
-              outline: 'none',
-              cursor: hostsLoading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <option value="">-- Оберіть хост --</option>
-            {hostsLoading ? (
-              <option disabled>Завантаження...</option>
-            ) : (
-              hostsData?.map((h) => (
-                <option key={h.id} value={h.hostname}>
-                  {h.label || h.hostname}
-                </option>
-              ))
-            )}
-          </select>
-          {attemptedSubmit && !host.trim() && (
-            <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-          )}
-        </div>
+        <Selector
+          label="Хост (Host)"
+          isRequired
+          isLoading={hostsLoading}
+          placeholder="-- Оберіть хост --"
+          value={host || undefined}
+          onChange={(v) => setHost(v || '')}
+          status={attemptedSubmit && !host.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          options={(hostsData ?? []).map((h) => ({ value: h.hostname, label: h.label || h.hostname }))}
+        />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-            Персона (Persona)
-          </label>
-          <select
-            value={persona}
-            onChange={(e) => setPersona(e.target.value)}
-            disabled={personasLoading}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              background: '#020617',
-              border: '1px solid #334155',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: '#f8fafc',
-              fontSize: '13px',
-              outline: 'none',
-              cursor: personasLoading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <option value="*">* (усі персони)</option>
-            {personasLoading ? (
-              <option disabled>Завантаження...</option>
-            ) : (
-              personasData?.map((p) => (
-                <option key={p.id || p.key} value={p.key}>
-                  {p.label ? `${p.key} (${p.label})` : p.key}
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+        <Selector
+          label="Персона (Persona)"
+          isLoading={personasLoading}
+          value={persona}
+          onChange={(v) => setPersona(v || '*')}
+          options={[
+            { value: '*', label: '* (усі персони)' },
+            ...(personasData ?? []).map((p) => ({ value: p.key, label: p.label ? `${p.key} (${p.label})` : p.key })),
+          ]}
+        />
       </div>
 
       {/* BehaviorEditor component */}
@@ -232,128 +187,48 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
 
       {/* 2-col Grid: Confidence & Status */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Confidence
-            </label>
-            <span style={{ fontSize: '12px', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>
-              {confidence.toFixed(2)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={confidence}
-            onChange={(e) => setConfidence(parseFloat(e.target.value))}
-            style={{
-              width: '100%',
-              accentColor: '#38bdf8',
-              cursor: 'pointer',
-            }}
-          />
-        </div>
+        <Slider
+          label="Confidence"
+          min={0}
+          max={1}
+          step={0.05}
+          value={confidence}
+          onChange={setConfidence}
+          valueDisplay="text"
+          formatValue={(v) => v.toFixed(2)}
+        />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-            Статус (Status)
-          </label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as 'active' | 'shadow' | 'retired')}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              background: '#020617',
-              border: '1px solid #334155',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: '#f8fafc',
-              fontSize: '13px',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <option value="shadow">Shadow</option>
-            <option value="active">Active</option>
-            <option value="retired">Retired</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Note (optional textarea) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-          Примітка (Note) <span style={{ fontWeight: 400, color: '#64748b' }}>(необов'язково)</span>
-        </label>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Короткий коментар або нотатка..."
-          rows={2}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            background: '#020617',
-            border: '1px solid #1e293b',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            color: '#f8fafc',
-            fontSize: '13px',
-            fontFamily: 'inherit',
-            resize: 'vertical',
-            outline: 'none',
-          }}
+        <Selector
+          label="Статус (Status)"
+          value={status}
+          onChange={(v) => setStatus((v as 'active' | 'shadow' | 'retired') || 'shadow')}
+          options={[
+            { value: 'shadow', label: 'Shadow' },
+            { value: 'active', label: 'Active' },
+            { value: 'retired', label: 'Retired' },
+          ]}
         />
       </div>
 
+      {/* Note (optional textarea) */}
+      <TextArea
+        label="Примітка (Note)"
+        isOptional
+        value={note}
+        onChange={setNote}
+        placeholder="Короткий коментар або нотатка..."
+        rows={2}
+      />
+
       {/* Submit row */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          style={{
-            padding: '8px 16px',
-            minHeight: '44px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            border: '1px solid #334155',
-            background: 'transparent',
-            color: '#94a3b8',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          Скасувати
-        </button>
-        <button
+        <Button type="button" variant="secondary" label="Скасувати" onClick={onCancel} />
+        <Button
           type="submit"
-          disabled={isSubmitDisabled}
-          style={{
-            padding: '8px 18px',
-            minHeight: '44px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
-            opacity: isSubmitDisabled ? 0.5 : 1,
-            border: '1px solid #38bdf8',
-            background: '#1e293b',
-            color: '#38bdf8',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          {submitting ? 'Створення...' : 'Створити'}
-        </button>
+          variant="primary"
+          label={submitting ? 'Створення...' : 'Створити'}
+          isDisabled={isSubmitDisabled}
+        />
       </div>
     </form>
   );

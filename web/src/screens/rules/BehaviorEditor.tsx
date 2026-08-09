@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { Markdown } from '../../ui/Markdown';
 import { parseDrakonPseudocode, ParsedRule, ParseResult } from './drakonPseudocode';
+import { TextArea } from '@astryxdesign/core/TextArea';
+import { Selector } from '@astryxdesign/core/Selector';
+import { Button } from '@astryxdesign/core/Button';
 
 export interface BehaviorEditorProps {
   behavior: string;
@@ -37,129 +40,51 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
     setActiveTab('text');
   };
 
-  const charCount = behavior ? behavior.length : 0;
-  let counterColor = '#94a3b8';
-  if (charCount >= 2000) {
-    counterColor = '#f87171';
-  } else if (charCount > 1800) {
-    counterColor = '#fbbf24';
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* 1. Two-tab switcher */}
       <div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <button
+          <Button
             type="button"
+            variant={activeTab === 'text' ? 'primary' : 'secondary'}
+            label="Текст"
             onClick={() => setActiveTab('text')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: activeTab === 'text' ? '1px solid #38bdf8' : '1px solid #1e293b',
-              background: activeTab === 'text' ? '#1e293b' : '#020617',
-              color: activeTab === 'text' ? '#f8fafc' : '#94a3b8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Текст
-          </button>
-          <button
+          />
+          <Button
             type="button"
+            variant={activeTab === 'pseudocode' ? 'primary' : 'secondary'}
+            label="Псевдокод"
             onClick={() => setActiveTab('pseudocode')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: activeTab === 'pseudocode' ? '1px solid #38bdf8' : '1px solid #1e293b',
-              background: activeTab === 'pseudocode' ? '#1e293b' : '#020617',
-              color: activeTab === 'pseudocode' ? '#f8fafc' : '#94a3b8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Псевдокод
-          </button>
+          />
         </div>
 
         {activeTab === 'text' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Інструкція поведінки (Behavior)
-            </label>
-            <textarea
+            <TextArea
+              label="Інструкція поведінки (Behavior)"
               value={behavior}
-              onChange={(e) => onBehaviorChange(e.target.value)}
+              onChange={onBehaviorChange}
               placeholder="Введіть інструкцію поведінки агента (українською мовою)..."
               rows={6}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #1e293b',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                outline: 'none',
-              }}
+              maxLength={2000}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: counterColor }}>
-              {charCount} / 2000
-            </div>
           </div>
         )}
 
         {activeTab === 'pseudocode' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
-                DRAKON псевдокод або JSON export
-              </label>
-              <textarea
-                value={scratchText}
-                onChange={(e) => setScratchText(e.target.value)}
-                placeholder={'# назва\nIF умова\nTHEN\nдія\nEND'}
-                rows={6}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  background: '#020617',
-                  border: '1px solid #1e293b',
-                  borderRadius: '8px',
-                  padding: '10px 12px',
-                  color: '#f8fafc',
-                  fontSize: '13px',
-                  fontFamily: 'monospace',
-                  resize: 'vertical',
-                  outline: 'none',
-                }}
-              />
-            </div>
+            <TextArea
+              label="DRAKON псевдокод або JSON export"
+              value={scratchText}
+              onChange={setScratchText}
+              placeholder={'# назва\nIF умова\nTHEN\nдія\nEND'}
+              rows={6}
+            />
 
             <div>
-              <button
-                type="button"
-                onClick={handleParse}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: '1px solid #38bdf8',
-                  background: '#1e293b',
-                  color: '#38bdf8',
-                }}
-              >
-                Розпізнати
-              </button>
+              <Button type="button" variant="secondary" label="Розпізнати" onClick={handleParse} />
             </div>
 
             {parseResult && parseResult.inputKind === 'json' && (
@@ -227,22 +152,13 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                     )}
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                      <button
+                      <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
+                        label="Застосувати"
                         onClick={() => handleApplyRule(rule)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          border: '1px solid #059669',
-                          background: 'rgba(16, 185, 129, 0.15)',
-                          color: '#34d399',
-                        }}
-                      >
-                        Застосувати
-                      </button>
+                      />
                     </div>
                   </div>
                 ))}
@@ -299,46 +215,18 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
       </div>
 
       {/* 3. Pattern select */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-          Патерн (Pattern)
-        </label>
-        <select
-          value={pattern}
-          onChange={(e) => onPatternChange(e.target.value)}
-          disabled={vocabLoading}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            background: '#020617',
-            border: '1px solid #334155',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            color: '#f8fafc',
-            fontSize: '13px',
-            outline: 'none',
-            cursor: vocabLoading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {vocabLoading ? (
-            <option value="">Завантаження словника...</option>
-          ) : (
-            <>
-              <option value="">-- Оберіть патерн --</option>
-              {knownPatterns.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-              {pattern && !knownPatterns.includes(pattern) && (
-                <option key={pattern} value={pattern}>
-                  {pattern} (застарілий)
-                </option>
-              )}
-            </>
-          )}
-        </select>
-      </div>
+      <Selector
+        label="Патерн (Pattern)"
+        isLoading={vocabLoading}
+        placeholder="-- Оберіть патерн --"
+        value={pattern || undefined}
+        onChange={(v) => onPatternChange(v || '')}
+        options={
+          pattern && !knownPatterns.includes(pattern)
+            ? [...knownPatterns, { value: pattern, label: `${pattern} (застарілий)` }]
+            : knownPatterns
+        }
+      />
     </div>
   );
 };

@@ -3,6 +3,10 @@ import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { PersonaRow, createPersona, updatePersona, deletePersona } from '../../api/settings';
 import { Markdown } from '../../ui/Markdown';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { TextArea } from '@astryxdesign/core/TextArea';
+import { Selector } from '@astryxdesign/core/Selector';
+import { Button } from '@astryxdesign/core/Button';
 
 export const PersonasPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -126,26 +130,7 @@ export const PersonasPanel: React.FC = () => {
           <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
             Персони ({personas?.length || 0})
           </h3>
-          <button
-            type="button"
-            onClick={handleNewPersona}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: '1px solid #38bdf8',
-              background: '#1e293b',
-              color: '#38bdf8',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            + Нова
-          </button>
+          <Button type="button" variant="secondary" label="+ Нова" onClick={handleNewPersona} />
         </div>
 
         {personasLoading && <div style={{ color: '#94a3b8', fontSize: '13px' }}>Завантаження...</div>}
@@ -227,26 +212,7 @@ export const PersonasPanel: React.FC = () => {
             </h3>
           </div>
           {selectedKey && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: '1px solid #dc2626',
-                background: 'rgba(239, 68, 68, 0.1)',
-                color: '#f87171',
-                minHeight: '44px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              Вилучити персону
-            </button>
+            <Button type="button" variant="destructive" label="Вилучити персону" onClick={handleDelete} />
           )}
         </div>
 
@@ -267,110 +233,44 @@ export const PersonasPanel: React.FC = () => {
 
         {/* Form Inputs: Key, Label, Active */}
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr 120px', gap: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Key (Ідентифікатор) <span style={{ color: '#f87171' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              disabled={Boolean(selectedKey)}
-              placeholder="e.g. swiss_resident"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: selectedKey ? '#090d16' : '#020617',
-                border: attemptedSubmit && !key.trim() && !selectedKey ? '1px solid #f87171' : '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: selectedKey ? '#94a3b8' : '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-                fontFamily: 'monospace',
-                cursor: selectedKey ? 'not-allowed' : 'text',
-              }}
-            />
-            {attemptedSubmit && !key.trim() && !selectedKey && (
-              <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-            )}
-          </div>
+          <TextInput
+            label="Key (Ідентифікатор)"
+            isRequired
+            value={key}
+            onChange={setKey}
+            isDisabled={Boolean(selectedKey)}
+            placeholder="e.g. swiss_resident"
+            status={attemptedSubmit && !key.trim() && !selectedKey ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Label (Назва) <span style={{ color: '#f87171' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Swiss Resident (DE/FR/IT)"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: attemptedSubmit && !label.trim() ? '1px solid #f87171' : '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
-            {attemptedSubmit && !label.trim() && (
-              <span style={{ fontSize: '11px', color: '#f87171' }}>Обов'язкове поле</span>
-            )}
-          </div>
+          <TextInput
+            label="Label (Назва)"
+            isRequired
+            value={label}
+            onChange={setLabel}
+            placeholder="e.g. Swiss Resident (DE/FR/IT)"
+            status={attemptedSubmit && !label.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-              Статус
-            </label>
-            <select
-              value={active}
-              onChange={(e) => setActive(parseInt(e.target.value, 10))}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                background: '#020617',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value={1}>Активна</option>
-              <option value={0}>Неактивна</option>
-            </select>
-          </div>
+          <Selector
+            label="Статус"
+            value={String(active)}
+            onChange={(v) => setActive(parseInt(v || '1', 10))}
+            options={[
+              { value: '1', label: 'Активна' },
+              { value: '0', label: 'Неактивна' },
+            ]}
+          />
         </div>
 
         {/* Content Markdown Textarea */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8' }}>
-            Опис персони (Markdown content)
-          </label>
-          <textarea
+          <TextArea
+            label="Опис персони (Markdown content)"
             value={contentMd}
-            onChange={(e) => setContentMd(e.target.value)}
+            onChange={setContentMd}
             placeholder="Введіть опис персони у форматі Markdown..."
             rows={8}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              background: '#020617',
-              border: '1px solid #1e293b',
-              borderRadius: '8px',
-              padding: '10px 12px',
-              color: '#f8fafc',
-              fontSize: '13px',
-              fontFamily: 'inherit',
-              resize: 'vertical',
-              outline: 'none',
-            }}
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#94a3b8' }}>
             {charCount} символів
@@ -405,28 +305,12 @@ export const PersonasPanel: React.FC = () => {
 
         {/* Submit row */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
-          <button
+          <Button
             type="submit"
-            disabled={submitting}
-            style={{
-              padding: '8px 18px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              opacity: submitting ? 0.5 : 1,
-              border: '1px solid #38bdf8',
-              background: '#1e293b',
-              color: '#38bdf8',
-              transition: 'all 0.15s ease',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {submitting ? 'Збереження...' : selectedKey ? 'Зберегти зміни' : 'Створити персону'}
-          </button>
+            variant="primary"
+            isDisabled={submitting}
+            label={submitting ? 'Збереження...' : selectedKey ? 'Зберегти зміни' : 'Створити персону'}
+          />
         </div>
       </form>
     </div>
