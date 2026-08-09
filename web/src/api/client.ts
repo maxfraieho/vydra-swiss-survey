@@ -1,3 +1,6 @@
+import { ApiError } from './errors';
+import { getAstryxToken } from './token';
+
 export function getApiBase(): string {
   const pathname = window.location.pathname;
   const idx = pathname.indexOf('/app');
@@ -21,11 +24,11 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   const url = `${base}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
   const headers = new Headers(options.headers || {});
-  // Stub for X-Astryx-Token header (Sign-off S5, future mutation auth)
-  // const token = localStorage.getItem('astryx_api_token');
-  // if (token) {
-  //   headers.set('X-Astryx-Token', token);
-  // }
+  if (options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  const token = getAstryxToken();
+  if (token) headers.set('X-Astryx-Token', token);
 
   const response = await fetch(url, {
     ...options,
@@ -33,7 +36,13 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   });
 
   if (!response.ok) {
-    throw new Error(`API error ${response.status}: ${response.statusText}`);
+    let body: any = null;
+    try { body = await response.json(); } catch { /* non-JSON error page */ }
+    throw new ApiError(
+      body?.error || `API error ${response.status}: ${response.statusText}`,
+      response.status,
+      body
+    );
   }
 
   const contentType = response.headers.get('content-type');
