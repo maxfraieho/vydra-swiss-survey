@@ -20,6 +20,13 @@ is_alive() {
 
 start_server() {
     cd "$REPO_DIR" || { log "FATAL: cannot cd to $REPO_DIR"; return 1; }
+    # Mutating /api/rules/*, /api/settings/* routes require ASTRYX_API_TOKEN
+    # in env or they answer 503 (U3, 2026-08-08). Secret file created once,
+    # chmod 600, never in git. Same sourcing as ~/.termux/boot/start-survey-server.sh.
+    if [ -f "$HOME/.vydra-survey-profiles/astryx_api_token.secret" ]; then
+        export ASTRYX_API_TOKEN
+        ASTRYX_API_TOKEN="$(cat "$HOME/.vydra-survey-profiles/astryx_api_token.secret")"
+    fi
     nohup python3 "$SERVER_SCRIPT" >> "$SERVER_LOG" 2>&1 &
     disown
     sleep 2
