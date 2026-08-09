@@ -206,8 +206,8 @@ export const RulesTable: React.FC = () => {
         )}
       </Card>
 
-      {/* Main Grid: Table (left) + Master-Detail (right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : ((selectedRuleId || composing) ? '1fr 420px' : '1fr'), gap: '20px' }}>
+      {/* Main Grid: Table (left) + Inline RuleComposer (right) */}
+      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : (composing ? '1fr 420px' : '1fr'), gap: '20px' }}>
         {/* Rules Table */}
         <Card padding={0} style={{ overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -304,24 +304,22 @@ export const RulesTable: React.FC = () => {
           )}
         </Card>
 
-        {/* Master-Detail Side Panel */}
-        {(selectedRuleId || composing) && (
+        {/* Inline Panel for RuleComposer */}
+        {composing && (
           <div>
-            {composing ? (
-              <RuleComposer
-                onCreated={(result) => {
-                  setComposing(false);
-                  setSelectedRuleId(result.id);
-                  refetchRules();
-                }}
-                onCancel={() => setComposing(false)}
-              />
-            ) : selectedRuleId ? (
-              <RuleDetail ruleId={selectedRuleId} onClose={() => setSelectedRuleId(null)} />
-            ) : null}
+            <RuleComposer
+              onCreated={(result) => {
+                setComposing(false);
+                setSelectedRuleId(result.id);
+                refetchRules();
+              }}
+              onCancel={() => setComposing(false)}
+            />
           </div>
         )}
       </div>
+
+      <RuleDetail ruleId={selectedRuleId} onClose={() => setSelectedRuleId(null)} />
     </VStack>
   );
 };

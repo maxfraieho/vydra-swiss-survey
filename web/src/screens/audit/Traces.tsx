@@ -136,8 +136,8 @@ export const Traces: React.FC = () => {
       </div>
       </Card>
 
-      {/* Grid: Table + Side Panel */}
-      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : (selectedRunId ? '1fr 450px' : '1fr'), gap: '20px' }}>
+      {/* Table Card */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
         <Card padding={0}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Heading level={2} style={{ fontSize: '15px' }}>
@@ -204,19 +204,15 @@ export const Traces: React.FC = () => {
             </Table>
           )}
         </Card>
-
-        {selectedRunId && (
-          <div>
-            <TraceDetail
-              runId={selectedRunId}
-              onClose={() => {
-                setSelectedRunId(null);
-                navigate('/traces');
-              }}
-            />
-          </div>
-        )}
       </div>
+
+      <TraceDetail
+        runId={selectedRunId}
+        onClose={() => {
+          setSelectedRunId(null);
+          navigate('/traces');
+        }}
+      />
     </VStack>
   );
 };
