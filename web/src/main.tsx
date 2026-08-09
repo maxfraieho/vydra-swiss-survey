@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 
+import './styles/layers.css';
+
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import './theme/theme.css';
