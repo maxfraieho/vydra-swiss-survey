@@ -12,6 +12,7 @@ This project is indexed by GitNexus as **vydra-swiss-survey** (153 symbols, 418 
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
 - When exploring unfamiliar code, use `query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
+- **MUST treat a thin/suspicious `detect_changes()` result as stale index, not "low risk."** If real code files were edited but the result only shows doc/markdown symbols (or 0 affected despite substantive changes), reindex first — `node .gitnexus/run.cjs analyze` — then re-run `detect_changes()` before committing.
 
 ## Never Do
 
