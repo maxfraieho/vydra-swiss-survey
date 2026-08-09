@@ -5,7 +5,6 @@ import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleDetail } from './RuleDetail';
 import { RuleComposer } from './RuleComposer';
 import { Markdown } from '@astryxdesign/core/Markdown';
-import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -257,7 +256,7 @@ export const RulesTable: React.FC = () => {
             </div>
           )}
 
-          {rules && rules.length > 0 && isNarrow && (
+          {rules && rules.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
               {rules.map((r) => {
                 const isSelected = selectedRuleId === r.id;
@@ -295,54 +294,6 @@ export const RulesTable: React.FC = () => {
                 );
               })}
             </div>
-          )}
-
-          {rules && rules.length > 0 && !isNarrow && (
-            <Table hasHover density="compact">
-              <TableHeader>
-                <TableRow isHeaderRow>
-                  <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '90px' }}>Хост</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '110px' }}>Патерн</TableHeaderCell>
-                  <TableHeaderCell style={{ width: 'auto' }}>Поведінка</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '90px' }}>Статус</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '70px' }}>Ефект</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '50px' }}>Conf</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rules.map((r) => {
-                  const isSelected = selectedRuleId === r.id;
-                  const statusVariant: BadgeVariant = r.status === 'active' ? 'success' : r.status === 'shadow' ? 'warning' : 'neutral';
-                  return (
-                    <TableRow
-                      key={r.id}
-                      onClick={() => {
-                        setSelectedRuleId(r.id);
-                        setComposing(false);
-                      }}
-                      style={{ cursor: 'pointer', background: isSelected ? 'var(--color-background-muted)' : undefined }}
-                    >
-                      <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</TableCell>
-                      <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
-                      <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{r.pattern}</TableCell>
-                      <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                        <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
-                      </TableCell>
-                      <TableCell><Badge variant={statusVariant} label={r.status} /></TableCell>
-                      <TableCell>
-                        {r.effective ? (
-                          <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
-                        ) : (
-                          <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
-                        )}
-                      </TableCell>
-                      <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{r.confidence}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
           )}
         </Card>
 

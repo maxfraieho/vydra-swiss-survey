@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { HostRow, ProviderRow, createHost, deleteHost } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
-import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
@@ -93,7 +92,7 @@ export const HostsPanel: React.FC = () => {
           </div>
         )}
 
-        {hosts && hosts.length > 0 && isNarrow && (
+        {hosts && hosts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
             {hosts.map((h) => {
               const prov = h.provider_id ? providerMap.get(h.provider_id) : null;
@@ -137,62 +136,6 @@ export const HostsPanel: React.FC = () => {
               );
             })}
           </div>
-        )}
-
-        {hosts && hosts.length > 0 && !isNarrow && (
-          <Table hasHover density="compact">
-            <TableHeader>
-              <TableRow isHeaderRow>
-                <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
-                <TableHeaderCell style={{ width: '140px' }}>Hostname</TableHeaderCell>
-                <TableHeaderCell style={{ width: '120px' }}>Label</TableHeaderCell>
-                <TableHeaderCell style={{ width: '120px' }}>Провайдер</TableHeaderCell>
-                <TableHeaderCell style={{ width: 'auto' }}>Примітка</TableHeaderCell>
-                <TableHeaderCell style={{ width: '90px', textAlign: 'right' }}>Дії</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {hosts.map((h) => {
-                const prov = h.provider_id ? providerMap.get(h.provider_id) : null;
-                return (
-                  <TableRow key={h.id}>
-                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{h.id}</TableCell>
-                    <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{h.hostname}</TableCell>
-                    <TableCell style={{ color: 'var(--color-text-secondary)' }}>{h.label || '—'}</TableCell>
-                    <TableCell style={{ color: 'var(--color-text-secondary)' }}>
-                      {prov ? prov.label || prov.key : h.provider_id ? `#${h.provider_id}` : '—'}
-                    </TableCell>
-                    <TableCell style={{ color: 'var(--color-text-disabled)', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{h.note || '—'}</TableCell>
-                    <TableCell style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHostToDelete(h);
-                          setConfirmDeleteOpen(true);
-                        }}
-                        style={{
-                          padding: '4px 10px',
-                          minHeight: '44px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          border: '1px solid var(--color-border-red)',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          color: 'var(--color-text-red)',
-                        }}
-                      >
-                        Вилучити
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
         )}
       </Card>
 

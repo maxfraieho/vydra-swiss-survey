@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { ProviderRow, createProvider, deleteProvider } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
-import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
@@ -93,7 +92,7 @@ export const ProvidersPanel: React.FC = () => {
           </div>
         )}
 
-        {providers && providers.length > 0 && isNarrow && (
+        {providers && providers.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
             {providers.map((p) => (
               <Card key={p.id} padding={4}>
@@ -131,54 +130,6 @@ export const ProvidersPanel: React.FC = () => {
               </Card>
             ))}
           </div>
-        )}
-
-        {providers && providers.length > 0 && !isNarrow && (
-          <Table hasHover density="compact">
-            <TableHeader>
-              <TableRow isHeaderRow>
-                <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
-                <TableHeaderCell style={{ width: '100px' }}>Key</TableHeaderCell>
-                <TableHeaderCell style={{ width: '130px' }}>Label</TableHeaderCell>
-                <TableHeaderCell style={{ width: '140px' }}>URL Pattern</TableHeaderCell>
-                <TableHeaderCell style={{ width: 'auto' }}>Примітка</TableHeaderCell>
-                <TableHeaderCell style={{ width: '90px', textAlign: 'right' }}>Дії</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {providers.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{p.id}</TableCell>
-                  <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600 }}>{p.key}</TableCell>
-                  <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.label}</TableCell>
-                  <TableCell style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'break-all' }}>{p.url_pattern || '—'}</TableCell>
-                  <TableCell style={{ color: 'var(--color-text-disabled)', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{p.note || '—'}</TableCell>
-                  <TableCell style={{ textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(p)}
-                      style={{
-                        padding: '4px 10px',
-                        minHeight: '44px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        border: '1px solid var(--color-border-red)',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        color: 'var(--color-text-red)',
-                      }}
-                    >
-                      Вилучити
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
         )}
       </Card>
 

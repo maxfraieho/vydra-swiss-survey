@@ -42,57 +42,52 @@ export const TokenField: React.FC = () => {
     setDialogOpen(false);
   };
 
+  const dialog = (
+    <Dialog isOpen={dialogOpen} onOpenChange={setDialogOpen} variant="standard" width={340} purpose="form">
+      <Layout
+        header={<DialogHeader title="Розблокувати редагування" onOpenChange={setDialogOpen} />}
+        content={
+          <LayoutContent>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                submit();
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+            >
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                Перегляд правил, хостів і звітів працює без токена. Щоб створювати,
+                редагувати чи видаляти записи, введіть ключ доступу — його видає
+                оператор системи (значення змінної <code>ASTRYX_API_TOKEN</code> на сервері).
+              </p>
+              <TextInput
+                type="password"
+                label="Ключ доступу"
+                value={draft}
+                onChange={(value) => setDraft(value)}
+                placeholder="Вставте ключ доступу"
+              />
+              <Button type="submit" label="Розблокувати" variant="primary" />
+            </form>
+          </LayoutContent>
+        }
+      />
+    </Dialog>
+  );
+
   if (isNarrow) {
     return (
       <div style={{ marginLeft: 'auto' }}>
-        <Button label="🔑" variant="ghost" size="sm" onClick={() => setDialogOpen(true)} />
-        <Dialog isOpen={dialogOpen} onOpenChange={setDialogOpen} variant="standard" width={320} purpose="form">
-          <Layout
-            header={<DialogHeader title="X-Astryx-Token" onOpenChange={setDialogOpen} />}
-            content={
-              <LayoutContent>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    submit();
-                  }}
-                  style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
-                >
-                  <TextInput
-                    type="password"
-                    label="X-Astryx-Token"
-                    value={draft}
-                    onChange={(value) => setDraft(value)}
-                    placeholder="X-Astryx-Token"
-                  />
-                  <Button type="submit" label="OK" variant="primary" />
-                </form>
-              </LayoutContent>
-            }
-          />
-        </Dialog>
+        <Button label="🔒" variant="ghost" size="sm" onClick={() => setDialogOpen(true)} />
+        {dialog}
       </div>
     );
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        submit();
-      }}
-      style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}
-    >
-      <TextInput
-        type="password"
-        label="X-Astryx-Token"
-        isLabelHidden
-        value={draft}
-        onChange={(value) => setDraft(value)}
-        placeholder="X-Astryx-Token"
-        size="sm"
-      />
-      <Button type="submit" label="OK" variant="primary" size="sm" />
-    </form>
+    <div style={{ marginLeft: 'auto' }}>
+      <Button label="🔒 Розблокувати редагування" variant="ghost" size="sm" onClick={() => setDialogOpen(true)} />
+      {dialog}
+    </div>
   );
 };

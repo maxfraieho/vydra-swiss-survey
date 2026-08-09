@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
-import { useIsNarrow } from '../../shell/useIsNarrow';
 import { TraceDetail } from './TraceDetail';
-import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -19,7 +17,6 @@ export interface TraceSummary {
 }
 
 export const Traces: React.FC = () => {
-  const isNarrow = useIsNarrow();
   const { runId: routeRunId } = useParams<{ runId?: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -160,7 +157,7 @@ export const Traces: React.FC = () => {
             </div>
           )}
 
-          {traces && traces.length > 0 && isNarrow && (
+          {traces && traces.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
               {traces.map((t) => {
                 const isSelected = selectedRunId === t.run_id;
@@ -197,52 +194,6 @@ export const Traces: React.FC = () => {
                 );
               })}
             </div>
-          )}
-
-          {traces && traces.length > 0 && !isNarrow && (
-            <Table hasHover density="compact">
-              <TableHeader>
-                <TableRow isHeaderRow>
-                  <TableHeaderCell style={{ width: '160px' }}>Run ID</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '110px' }}>Хост</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '90px' }}>Персона</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '100px' }}>Результат (Outcome)</TableHeaderCell>
-                  <TableHeaderCell style={{ width: 'auto' }}>Дата / Час</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {traces.map((t) => {
-                  const isSelected = selectedRunId === t.run_id;
-                  return (
-                    <TableRow
-                      key={t.run_id}
-                      onClick={() => handleSelectTrace(t.run_id)}
-                      style={{ cursor: 'pointer', background: isSelected ? 'var(--color-background-muted)' : undefined }}
-                    >
-                      <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-all' }}>{t.run_id}</TableCell>
-                      <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{t.host}</TableCell>
-                      <TableCell style={{ color: 'var(--color-text-secondary)' }}>{t.persona}</TableCell>
-                      <TableCell>
-                        <span
-                          style={{
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            background: t.outcome === 'success' || t.outcome === 'finished' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: t.outcome === 'success' || t.outcome === 'finished' ? 'var(--color-text-green)' : 'var(--color-text-red)',
-                          }}
-                        >
-                          {t.outcome || 'unknown'}
-                        </span>
-                      </TableCell>
-                      <TableCell style={{ color: 'var(--color-text-tertiary)', fontSize: '12px' }}>{t.created_at || '-'}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
           )}
         </Card>
       </div>

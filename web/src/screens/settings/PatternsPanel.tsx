@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { PatternRow, createPattern, deletePattern } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
-import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Badge } from '@astryxdesign/core/Badge';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Selector } from '@astryxdesign/core/Selector';
@@ -104,7 +103,7 @@ export const PatternsPanel: React.FC = () => {
           </div>
         )}
 
-        {patterns && patterns.length > 0 && isNarrow && (
+        {patterns && patterns.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
             {patterns.map((p) => {
               const isBuiltin = p.is_builtin === 1;
@@ -147,61 +146,6 @@ export const PatternsPanel: React.FC = () => {
               );
             })}
           </div>
-        )}
-
-        {patterns && patterns.length > 0 && !isNarrow && (
-          <Table hasHover density="compact">
-            <TableHeader>
-              <TableRow isHeaderRow>
-                <TableHeaderCell style={{ width: '100px' }}>Key</TableHeaderCell>
-                <TableHeaderCell style={{ width: '130px' }}>Label</TableHeaderCell>
-                <TableHeaderCell style={{ width: 'auto' }}>Keywords</TableHeaderCell>
-                <TableHeaderCell style={{ width: '110px' }}>Polarity</TableHeaderCell>
-                <TableHeaderCell style={{ width: '100px' }}>Тип</TableHeaderCell>
-                <TableHeaderCell style={{ width: '90px', textAlign: 'right' }}>Дії</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {patterns.map((p) => {
-                const isBuiltin = p.is_builtin === 1;
-                return (
-                  <TableRow key={p.id || p.key}>
-                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600 }}>{p.key}</TableCell>
-                    <TableCell style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.label || '—'}</TableCell>
-                    <TableCell style={{ color: 'var(--color-text-secondary)', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{formatKeywords(p.keywords)}</TableCell>
-                    <TableCell style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontSize: '12px' }}>{p.qualifying_polarity || '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant={isBuiltin ? 'info' : 'neutral'} label={isBuiltin ? 'вбудований' : 'користувацький'} />
-                    </TableCell>
-                    <TableCell style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        disabled={isBuiltin}
-                        onClick={() => handleDelete(p)}
-                        style={{
-                          padding: '4px 10px',
-                          minHeight: '44px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: isBuiltin ? 'not-allowed' : 'pointer',
-                          opacity: isBuiltin ? 0.4 : 1,
-                          border: isBuiltin ? '1px solid var(--color-border)' : '1px solid var(--color-border-red)',
-                          background: isBuiltin ? 'var(--color-background-muted)' : 'rgba(239, 68, 68, 0.1)',
-                          color: isBuiltin ? 'var(--color-text-tertiary)' : 'var(--color-text-red)',
-                        }}
-                      >
-                        Вилучити
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
         )}
       </Card>
 

@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
-import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '@astryxdesign/core/Markdown';
-import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -18,7 +16,6 @@ export interface CompareResult {
 }
 
 export const Compare: React.FC = () => {
-  const isNarrow = useIsNarrow();
   const [searchParams, setSearchParams] = useSearchParams();
   const patternParam = searchParams.get('pattern') || '';
   const [inputPattern, setInputPattern] = useState(patternParam);
@@ -111,7 +108,7 @@ export const Compare: React.FC = () => {
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
               Жодного правила не знайдено для цього патерну.
             </div>
-          ) : isNarrow ? (
+          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
               {data.rules.map((r) => (
                 <Card key={r.id} padding={4}>
@@ -150,57 +147,6 @@ export const Compare: React.FC = () => {
                 </Card>
               ))}
             </div>
-          ) : (
-            <Table hasHover density="compact">
-              <TableHeader>
-                <TableRow isHeaderRow>
-                  <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '90px' }}>Хост</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '80px' }}>Персона</TableHeaderCell>
-                  <TableHeaderCell style={{ width: 'auto' }}>Поведінка (Behavior)</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '80px' }}>Джерело</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '90px' }}>Статус</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '70px' }}>Ефект</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '50px' }}>Conf</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.rules.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</TableCell>
-                    <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
-                    <TableCell style={{ color: '#e2e8f0' }}>{r.persona}</TableCell>
-                    <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                      <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
-                    </TableCell>
-                    <TableCell style={{ color: 'var(--color-text-secondary)' }}>{r.source}</TableCell>
-                    <TableCell>
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          textTransform: 'uppercase',
-                          background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                          color: r.status === 'active' ? 'var(--color-text-green)' : 'var(--color-text-yellow)',
-                        }}
-                      >
-                        {r.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {r.effective ? (
-                        <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
-                      ) : (
-                        <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
-                      )}
-                    </TableCell>
-                    <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{r.confidence}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           )}
         </Card>
       )}
