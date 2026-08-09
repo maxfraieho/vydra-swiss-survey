@@ -5,6 +5,8 @@ import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleDetail } from './RuleDetail';
 import { RuleComposer } from './RuleComposer';
 import { Markdown } from '../../ui/Markdown';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
 
 export interface FacetsData {
   hosts: { name: string; count: number; by_status: Record<string, number> }[];
@@ -251,69 +253,51 @@ export const RulesTable: React.FC = () => {
           )}
 
           {rules && rules.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '10px 14px' }}>ID</th>
-                    <th style={{ padding: '10px 14px' }}>Хост</th>
-                    <th style={{ padding: '10px 14px' }}>Патерн</th>
-                    <th style={{ padding: '10px 14px' }}>Поведінка</th>
-                    <th style={{ padding: '10px 14px' }}>Статус</th>
-                    <th style={{ padding: '10px 14px' }}>Ефект</th>
-                    <th style={{ padding: '10px 14px' }}>Conf</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rules.map((r) => {
-                    const isSelected = selectedRuleId === r.id;
-                    return (
-                      <tr
-                        key={r.id}
-                        onClick={() => {
-                          setSelectedRuleId(r.id);
-                          setComposing(false);
-                        }}
-                        style={{
-                          borderBottom: '1px solid #1e293b',
-                          cursor: 'pointer',
-                          background: isSelected ? '#1e293b' : 'transparent',
-                          transition: 'background 0.15s ease',
-                        }}
-                      >
-                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</td>
-                        <td style={{ padding: '10px 14px', color: '#e2e8f0', fontWeight: 600 }}>{r.host}</td>
-                        <td style={{ padding: '10px 14px', color: '#f8fafc', fontWeight: 600 }}>{r.pattern}</td>
-                        <td style={{ padding: '10px 14px' }}><Markdown source={r.behavior} variant="compact" /></td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <span
-                            style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              textTransform: 'uppercase',
-                              background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : r.status === 'shadow' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                              color: r.status === 'active' ? '#34d399' : r.status === 'shadow' ? '#fbbf24' : '#9ca3af',
-                            }}
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          {r.effective ? (
-                            <span style={{ fontSize: '11px', color: '#60a5fa' }}>✅ win</span>
-                          ) : (
-                            <span style={{ fontSize: '11px', color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Table hasHover density="compact">
+              <TableHeader>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '90px' }}>Хост</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '110px' }}>Патерн</TableHeaderCell>
+                  <TableHeaderCell style={{ width: 'auto' }}>Поведінка</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '90px' }}>Статус</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '70px' }}>Ефект</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '50px' }}>Conf</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rules.map((r) => {
+                  const isSelected = selectedRuleId === r.id;
+                  const statusVariant: BadgeVariant = r.status === 'active' ? 'success' : r.status === 'shadow' ? 'warning' : 'neutral';
+                  return (
+                    <TableRow
+                      key={r.id}
+                      onClick={() => {
+                        setSelectedRuleId(r.id);
+                        setComposing(false);
+                      }}
+                      style={{ cursor: 'pointer', background: isSelected ? '#1e293b' : undefined }}
+                    >
+                      <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</TableCell>
+                      <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
+                      <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{r.pattern}</TableCell>
+                      <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                        <Markdown source={r.behavior} variant="compact" />
+                      </TableCell>
+                      <TableCell><Badge variant={statusVariant} label={r.status} /></TableCell>
+                      <TableCell>
+                        {r.effective ? (
+                          <span style={{ fontSize: '11px', color: '#60a5fa' }}>✅ win</span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
+                        )}
+                      </TableCell>
+                      <TableCell style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </div>
 

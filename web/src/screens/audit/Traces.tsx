@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { TraceDetail } from './TraceDetail';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 
 export interface TraceSummary {
   run_id: string;
@@ -153,56 +154,49 @@ export const Traces: React.FC = () => {
           )}
 
           {traces && traces.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '10px 14px' }}>Run ID</th>
-                    <th style={{ padding: '10px 14px' }}>Хост</th>
-                    <th style={{ padding: '10px 14px' }}>Персона</th>
-                    <th style={{ padding: '10px 14px' }}>Результат (Outcome)</th>
-                    <th style={{ padding: '10px 14px' }}>Дата / Час</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {traces.map((t) => {
-                    const isSelected = selectedRunId === t.run_id;
-                    return (
-                      <tr
-                        key={t.run_id}
-                        onClick={() => handleSelectTrace(t.run_id)}
-                        style={{
-                          borderBottom: '1px solid #1e293b',
-                          cursor: 'pointer',
-                          background: isSelected ? '#1e293b' : 'transparent',
-                          transition: 'background 0.15s ease',
-                        }}
-                      >
-                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{t.run_id}</td>
-                        <td style={{ padding: '10px 14px', color: '#e2e8f0', fontWeight: 600 }}>{t.host}</td>
-                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>{t.persona}</td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <span
-                            style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              textTransform: 'uppercase',
-                              background: t.outcome === 'success' || t.outcome === 'finished' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                              color: t.outcome === 'success' || t.outcome === 'finished' ? '#34d399' : '#f87171',
-                            }}
-                          >
-                            {t.outcome || 'unknown'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 14px', color: '#64748b', fontSize: '12px' }}>{t.created_at || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Table hasHover density="compact">
+              <TableHeader>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell style={{ width: '160px' }}>Run ID</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '110px' }}>Хост</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '90px' }}>Персона</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '100px' }}>Результат (Outcome)</TableHeaderCell>
+                  <TableHeaderCell style={{ width: 'auto' }}>Дата / Час</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {traces.map((t) => {
+                  const isSelected = selectedRunId === t.run_id;
+                  return (
+                    <TableRow
+                      key={t.run_id}
+                      onClick={() => handleSelectTrace(t.run_id)}
+                      style={{ cursor: 'pointer', background: isSelected ? '#1e293b' : undefined }}
+                    >
+                      <TableCell style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-all' }}>{t.run_id}</TableCell>
+                      <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{t.host}</TableCell>
+                      <TableCell style={{ color: '#cbd5e1' }}>{t.persona}</TableCell>
+                      <TableCell>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            textTransform: 'uppercase',
+                            background: t.outcome === 'success' || t.outcome === 'finished' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: t.outcome === 'success' || t.outcome === 'finished' ? '#34d399' : '#f87171',
+                          }}
+                        >
+                          {t.outcome || 'unknown'}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ color: '#64748b', fontSize: '12px' }}>{t.created_at || '-'}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </div>
 

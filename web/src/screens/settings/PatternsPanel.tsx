@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { PatternRow, createPattern, deletePattern } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
+import { Badge } from '@astryxdesign/core/Badge';
 
 export const PatternsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -100,90 +102,58 @@ export const PatternsPanel: React.FC = () => {
         )}
 
         {patterns && patterns.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '10px 14px' }}>Key</th>
-                  <th style={{ padding: '10px 14px' }}>Label</th>
-                  <th style={{ padding: '10px 14px' }}>Keywords</th>
-                  <th style={{ padding: '10px 14px' }}>Polarity</th>
-                  <th style={{ padding: '10px 14px' }}>Тип</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Дії</th>
-                </tr>
-              </thead>
-              <tbody>
-                {patterns.map((p) => {
-                  const isBuiltin = p.is_builtin === 1;
-                  return (
-                    <tr key={p.id || p.key} style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{p.key}</td>
-                      <td style={{ padding: '10px 14px', color: '#f8fafc', fontWeight: 600 }}>{p.label || '—'}</td>
-                      <td style={{ padding: '10px 14px', color: '#cbd5e1', fontSize: '12px' }}>{formatKeywords(p.keywords)}</td>
-                      <td style={{ padding: '10px 14px', color: '#cbd5e1', fontFamily: 'monospace', fontSize: '12px' }}>{p.qualifying_polarity || '—'}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        {isBuiltin ? (
-                          <span
-                            style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: 'rgba(56, 189, 248, 0.15)',
-                              color: '#38bdf8',
-                              border: '1px solid #0284c7',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            вбудований
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: 'rgba(148, 163, 184, 0.15)',
-                              color: '#94a3b8',
-                              border: '1px solid #475569',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            користувацький
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          disabled={isBuiltin}
-                          onClick={() => handleDelete(p)}
-                          style={{
-                            padding: '4px 10px',
-                            minHeight: '44px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            cursor: isBuiltin ? 'not-allowed' : 'pointer',
-                            opacity: isBuiltin ? 0.4 : 1,
-                            border: isBuiltin ? '1px solid #334155' : '1px solid #dc2626',
-                            background: isBuiltin ? '#1e293b' : 'rgba(239, 68, 68, 0.1)',
-                            color: isBuiltin ? '#64748b' : '#f87171',
-                          }}
-                        >
-                          Вилучити
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table hasHover density="compact">
+            <TableHeader>
+              <TableRow isHeaderRow>
+                <TableHeaderCell style={{ width: '100px' }}>Key</TableHeaderCell>
+                <TableHeaderCell style={{ width: '130px' }}>Label</TableHeaderCell>
+                <TableHeaderCell style={{ width: 'auto' }}>Keywords</TableHeaderCell>
+                <TableHeaderCell style={{ width: '110px' }}>Polarity</TableHeaderCell>
+                <TableHeaderCell style={{ width: '100px' }}>Тип</TableHeaderCell>
+                <TableHeaderCell style={{ width: '90px', textAlign: 'right' }}>Дії</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {patterns.map((p) => {
+                const isBuiltin = p.is_builtin === 1;
+                return (
+                  <TableRow key={p.id || p.key}>
+                    <TableCell style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{p.key}</TableCell>
+                    <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{p.label || '—'}</TableCell>
+                    <TableCell style={{ color: '#cbd5e1', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{formatKeywords(p.keywords)}</TableCell>
+                    <TableCell style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '12px' }}>{p.qualifying_polarity || '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant={isBuiltin ? 'info' : 'neutral'} label={isBuiltin ? 'вбудований' : 'користувацький'} />
+                    </TableCell>
+                    <TableCell style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        disabled={isBuiltin}
+                        onClick={() => handleDelete(p)}
+                        style={{
+                          padding: '4px 10px',
+                          minHeight: '44px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: isBuiltin ? 'not-allowed' : 'pointer',
+                          opacity: isBuiltin ? 0.4 : 1,
+                          border: isBuiltin ? '1px solid #334155' : '1px solid #dc2626',
+                          background: isBuiltin ? '#1e293b' : 'rgba(239, 68, 68, 0.1)',
+                          color: isBuiltin ? '#64748b' : '#f87171',
+                        }}
+                      >
+                        Вилучити
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </div>
 

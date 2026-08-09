@@ -2,6 +2,7 @@ import React from 'react';
 import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '../../ui/Markdown';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 
 export interface ConflictGroup {
   host: string;
@@ -80,38 +81,38 @@ export const Conflicts: React.FC = () => {
                 </span>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '10px', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '8px 12px' }}>Rule ID</th>
-                      <th style={{ padding: '8px 12px' }}>Джерело (Source)</th>
-                      <th style={{ padding: '8px 12px' }}>Поведінка (Behavior)</th>
-                      <th style={{ padding: '8px 12px' }}>Status</th>
-                      <th style={{ padding: '8px 12px' }}>Conf</th>
-                      <th style={{ padding: '8px 12px' }}>Effective</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.rules.map((r) => (
-                      <tr key={r.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                        <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</td>
-                        <td style={{ padding: '8px 12px', color: '#f8fafc', fontWeight: 600 }}>{r.source}</td>
-                        <td style={{ padding: '8px 12px' }}><Markdown source={r.behavior} variant="compact" /></td>
-                        <td style={{ padding: '8px 12px', color: '#cbd5e1' }}>{r.status}</td>
-                        <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {r.effective ? (
-                            <span style={{ color: '#60a5fa', fontWeight: 700 }}>✅ win</span>
-                          ) : (
-                            <span style={{ color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table hasHover density="compact">
+                <TableHeader>
+                  <TableRow isHeaderRow>
+                    <TableHeaderCell style={{ width: '80px' }}>Rule ID</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '90px' }}>Джерело (Source)</TableHeaderCell>
+                    <TableHeaderCell style={{ width: 'auto' }}>Поведінка (Behavior)</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '80px' }}>Status</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '50px' }}>Conf</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '80px' }}>Effective</TableHeaderCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {group.rules.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</TableCell>
+                      <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{r.source}</TableCell>
+                      <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                        <Markdown source={r.behavior} variant="compact" />
+                      </TableCell>
+                      <TableCell style={{ color: '#cbd5e1' }}>{r.status}</TableCell>
+                      <TableCell style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</TableCell>
+                      <TableCell>
+                        {r.effective ? (
+                          <span style={{ color: '#60a5fa', fontWeight: 700 }}>✅ win</span>
+                        ) : (
+                          <span style={{ color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ))}
         </div>

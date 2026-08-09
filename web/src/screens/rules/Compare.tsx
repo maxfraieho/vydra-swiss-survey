@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '../../ui/Markdown';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 
 export interface CompareResult {
   pattern: string;
@@ -102,56 +103,56 @@ export const Compare: React.FC = () => {
               Жодного правила не знайдено для цього патерну.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '10px 14px' }}>ID</th>
-                    <th style={{ padding: '10px 14px' }}>Хост</th>
-                    <th style={{ padding: '10px 14px' }}>Персона</th>
-                    <th style={{ padding: '10px 14px' }}>Поведінка (Behavior)</th>
-                    <th style={{ padding: '10px 14px' }}>Джерело</th>
-                    <th style={{ padding: '10px 14px' }}>Статус</th>
-                    <th style={{ padding: '10px 14px' }}>Ефект</th>
-                    <th style={{ padding: '10px 14px' }}>Conf</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rules.map((r) => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</td>
-                      <td style={{ padding: '10px 14px', color: '#e2e8f0', fontWeight: 600 }}>{r.host}</td>
-                      <td style={{ padding: '10px 14px', color: '#e2e8f0' }}>{r.persona}</td>
-                      <td style={{ padding: '10px 14px' }}><Markdown source={r.behavior} variant="compact" /></td>
-                      <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>{r.source}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: r.status === 'active' ? '#34d399' : '#fbbf24',
-                          }}
-                        >
-                          {r.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        {r.effective ? (
-                          <span style={{ fontSize: '11px', color: '#60a5fa' }}>✅ win</span>
-                        ) : (
-                          <span style={{ fontSize: '11px', color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table hasHover density="compact">
+              <TableHeader>
+                <TableRow isHeaderRow>
+                  <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '90px' }}>Хост</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '80px' }}>Персона</TableHeaderCell>
+                  <TableHeaderCell style={{ width: 'auto' }}>Поведінка (Behavior)</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '80px' }}>Джерело</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '90px' }}>Статус</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '70px' }}>Ефект</TableHeaderCell>
+                  <TableHeaderCell style={{ width: '50px' }}>Conf</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.rules.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{r.id}</TableCell>
+                    <TableCell style={{ color: '#e2e8f0', fontWeight: 600 }}>{r.host}</TableCell>
+                    <TableCell style={{ color: '#e2e8f0' }}>{r.persona}</TableCell>
+                    <TableCell style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                      <Markdown source={r.behavior} variant="compact" />
+                    </TableCell>
+                    <TableCell style={{ color: '#cbd5e1' }}>{r.source}</TableCell>
+                    <TableCell>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                          color: r.status === 'active' ? '#34d399' : '#fbbf24',
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {r.effective ? (
+                        <span style={{ fontSize: '11px', color: '#60a5fa' }}>✅ win</span>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#f87171' }}>⚠️ #{r.shadowed_by}</span>
+                      )}
+                    </TableCell>
+                    <TableCell style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{r.confidence}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </div>
       )}

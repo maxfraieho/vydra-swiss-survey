@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { ProviderRow, createProvider, deleteProvider } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 
 export const ProvidersPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -91,53 +92,51 @@ export const ProvidersPanel: React.FC = () => {
         )}
 
         {providers && providers.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '10px 14px' }}>ID</th>
-                  <th style={{ padding: '10px 14px' }}>Key</th>
-                  <th style={{ padding: '10px 14px' }}>Label</th>
-                  <th style={{ padding: '10px 14px' }}>URL Pattern</th>
-                  <th style={{ padding: '10px 14px' }}>Примітка</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Дії</th>
-                </tr>
-              </thead>
-              <tbody>
-                {providers.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                    <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>#{p.id}</td>
-                    <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{p.key}</td>
-                    <td style={{ padding: '10px 14px', color: '#f8fafc', fontWeight: 600 }}>{p.label}</td>
-                    <td style={{ padding: '10px 14px', color: '#cbd5e1', fontFamily: 'monospace', fontSize: '12px' }}>{p.url_pattern || '—'}</td>
-                    <td style={{ padding: '10px 14px', color: '#94a3b8', fontSize: '12px' }}>{p.note || '—'}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(p)}
-                        style={{
-                          padding: '4px 10px',
-                          minHeight: '44px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          border: '1px solid #dc2626',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          color: '#f87171',
-                        }}
-                      >
-                        Вилучити
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table hasHover density="compact">
+            <TableHeader>
+              <TableRow isHeaderRow>
+                <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
+                <TableHeaderCell style={{ width: '100px' }}>Key</TableHeaderCell>
+                <TableHeaderCell style={{ width: '130px' }}>Label</TableHeaderCell>
+                <TableHeaderCell style={{ width: '140px' }}>URL Pattern</TableHeaderCell>
+                <TableHeaderCell style={{ width: 'auto' }}>Примітка</TableHeaderCell>
+                <TableHeaderCell style={{ width: '90px', textAlign: 'right' }}>Дії</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {providers.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{p.id}</TableCell>
+                  <TableCell style={{ fontFamily: 'monospace', color: '#38bdf8', fontWeight: 600 }}>{p.key}</TableCell>
+                  <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{p.label}</TableCell>
+                  <TableCell style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'break-all' }}>{p.url_pattern || '—'}</TableCell>
+                  <TableCell style={{ color: '#94a3b8', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{p.note || '—'}</TableCell>
+                  <TableCell style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(p)}
+                      style={{
+                        padding: '4px 10px',
+                        minHeight: '44px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        border: '1px solid #dc2626',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#f87171',
+                      }}
+                    >
+                      Вилучити
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
 

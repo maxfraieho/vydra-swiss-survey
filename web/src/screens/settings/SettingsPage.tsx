@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { TabList } from '@astryxdesign/core/TabList';
+import { Tab } from '@astryxdesign/core/TabList';
 import { HostsPanel } from './HostsPanel';
 import { PersonasPanel } from './PersonasPanel';
 import { PatternsPanel } from './PatternsPanel';
@@ -32,80 +34,12 @@ export const SettingsPage: React.FC = () => {
           </h2>
         </div>
 
-        {/* Tab Buttons */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('hosts')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: activeTab === 'hosts' ? '1px solid #38bdf8' : '1px solid #1e293b',
-              background: activeTab === 'hosts' ? '#1e293b' : '#020617',
-              color: activeTab === 'hosts' ? '#f8fafc' : '#94a3b8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Хости
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('personas')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: activeTab === 'personas' ? '1px solid #38bdf8' : '1px solid #1e293b',
-              background: activeTab === 'personas' ? '#1e293b' : '#020617',
-              color: activeTab === 'personas' ? '#f8fafc' : '#94a3b8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Персони
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('patterns')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: activeTab === 'patterns' ? '1px solid #38bdf8' : '1px solid #1e293b',
-              background: activeTab === 'patterns' ? '#1e293b' : '#020617',
-              color: activeTab === 'patterns' ? '#f8fafc' : '#94a3b8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Патерни
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('providers')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: activeTab === 'providers' ? '1px solid #38bdf8' : '1px solid #1e293b',
-              background: activeTab === 'providers' ? '#1e293b' : '#020617',
-              color: activeTab === 'providers' ? '#f8fafc' : '#94a3b8',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Провайдери
-          </button>
-        </div>
+        <TabList value={activeTab} onChange={(v) => setActiveTab(v as SettingsTab)}>
+          <Tab value="hosts" label="Хости" />
+          <Tab value="personas" label="Персони" />
+          <Tab value="patterns" label="Патерни" />
+          <Tab value="providers" label="Провайдери" />
+        </TabList>
       </div>
 
       {/* Active Panel View */}

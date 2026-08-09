@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { HostRow, ProviderRow, createHost, deleteHost } from '../../api/settings';
 import { useIsNarrow } from '../../shell/useIsNarrow';
+import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
 
 export const HostsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
@@ -94,58 +95,56 @@ export const HostsPanel: React.FC = () => {
         )}
 
         {hosts && hosts.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#020617', borderBottom: '1px solid #1e293b', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '10px 14px' }}>ID</th>
-                  <th style={{ padding: '10px 14px' }}>Hostname</th>
-                  <th style={{ padding: '10px 14px' }}>Label</th>
-                  <th style={{ padding: '10px 14px' }}>Провайдер</th>
-                  <th style={{ padding: '10px 14px' }}>Примітка</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Дії</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hosts.map((h) => {
-                  const prov = h.provider_id ? providerMap.get(h.provider_id) : null;
-                  return (
-                    <tr key={h.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>#{h.id}</td>
-                      <td style={{ padding: '10px 14px', color: '#f8fafc', fontWeight: 600 }}>{h.hostname}</td>
-                      <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>{h.label || '—'}</td>
-                      <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>
-                        {prov ? prov.label || prov.key : h.provider_id ? `#${h.provider_id}` : '—'}
-                      </td>
-                      <td style={{ padding: '10px 14px', color: '#94a3b8', fontSize: '12px' }}>{h.note || '—'}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(h)}
-                          style={{
-                            padding: '4px 10px',
-                            minHeight: '44px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            border: '1px solid #dc2626',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            color: '#f87171',
-                          }}
-                        >
-                          Вилучити
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table hasHover density="compact">
+            <TableHeader>
+              <TableRow isHeaderRow>
+                <TableHeaderCell style={{ width: '50px' }}>ID</TableHeaderCell>
+                <TableHeaderCell style={{ width: '140px' }}>Hostname</TableHeaderCell>
+                <TableHeaderCell style={{ width: '120px' }}>Label</TableHeaderCell>
+                <TableHeaderCell style={{ width: '120px' }}>Провайдер</TableHeaderCell>
+                <TableHeaderCell style={{ width: 'auto' }}>Примітка</TableHeaderCell>
+                <TableHeaderCell style={{ width: '90px', textAlign: 'right' }}>Дії</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {hosts.map((h) => {
+                const prov = h.provider_id ? providerMap.get(h.provider_id) : null;
+                return (
+                  <TableRow key={h.id}>
+                    <TableCell style={{ fontFamily: 'monospace', color: '#94a3b8' }}>#{h.id}</TableCell>
+                    <TableCell style={{ color: '#f8fafc', fontWeight: 600 }}>{h.hostname}</TableCell>
+                    <TableCell style={{ color: '#cbd5e1' }}>{h.label || '—'}</TableCell>
+                    <TableCell style={{ color: '#cbd5e1' }}>
+                      {prov ? prov.label || prov.key : h.provider_id ? `#${h.provider_id}` : '—'}
+                    </TableCell>
+                    <TableCell style={{ color: '#94a3b8', fontSize: '12px', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word' }}>{h.note || '—'}</TableCell>
+                    <TableCell style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(h)}
+                        style={{
+                          padding: '4px 10px',
+                          minHeight: '44px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: '1px solid #dc2626',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          color: '#f87171',
+                        }}
+                      >
+                        Вилучити
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </div>
 
