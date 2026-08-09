@@ -1,6 +1,6 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
-import { Markdown } from '@astryxdesign/core/Markdown';
+import { DetailsMarkdown } from '../../ui/DetailsMarkdown';
 import { CodeBlock } from '@astryxdesign/core/CodeBlock';
 import { MermaidTree } from '../../ui/MermaidTree';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -44,7 +44,7 @@ export const Report: React.FC = () => {
       <Card padding={6}>
         <Card variant="muted" padding={5}>
           {reportMd && reportMd.trim() !== '' ? (
-            <Markdown headingLevelStart={4} components={MARKDOWN_COMPONENTS}>{reportMd}</Markdown>
+            <DetailsMarkdown headingLevelStart={4} components={MARKDOWN_COMPONENTS}>{reportMd}</DetailsMarkdown>
           ) : (
             <span style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>Звіт порожній.</span>
           )}
