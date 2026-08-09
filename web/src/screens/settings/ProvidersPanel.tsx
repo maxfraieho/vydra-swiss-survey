@@ -9,9 +9,11 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export const ProvidersPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
+  const toast = useToast();
   const { data: providers, loading: providersLoading, error: providersError, refetch: refetchProviders } =
     useResource<ProviderRow[]>('/api/settings/providers');
 
@@ -21,7 +23,6 @@ export const ProvidersPanel: React.FC = () => {
   const [note, setNote] = useState<string>('');
 
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [providerToDelete, setProviderToDelete] = useState<ProviderRow | null>(null);
@@ -56,9 +57,10 @@ export const ProvidersPanel: React.FC = () => {
       setUrlPattern('');
       setNote('');
       setAttemptedSubmit(false);
+      toast({ body: 'Збережено' });
       refetchProviders();
     } catch (err: any) {
-      setSubmitError(err?.message || 'Не вдалося створити провайдера');
+      toast({ body: err?.message || 'Не вдалося створити провайдера', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -155,20 +157,6 @@ export const ProvidersPanel: React.FC = () => {
           + Додати провайдера
         </Heading>
 
-        {submitError && (
-          <div
-            style={{
-              padding: '10px 12px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid var(--color-border-red)',
-              borderRadius: '8px',
-              color: 'var(--color-text-red)',
-              fontSize: '13px',
-            }}
-          >
-            ⚠️ {submitError}
-          </div>
-        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <TextInput
@@ -229,9 +217,10 @@ export const ProvidersPanel: React.FC = () => {
           if (!providerToDelete) return;
           try {
             await deleteProvider(providerToDelete.id);
+            toast({ body: 'Вилучено' });
             refetchProviders();
           } catch (err: any) {
-            alert(`Помилка вилучення: ${err?.message || err}`);
+            toast({ body: err?.message || 'Не вдалося вилучити провайдера', type: 'error' });
           } finally {
             setConfirmDeleteOpen(false);
             setProviderToDelete(null);

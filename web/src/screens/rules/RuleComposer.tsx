@@ -12,6 +12,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export interface RuleComposerProps {
   onCreated: (rule: RuleDetailData) => void;
@@ -20,6 +21,7 @@ export interface RuleComposerProps {
 
 export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel }) => {
   const isNarrow = useIsNarrow();
+  const toast = useToast();
   const { data: hostsData, loading: hostsLoading } = useResource<HostRow[]>('/api/settings/hosts');
   const { data: personasData, loading: personasLoading } = useResource<PersonaRow[]>('/api/settings/personas');
 
@@ -32,7 +34,6 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
   const [note, setNote] = useState<string>('');
 
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -65,9 +66,10 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
         status,
         note: note.trim() || undefined,
       });
+      toast({ body: 'Збережено' });
       onCreated(result);
     } catch (err: any) {
-      setSubmitError(err?.message || 'Не вдалося створити правило');
+      toast({ body: err?.message || 'Не вдалося створити правило', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -126,20 +128,6 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
       </div>
 
       {/* Error display */}
-      {submitError && (
-        <div
-          style={{
-            padding: '10px 12px',
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid var(--color-border-red)',
-            borderRadius: '8px',
-            color: 'var(--color-text-red)',
-            fontSize: '13px',
-          }}
-        >
-          ⚠️ {submitError}
-        </div>
-      )}
 
       {/* 2-col Grid: Host & Persona */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>

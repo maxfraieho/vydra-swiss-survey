@@ -11,9 +11,11 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export const PatternsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
+  const toast = useToast();
   const { data: patterns, loading: patternsLoading, error: patternsError, refetch: refetchPatterns } =
     useResource<PatternRow[]>('/api/settings/patterns');
 
@@ -23,7 +25,6 @@ export const PatternsPanel: React.FC = () => {
   const [qualifyingPolarity, setQualifyingPolarity] = useState<string>('');
 
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [patternToDelete, setPatternToDelete] = useState<PatternRow | null>(null);
@@ -66,9 +67,10 @@ export const PatternsPanel: React.FC = () => {
       setKeywordsText('');
       setQualifyingPolarity('');
       setAttemptedSubmit(false);
+      toast({ body: 'Збережено' });
       refetchPatterns();
     } catch (err: any) {
-      setSubmitError(err?.message || 'Не вдалося створити патерн');
+      toast({ body: err?.message || 'Не вдалося створити патерн', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -173,20 +175,6 @@ export const PatternsPanel: React.FC = () => {
           + Додати патерн
         </Heading>
 
-        {submitError && (
-          <div
-            style={{
-              padding: '10px 12px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid var(--color-border-red)',
-              borderRadius: '8px',
-              color: 'var(--color-text-red)',
-              fontSize: '13px',
-            }}
-          >
-            ⚠️ {submitError}
-          </div>
-        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <TextInput
@@ -250,9 +238,10 @@ export const PatternsPanel: React.FC = () => {
           if (!patternToDelete) return;
           try {
             await deletePattern(patternToDelete.key);
+            toast({ body: 'Вилучено' });
             refetchPatterns();
           } catch (err: any) {
-            alert(`Помилка вилучення: ${err?.message || err}`);
+            toast({ body: err?.message || 'Не вдалося вилучити патерн', type: 'error' });
           } finally {
             setConfirmDeleteOpen(false);
             setPatternToDelete(null);

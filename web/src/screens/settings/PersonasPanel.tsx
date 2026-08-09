@@ -10,9 +10,11 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export const PersonasPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
+  const toast = useToast();
   const { data: personas, loading: personasLoading, error: personasError, refetch: refetchPersonas } =
     useResource<PersonaRow[]>('/api/settings/personas');
 
@@ -24,7 +26,6 @@ export const PersonasPanel: React.FC = () => {
   const [active, setActive] = useState<number>(1);
 
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
 
@@ -87,9 +88,10 @@ export const PersonasPanel: React.FC = () => {
         });
         setSelectedKey(trimmedKey);
       }
+      toast({ body: 'Збережено' });
       refetchPersonas();
     } catch (err: any) {
-      setSubmitError(err?.message || 'Не вдалося зберегти персону');
+      toast({ body: err?.message || 'Не вдалося зберегти персону', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -202,20 +204,6 @@ export const PersonasPanel: React.FC = () => {
           )}
         </div>
 
-        {submitError && (
-          <div
-            style={{
-              padding: '10px 12px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid var(--color-border-red)',
-              borderRadius: '8px',
-              color: 'var(--color-text-red)',
-              fontSize: '13px',
-            }}
-          >
-            ⚠️ {submitError}
-          </div>
-        )}
 
         {/* Form Inputs: Key, Label, Active */}
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr 120px', gap: '12px' }}>
@@ -312,9 +300,10 @@ export const PersonasPanel: React.FC = () => {
           try {
             await deletePersona(selectedKey);
             handleNewPersona();
+            toast({ body: 'Вилучено' });
             refetchPersonas();
           } catch (err: any) {
-            setSubmitError(err?.message || 'Не вдалося вилучити персону');
+            toast({ body: err?.message || 'Не вдалося вилучити персону', type: 'error' });
           } finally {
             setSubmitting(false);
             setConfirmDeleteOpen(false);

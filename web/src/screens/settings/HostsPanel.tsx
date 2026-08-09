@@ -11,9 +11,11 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export const HostsPanel: React.FC = () => {
   const isNarrow = useIsNarrow();
+  const toast = useToast();
   const { data: hosts, loading: hostsLoading, error: hostsError, refetch: refetchHosts } =
     useResource<HostRow[]>('/api/settings/hosts');
 
@@ -25,7 +27,6 @@ export const HostsPanel: React.FC = () => {
   const [note, setNote] = useState<string>('');
 
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [hostToDelete, setHostToDelete] = useState<HostRow | null>(null);
@@ -54,9 +55,10 @@ export const HostsPanel: React.FC = () => {
       setProviderId('');
       setNote('');
       setAttemptedSubmit(false);
+      toast({ body: 'Збережено' });
       refetchHosts();
     } catch (err: any) {
-      setSubmitError(err?.message || 'Не вдалося створити хост');
+      toast({ body: err?.message || 'Не вдалося створити хост', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -163,20 +165,6 @@ export const HostsPanel: React.FC = () => {
           + Додати хост
         </Heading>
 
-        {submitError && (
-          <div
-            style={{
-              padding: '10px 12px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid var(--color-border-red)',
-              borderRadius: '8px',
-              color: 'var(--color-text-red)',
-              fontSize: '13px',
-            }}
-          >
-            ⚠️ {submitError}
-          </div>
-        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
           <TextInput
@@ -236,9 +224,10 @@ export const HostsPanel: React.FC = () => {
           if (!hostToDelete) return;
           try {
             await deleteHost(hostToDelete.id);
+            toast({ body: 'Вилучено' });
             refetchHosts();
           } catch (err: any) {
-            alert(`Помилка вилучення: ${err?.message || err}`);
+            toast({ body: err?.message || 'Не вдалося вилучити хост', type: 'error' });
           } finally {
             setConfirmDeleteOpen(false);
             setHostToDelete(null);
