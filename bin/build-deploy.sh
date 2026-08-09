@@ -34,4 +34,25 @@ if [ -z "$BUNDLE_JS" ] || [ ! -f "$BUNDLE_JS" ]; then
 fi
 
 log "BUILD OK: $(basename "$BUNDLE_JS")"
+
+# Vite strips custom attrs (data-cfasync) from the entry <script type="module">
+# tag during build, so the source-level fix in web/index.html never survives
+# into dist/. Without this, Cloudflare Rocket Loader rewrites type="module"
+# into type="<hash>-module", the browser ignores the tag, and the SPA never
+# mounts (blank dark screen on every route).
+INDEX_HTML="$DIST_DIR/index.html"
+if command grep -q 'data-cfasync="false"' "$INDEX_HTML"; then
+    log "PATCH SKIP: data-cfasync already present"
+elif command grep -q '<script type="module" crossorigin src="[^"]*"></script>' "$INDEX_HTML"; then
+    sed -i 's#<script type="module" crossorigin src="\([^"]*\)"></script>#<script type="module" crossorigin src="\1" data-cfasync="false"></script>#' "$INDEX_HTML"
+    if ! command grep -q 'data-cfasync="false"' "$INDEX_HTML"; then
+        log "PATCH FAILED: data-cfasync not present after sed"
+        exit 1
+    fi
+    log "PATCH OK: data-cfasync=\"false\" injected (Rocket Loader guard)"
+else
+    log "PATCH FAILED: expected module script tag not found in $INDEX_HTML"
+    exit 1
+fi
+
 log "DEPLOYED: dist/ live, Flask serves it directly, no restart needed"
