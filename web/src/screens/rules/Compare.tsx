@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '@astryxdesign/core/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
@@ -8,6 +9,7 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 
 export interface CompareResult {
   pattern: string;
@@ -16,6 +18,7 @@ export interface CompareResult {
 }
 
 export const Compare: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const [searchParams, setSearchParams] = useSearchParams();
   const patternParam = searchParams.get('pattern') || '';
   const [inputPattern, setInputPattern] = useState(patternParam);
@@ -107,6 +110,45 @@ export const Compare: React.FC = () => {
           {data.rules.length === 0 ? (
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
               Жодного правила не знайдено для цього патерну.
+            </div>
+          ) : isNarrow ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+              {data.rules.map((r) => (
+                <Card key={r.id} padding={4}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {r.effective ? (
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
+                      ) : (
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
+                      )}
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          textTransform: 'uppercase',
+                          background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                          color: r.status === 'active' ? 'var(--color-text-green)' : 'var(--color-text-yellow)',
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    </div>
+                  </div>
+                  <MetadataList columns={1} label={{ position: 'start' }}>
+                    <MetadataListItem label="Хост">{r.host}</MetadataListItem>
+                    <MetadataListItem label="Персона">{r.persona}</MetadataListItem>
+                    <MetadataListItem label="Джерело">{r.source}</MetadataListItem>
+                    <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
+                  </MetadataList>
+                  <div style={{ marginTop: '8px' }}>
+                    <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
+                  </div>
+                </Card>
+              ))}
             </div>
           ) : (
             <Table hasHover density="compact">

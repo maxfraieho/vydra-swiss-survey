@@ -1,5 +1,6 @@
 import React from 'react';
 import { useResource } from '../../api/hooks';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleRow } from './RulesTable';
 import { Markdown } from '@astryxdesign/core/Markdown';
 import { Table, TableHeader, TableBody, TableRow, TableHeaderCell, TableCell } from '@astryxdesign/core/Table';
@@ -8,6 +9,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 
 export interface ConflictGroup {
   host: string;
@@ -23,6 +25,7 @@ export interface ConflictsResponse {
 }
 
 export const Conflicts: React.FC = () => {
+  const isNarrow = useIsNarrow();
   const { data, loading, error } = useResource<ConflictsResponse>('/api/rules/conflicts');
 
   if (loading) {
@@ -88,6 +91,30 @@ export const Conflicts: React.FC = () => {
                 </span>
               </div>
 
+              {isNarrow ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {group.rules.map((r) => (
+                    <Card key={r.id} padding={3}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+                        {r.effective ? (
+                          <span style={{ color: 'var(--color-text-blue)', fontWeight: 700, fontSize: '12px' }}>✅ win</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-red)', fontSize: '12px' }}>⚠️ #{r.shadowed_by}</span>
+                        )}
+                      </div>
+                      <MetadataList columns={1} label={{ position: 'start' }}>
+                        <MetadataListItem label="Джерело">{r.source}</MetadataListItem>
+                        <MetadataListItem label="Status">{r.status}</MetadataListItem>
+                        <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
+                      </MetadataList>
+                      <div style={{ marginTop: '8px' }}>
+                        <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
               <Table hasHover density="compact">
                 <TableHeader>
                   <TableRow isHeaderRow>
@@ -120,6 +147,7 @@ export const Conflicts: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              )}
             </Card>
           ))}
         </VStack>
