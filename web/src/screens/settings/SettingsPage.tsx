@@ -8,8 +8,9 @@ import { HostsPanel } from './HostsPanel';
 import { PersonasPanel } from './PersonasPanel';
 import { PatternsPanel } from './PatternsPanel';
 import { ProvidersPanel } from './ProvidersPanel';
+import { AISourcePanel } from './AISourcePanel';
 
-type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers';
+type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers' | 'ai-source';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('hosts');
@@ -39,6 +40,7 @@ export const SettingsPage: React.FC = () => {
           <Tab value="personas" label="Персони" />
           <Tab value="patterns" label="Патерни" />
           <Tab value="providers" label="Провайдери" />
+          <Tab value="ai-source" label="Модель ШІ" />
         </TabList>
       </Card>
 
@@ -47,6 +49,8 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'personas' && <PersonasPanel />}
       {activeTab === 'patterns' && <PatternsPanel />}
       {activeTab === 'providers' && <ProvidersPanel />}
+      {activeTab === 'ai-source' && <AISourcePanel />}
     </VStack>
   );
 };
+

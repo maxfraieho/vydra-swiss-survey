@@ -232,3 +232,66 @@ export function deletePattern(key: string): Promise<{ success: boolean }> {
     method: 'DELETE',
   });
 }
+
+// AI Source API
+export interface AISourceConfig {
+  backend: 'proxy' | 'local';
+  base_url: string;
+  model: string;
+  token_configured: boolean;
+}
+
+export interface UpdateAISourceFormValues {
+  backend: 'proxy' | 'local';
+  base_url?: string;
+  model?: string;
+  token?: string;
+}
+
+export interface AISourceTestResult {
+  ok: boolean;
+  detail: string;
+}
+
+export interface ProbeModelResult {
+  model: string;
+  vision_capable: boolean;
+  detail: string;
+}
+
+export interface ProbeStatus {
+  status: 'idle' | 'running' | 'finished' | 'error';
+  progress: number;
+  total: number;
+  results: ProbeModelResult[];
+  error?: string | null;
+}
+
+export function getAISourceConfig(): Promise<AISourceConfig> {
+  return apiFetch<AISourceConfig>('/api/settings/ai-source');
+}
+
+export function updateAISourceConfig(v: UpdateAISourceFormValues): Promise<AISourceConfig> {
+  return apiFetch<AISourceConfig>('/api/settings/ai-source', {
+    method: 'PUT',
+    body: JSON.stringify(v),
+  });
+}
+
+export function testAISourceConfig(v?: Partial<UpdateAISourceFormValues>): Promise<AISourceTestResult> {
+  return apiFetch<AISourceTestResult>('/api/settings/ai-source/test', {
+    method: 'POST',
+    body: v ? JSON.stringify(v) : undefined,
+  });
+}
+
+export function probeModels(): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>('/api/settings/ai-source/probe-models', {
+    method: 'POST',
+  });
+}
+
+export function getProbeStatus(): Promise<ProbeStatus> {
+  return apiFetch<ProbeStatus>('/api/settings/ai-source/probe-status');
+}
+

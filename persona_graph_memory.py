@@ -146,6 +146,12 @@ CREATE TABLE IF NOT EXISTS patterns (
     created_at          TEXT NOT NULL,
     updated_at          TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key                 TEXT PRIMARY KEY,
+    value               TEXT,
+    updated_at          TEXT NOT NULL
+);
 """
 
 # Phase U3 (plan-ui-astryx-addendum.md): valid host_rules.status values for the
@@ -1393,6 +1399,63 @@ def migrate() -> None:
                               status="active", confidence=0.7, evidence={"seed": True})
     finally:
         conn.close()
+
+
+TOKEN_SECRET_PATH = os.path.expanduser("~/.vydra-survey-profiles/aegis_proxy_token.secret")
+
+
+def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Retrieve a raw string setting from the app_settings table."""
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+        return row[0] if row else default
+    finally:
+        conn.close()
+
+
+def set_setting(key: str, value: str) -> None:
+    """Store or update a raw string setting in the app_settings table."""
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+            (key, value, _now()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _read_secret_token() -> Optional[str]:
+    """Read the Aegis proxy secret token from file (~/.vydra-survey-profiles/aegis_proxy_token.secret)."""
+    if not os.path.exists(TOKEN_SECRET_PATH):
+        return None
+    try:
+        with open(TOKEN_SECRET_PATH, "r", encoding="utf-8") as f:
+            val = f.read().strip()
+            return val if val else None
+    except Exception:
+        return None
+
+
+def _write_secret_token(token: Optional[str]) -> None:
+    """Write or remove the Aegis proxy secret token file with mode 0600."""
+    os.makedirs(os.path.dirname(TOKEN_SECRET_PATH), exist_ok=True)
+    if token is None or token == "":
+        if os.path.exists(TOKEN_SECRET_PATH):
+            try:
+                os.remove(TOKEN_SECRET_PATH)
+            except Exception:
+                pass
+        return
+    with open(TOKEN_SECRET_PATH, "w", encoding="utf-8") as f:
+        f.write(token.strip())
+    try:
+        os.chmod(TOKEN_SECRET_PATH, 0o600)
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

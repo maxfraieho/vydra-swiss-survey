@@ -1,21 +1,20 @@
-"""Vision calls for the survey agent, routed through the Aegis Relay proxy
-on dev-184 (LAN, no Cloudflare hop) instead of a local on-device model.
+"""Vision calls for the survey agent.
 
-Was local llama-mtmd-cli (Gemma 3 4B, CPU/OpenCL) — replaced per explicit
-instruction to stop using the on-device model and use the proxy's
-multimedia-proxy slot instead, which self-selects the best currently
-healthy vision-capable model (see /opt/free-claude-code
-providers/nvidia_nim/model_monitor.py::_sync_multimedia_slot). The proxy
-also does in-request failover across that slot's candidates, so no
-client-side retry logic is needed here.
+Supports strategy pattern with backends:
+- ProxyVisionBackend: Aegis Relay proxy on dev-184 (LAN) or user-configured URL.
+- LocalLlamaVisionBackend: On-device llama-mtmd-cli execution (Gemma 3 4B, CPU -t 4).
 """
 from __future__ import annotations
 
+import abc
 import base64
 import json
 import mimetypes
 import os
 import re
+import subprocess
+import threading
+from typing import Optional
 
 import requests
 
@@ -23,25 +22,35 @@ PROXY_BASE_URL = os.environ.get("AEGIS_PROXY_URL", "http://192.168.3.184:18880")
 PROXY_MODEL = os.environ.get("AEGIS_PROXY_VISION_MODEL", "multimedia-proxy")
 PROXY_TOKEN = os.environ.get("AEGIS_PROXY_TOKEN", "freecc")
 
+LOCAL_MODEL_DEFAULT = os.path.expanduser("~/models/gemma3-4b/gemma-3-4b-it-Q4_K_M.gguf")
+LOCAL_MMPROJ_DEFAULT = os.path.expanduser("~/models/gemma3-4b/mmproj-model-f16.gguf")
+LOCAL_MTMD_CLI_DEFAULT = os.path.expanduser("~/llama.cpp/build/bin/llama-mtmd-cli")
+LOCAL_VISION_TIMEOUT = 600
+
+_LOCAL_VISION_LOCK = threading.Lock()
+
 
 class VisionError(RuntimeError):
     pass
 
 
-class GemmaVision:
-    """Stateless HTTP client for the proxy's multimedia-proxy slot.
+class BaseVisionBackend(abc.ABC):
+    @abc.abstractmethod
+    def run_vision(self, image_path: str, prompt: str, timeout: Optional[int] = None) -> str:
+        pass
 
-    Keeps the same constructor/method shape as the old local-model class
-    (use_gpu accepted for CLI back-compat, now a no-op — the proxy decides
-    hardware/model, not the caller) so survey_agent.py needed no changes
-    beyond this file.
-    """
 
-    def __init__(self, model=None, mmproj=None, mtmd_cli=None, use_gpu: bool = False):
-        self.base_url = PROXY_BASE_URL
-        self.proxy_model = PROXY_MODEL
+class ProxyVisionBackend(BaseVisionBackend):
+    """Stateless HTTP client for OpenAI-compatible vision proxies (e.g. Aegis Relay)."""
 
-    def run_vision(self, image_path: str, prompt: str, timeout: int = 120) -> str:
+    def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None, token: Optional[str] = None):
+        self.base_url = base_url or PROXY_BASE_URL
+        self.model = model or PROXY_MODEL
+        self.token = token if token is not None else PROXY_TOKEN
+
+    def run_vision(self, image_path: str, prompt: str, timeout: Optional[int] = None) -> str:
+        if timeout is None:
+            timeout = 120
         mime_type, _ = mimetypes.guess_type(image_path)
         mime_type = mime_type or "image/png"
         with open(image_path, "rb") as f:
@@ -49,7 +58,7 @@ class GemmaVision:
         data_url = f"data:{mime_type};base64,{b64}"
 
         payload = {
-            "model": self.proxy_model,
+            "model": self.model,
             "messages": [
                 {
                     "role": "user",
@@ -64,7 +73,7 @@ class GemmaVision:
         }
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {PROXY_TOKEN}",
+            "Authorization": f"Bearer {self.token}",
         }
         try:
             resp = requests.post(
@@ -86,15 +95,116 @@ class GemmaVision:
         except (ValueError, KeyError, IndexError) as e:
             raise VisionError(f"Unexpected proxy response shape: {e}: {resp.text[:400]!r}")
 
-    def decide_action(self, image_path: str, system_prompt: str, step_no: int) -> dict:
-        """Ask the vision model what the SINGLE next action should be. Returns a dict:
-        {"action": "click"|"type"|"scroll"|"done", "target_text": str, "value": str}
 
-        Deliberately does NOT ask for pixel coordinates — TASK-65's
-        agent_editor.py already found a 4B vision model can't invent good
-        coordinates. It only names WHAT to interact with; cdp_client finds
-        the element deterministically via DOM text search.
-        """
+def _get_available_mem_kb() -> int:
+    try:
+        with open("/proc/meminfo", "r") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    parts = line.split()
+                    return int(parts[1])
+    except Exception:
+        pass
+    return 0
+
+
+class LocalLlamaVisionBackend(BaseVisionBackend):
+    """On-device llama-mtmd-cli runner with strict RAM preflight and thread constraints."""
+
+    def __init__(self, model: Optional[str] = None, mmproj: Optional[str] = None, mtmd_cli: Optional[str] = None):
+        self.model = model or LOCAL_MODEL_DEFAULT
+        self.mmproj = mmproj or LOCAL_MMPROJ_DEFAULT
+        self.mtmd_cli = mtmd_cli or LOCAL_MTMD_CLI_DEFAULT
+
+    def run_vision(self, image_path: str, prompt: str, timeout: Optional[int] = None) -> str:
+        if timeout is None:
+            timeout = LOCAL_VISION_TIMEOUT
+
+        # Preflight check: available memory must be >= 4.5 GB (4,718,592 kB)
+        avail_kb = _get_available_mem_kb()
+        if avail_kb == 0:
+            raise VisionError(
+                "Could not determine available memory from /proc/meminfo; refusing to run "
+                "local vision inference without a RAM preflight check."
+            )
+        min_required_kb = int(4.5 * 1024 * 1024)
+        if avail_kb < min_required_kb:
+            avail_mb = avail_kb / 1024.0
+            raise VisionError(
+                f"Insufficient memory for local vision execution: {avail_mb:.1f} MB available, "
+                f"at least 4608 MB (4.5 GB) required."
+            )
+
+        cmd = [
+            self.mtmd_cli, "-m", self.model, "--mmproj", self.mmproj,
+            "--image", image_path, "-c", "4096", "-n", "512",
+            "--temp", "0.2", "-p", prompt, "-t", "4"
+        ]
+
+        proc_lock = None
+        try:
+            from astryx_survey_server import CURRENT_PROC_LOCK
+            proc_lock = CURRENT_PROC_LOCK
+        except (ImportError, AttributeError):
+            pass
+
+        def _exec():
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            if res.returncode != 0:
+                raise VisionError(
+                    f"llama-mtmd-cli exited {res.returncode}: {res.stderr[-800:]}"
+                )
+            return res.stdout
+
+        with _LOCAL_VISION_LOCK:
+            if proc_lock:
+                with proc_lock:
+                    return _exec()
+            else:
+                return _exec()
+
+
+def get_vision_backend() -> BaseVisionBackend:
+    """Factory function returning configured BaseVisionBackend instance based on app_settings."""
+    import persona_graph_memory
+    cfg_str = persona_graph_memory.get_setting("ai_source_config")
+    if not cfg_str:
+        return ProxyVisionBackend()
+
+    cfg = json.loads(cfg_str)
+    backend_type = cfg.get("backend", "proxy")
+    if backend_type == "local":
+        return LocalLlamaVisionBackend(
+            model=cfg.get("model"),
+            mmproj=cfg.get("mmproj"),
+            mtmd_cli=cfg.get("mtmd_cli"),
+        )
+    elif backend_type == "proxy":
+        secret_token = persona_graph_memory._read_secret_token()
+        token = secret_token if secret_token is not None else cfg.get("token")
+        return ProxyVisionBackend(
+            base_url=cfg.get("base_url"),
+            model=cfg.get("model"),
+            token=token,
+        )
+    else:
+        raise VisionError(f"Unknown ai_source_config backend type: {backend_type!r}")
+
+
+class GemmaVision:
+    """Backward-compatible wrapper for existing callers expecting GemmaVision."""
+
+    def __init__(self, model=None, mmproj=None, mtmd_cli=None, use_gpu: bool = False):
+        pass
+
+    def run_vision(self, image_path: str, prompt: str, timeout: Optional[int] = None) -> str:
+        backend = get_vision_backend()
+        kwargs = {}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        return backend.run_vision(image_path, prompt, **kwargs)
+
+    def decide_action(self, image_path: str, system_prompt: str, step_no: int) -> dict:
         instruction = (
             f"{system_prompt}\n\n"
             "---\n"
