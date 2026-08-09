@@ -10,10 +10,12 @@ import subprocess
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, render_template_string, send_file
 from rules_api import rules_bp
+from settings_api import settings_bp
 
 app = Flask(__name__)
 app.secret_key = "astryx_swiss_survey_secret_key_5005"
 app.register_blueprint(rules_bp)
+app.register_blueprint(settings_bp)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok")
 

@@ -105,6 +105,47 @@ CREATE TABLE IF NOT EXISTS host_gates (
     updated_at    TEXT,
     updated_by    TEXT
 );
+
+CREATE TABLE IF NOT EXISTS providers (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    key         TEXT NOT NULL UNIQUE,
+    label       TEXT NOT NULL,
+    url_pattern TEXT,
+    note        TEXT,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS hosts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    hostname    TEXT NOT NULL UNIQUE,
+    label       TEXT,
+    provider_id INTEGER REFERENCES providers(id),
+    note        TEXT,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS personas (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    key         TEXT NOT NULL UNIQUE,
+    label       TEXT NOT NULL,
+    content_md  TEXT NOT NULL DEFAULT '',
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS patterns (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    key                 TEXT NOT NULL UNIQUE,
+    label               TEXT,
+    keywords            TEXT NOT NULL DEFAULT '[]',
+    qualifying_polarity TEXT,
+    is_builtin          INTEGER NOT NULL DEFAULT 0,
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL
+);
 """
 
 # Phase U3 (plan-ui-astryx-addendum.md): valid host_rules.status values for the
@@ -864,6 +905,422 @@ def record_survey_outcome(profile_key: str, survey_url: str, status: str,
             record_fact(profile_key, k, v, survey_url)
 
 
+# --- CRUD helpers for providers, hosts, personas, patterns ---
+
+def list_providers() -> list[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM providers ORDER BY id ASC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def create_provider(key: str, label: str, url_pattern: Optional[str] = None, note: Optional[str] = None) -> dict:
+    if not key or not str(key).strip():
+        raise ValueError("key cannot be empty")
+    if not label or not str(label).strip():
+        raise ValueError("label cannot be empty")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        conn.execute(
+            "INSERT INTO providers (key, label, url_pattern, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (key.strip(), label.strip(), url_pattern, note, now, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM providers WHERE key=?", (key.strip(),)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_provider(id: int, **fields) -> dict:
+    allowed = {"key", "label", "url_pattern", "note"}
+    invalid = set(fields.keys()) - allowed
+    if invalid:
+        raise ValueError(f"Invalid fields for provider update: {sorted(invalid)}")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT * FROM providers WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            raise LookupError(f"provider id={id} not found")
+        if not fields:
+            return dict(existing)
+        sets, params = [], []
+        for k, v in fields.items():
+            sets.append(f"{k}=?")
+            params.append(v)
+        now = _now()
+        sets.append("updated_at=?")
+        params.append(now)
+        params.append(id)
+        conn.execute(f"UPDATE providers SET {', '.join(sets)} WHERE id=?", params)
+        conn.commit()
+        row = conn.execute("SELECT * FROM providers WHERE id=?", (id,)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def delete_provider(id: int) -> bool:
+    conn = _connect()
+    try:
+        existing = conn.execute("SELECT id FROM providers WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            return False
+        conn.execute("DELETE FROM providers WHERE id=?", (id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def list_hosts() -> list[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM hosts ORDER BY id ASC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def create_host(hostname: str, label: str = "", provider_id: Optional[int] = None, note: Optional[str] = None) -> dict:
+    if not hostname or not str(hostname).strip():
+        raise ValueError("hostname cannot be empty")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        conn.execute(
+            "INSERT INTO hosts (hostname, label, provider_id, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (hostname.strip(), label, provider_id, note, now, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM hosts WHERE hostname=?", (hostname.strip(),)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_host(id: int, **fields) -> dict:
+    allowed = {"hostname", "label", "provider_id", "note"}
+    invalid = set(fields.keys()) - allowed
+    if invalid:
+        raise ValueError(f"Invalid fields for host update: {sorted(invalid)}")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT * FROM hosts WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            raise LookupError(f"host id={id} not found")
+        if not fields:
+            return dict(existing)
+        sets, params = [], []
+        for k, v in fields.items():
+            sets.append(f"{k}=?")
+            params.append(v)
+        now = _now()
+        sets.append("updated_at=?")
+        params.append(now)
+        params.append(id)
+        conn.execute(f"UPDATE hosts SET {', '.join(sets)} WHERE id=?", params)
+        conn.commit()
+        row = conn.execute("SELECT * FROM hosts WHERE id=?", (id,)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def delete_host(id: int) -> bool:
+    conn = _connect()
+    try:
+        existing = conn.execute("SELECT id FROM hosts WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            return False
+        conn.execute("DELETE FROM hosts WHERE id=?", (id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def list_personas() -> list[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM personas ORDER BY id ASC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_persona(key: str) -> Optional[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM personas WHERE key=?", (key,)).fetchone()
+        return dict(row) if row is not None else None
+    finally:
+        conn.close()
+
+
+def create_persona(key: str, label: str, content_md: str = "", active: int = 1) -> dict:
+    if not key or not str(key).strip():
+        raise ValueError("key cannot be empty")
+    if not label or not str(label).strip():
+        raise ValueError("label cannot be empty")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        conn.execute(
+            "INSERT INTO personas (key, label, content_md, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (key.strip(), label.strip(), content_md, 1 if active else 0, now, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM personas WHERE key=?", (key.strip(),)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_persona(key: str, **fields) -> dict:
+    allowed = {"label", "content_md", "active"}
+    invalid = set(fields.keys()) - allowed
+    if invalid:
+        raise ValueError(f"Invalid fields for persona update: {sorted(invalid)}")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT * FROM personas WHERE key=?", (key,)).fetchone()
+        if existing is None:
+            raise LookupError(f"persona key={key!r} not found")
+        if not fields:
+            return dict(existing)
+        sets, params = [], []
+        for k, v in fields.items():
+            if k == "active":
+                v = 1 if v else 0
+            sets.append(f"{k}=?")
+            params.append(v)
+        now = _now()
+        sets.append("updated_at=?")
+        params.append(now)
+        params.append(key)
+        conn.execute(f"UPDATE personas SET {', '.join(sets)} WHERE key=?", params)
+        conn.commit()
+        row = conn.execute("SELECT * FROM personas WHERE key=?", (key,)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def delete_persona(key: str) -> bool:
+    conn = _connect()
+    try:
+        existing = conn.execute("SELECT id FROM personas WHERE key=?", (key,)).fetchone()
+        if existing is None:
+            return False
+        conn.execute("DELETE FROM personas WHERE key=?", (key,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def list_patterns() -> list[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM patterns ORDER BY id ASC").fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            kw = d.get("keywords")
+            if isinstance(kw, str):
+                try:
+                    d["keywords"] = json.loads(kw)
+                except Exception:
+                    d["keywords"] = []
+            elif not isinstance(kw, list):
+                d["keywords"] = []
+            result.append(d)
+        return result
+    finally:
+        conn.close()
+
+
+def create_pattern(key: str, label: Optional[str] = None, keywords: Optional[list[str] | str] = None, qualifying_polarity: Optional[str] = None) -> dict:
+    if not key or not str(key).strip():
+        raise ValueError("key cannot be empty")
+    k_str = key.strip()
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT id, is_builtin FROM patterns WHERE key=?", (k_str,)).fetchone()
+        if existing:
+            if existing["is_builtin"] == 1:
+                raise ValueError(f"Cannot recreate or overwrite builtin pattern '{k_str}'")
+
+        if keywords is None:
+            keywords_json = "[]"
+        elif isinstance(keywords, list):
+            keywords_json = json.dumps(keywords)
+        elif isinstance(keywords, str):
+            try:
+                json.loads(keywords)
+                keywords_json = keywords
+            except Exception:
+                keywords_json = json.dumps([keywords])
+        else:
+            keywords_json = "[]"
+
+        now = _now()
+        lbl = label if label is not None else k_str
+        conn.execute(
+            "INSERT INTO patterns (key, label, keywords, qualifying_polarity, is_builtin, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
+            (k_str, lbl, keywords_json, qualifying_polarity, now, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM patterns WHERE key=?", (k_str,)).fetchone()
+        d = dict(row)
+        try:
+            d["keywords"] = json.loads(d["keywords"])
+        except Exception:
+            d["keywords"] = []
+        return d
+    finally:
+        conn.close()
+
+
+def update_pattern(key: str, **fields) -> dict:
+    allowed = {"label", "keywords", "qualifying_polarity"}
+    invalid = set(fields.keys()) - allowed
+    if invalid:
+        raise ValueError(f"Invalid fields for pattern update: {sorted(invalid)}")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT * FROM patterns WHERE key=?", (key,)).fetchone()
+        if existing is None:
+            raise LookupError(f"pattern key={key!r} not found")
+        if existing["is_builtin"] == 1:
+            raise ValueError(f"Cannot update builtin pattern '{key}'")
+        if not fields:
+            d = dict(existing)
+            try:
+                d["keywords"] = json.loads(d["keywords"])
+            except Exception:
+                d["keywords"] = []
+            return d
+
+        sets, params = [], []
+        for k, v in fields.items():
+            if k == "keywords":
+                if isinstance(v, list):
+                    v = json.dumps(v)
+                elif isinstance(v, str):
+                    try:
+                        json.loads(v)
+                    except Exception:
+                        v = json.dumps([v])
+            sets.append(f"{k}=?")
+            params.append(v)
+        now = _now()
+        sets.append("updated_at=?")
+        params.append(now)
+        params.append(key)
+        conn.execute(f"UPDATE patterns SET {', '.join(sets)} WHERE key=?", params)
+        conn.commit()
+        row = conn.execute("SELECT * FROM patterns WHERE key=?", (key,)).fetchone()
+        d = dict(row)
+        try:
+            d["keywords"] = json.loads(d["keywords"])
+        except Exception:
+            d["keywords"] = []
+        return d
+    finally:
+        conn.close()
+
+
+def delete_pattern(key: str) -> bool:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT id, is_builtin FROM patterns WHERE key=?", (key,)).fetchone()
+        if existing is None:
+            return False
+        if existing["is_builtin"] == 1:
+            raise ValueError(f"Cannot delete builtin pattern '{key}'")
+        conn.execute("DELETE FROM patterns WHERE key=?", (key,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def migrate_settings(
+    topic_keywords: Optional[dict[str, list[str]]] = None,
+    qualifying_polarity: Optional[dict[str, str]] = None,
+    personas_seed: Optional[list[dict[str, str]]] = None,
+) -> None:
+    """One-time idempotent migration for providers, hosts, personas, and patterns tables."""
+    conn = _connect()
+    try:
+        now = _now()
+        # 1. patterns
+        if topic_keywords:
+            qual_pol = qualifying_polarity or {}
+            for key, kws in topic_keywords.items():
+                pol = qual_pol.get(key)
+                kws_json = json.dumps(kws) if isinstance(kws, list) else (kws if isinstance(kws, str) else "[]")
+                conn.execute(
+                    "INSERT OR IGNORE INTO patterns (key, label, keywords, qualifying_polarity, is_builtin, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, 1, ?, ?)",
+                    (key, key, kws_json, pol, now, now),
+                )
+
+        # 2. hosts
+        conn.execute(
+            "INSERT OR IGNORE INTO hosts (hostname, label, created_at, updated_at) "
+            "VALUES ('*', 'Глобальний (усі хости)', ?, ?)",
+            (now, now),
+        )
+        existing_hosts = conn.execute(
+            "SELECT DISTINCT host FROM host_rules WHERE host IS NOT NULL AND host != '*'"
+        ).fetchall()
+        for r in existing_hosts:
+            h = r[0]
+            if h:
+                conn.execute(
+                    "INSERT OR IGNORE INTO hosts (hostname, label, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (h, h, now, now),
+                )
+
+        # 3. personas
+        if personas_seed:
+            for p in personas_seed:
+                p_key = p.get("key")
+                p_label = p.get("label") or p_key
+                p_content = p.get("content_md") or ""
+                if p_key:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO personas (key, label, content_md, active, created_at, updated_at) "
+                        "VALUES (?, ?, ?, 1, ?, ?)",
+                        (p_key, p_label, p_content, now, now),
+                    )
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def migrate() -> None:
     """One-time (idempotent) migration: legacy rule_* facts -> host_rules,
     persona_memory.py seed facts -> record_fact(), and global qualification
@@ -971,6 +1428,30 @@ if __name__ == "__main__":
                   f"(src={r['source']}, conf={r['confidence']:.2f}): {r['behavior']}")
     elif cmd == "migrate":
         migrate()
+        import reflection
+        import survey_agent
+        personas_seed = []
+        for p_key, p_info in survey_agent.PROFILES.items():
+            persona_file = p_info.get("persona_file", "")
+            label = p_info.get("label", p_key)
+            content_md = ""
+            if persona_file:
+                path = os.path.join(survey_agent.PROFILE_CACHE_DIR, persona_file)
+                if os.path.exists(path):
+                    with open(path, "r", encoding="utf-8") as f:
+                        content_md = f.read()
+            if not content_md:
+                content_md = f"# Persona {label}\nKey: {p_key}\n"
+            personas_seed.append({
+                "key": p_key,
+                "label": label,
+                "content_md": content_md,
+            })
+        migrate_settings(
+            topic_keywords=reflection.TOPIC_KEYWORDS,
+            qualifying_polarity=reflection.QUALIFYING_POLARITY,
+            personas_seed=personas_seed,
+        )
         print("Migration complete.")
     else:
         print(f"Unknown command: {cmd}")

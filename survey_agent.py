@@ -61,14 +61,11 @@ def heavy_state_busy() -> list[str]:
 
 
 def load_persona(profile_key: str, survey_url: str = "") -> str:
-    path = os.path.join(PROFILE_CACHE_DIR, PROFILES[profile_key]["persona_file"])
-    if not os.path.exists(path):
-        raise SystemExit(
-            f"Persona file not found at {path}\n"
-            f"Run bin/sync_profiles.sh first to pull it from the dev server."
-        )
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
+    from persona_graph_memory import get_persona, get_enhanced_persona
+    p = get_persona(profile_key)
+    if p is None:
+        raise KeyError(profile_key)
+    content = p.get("content_md", "")
     # Trim bulky agent framework instructions (e.g. ## A — ДІЯ) to pass only core
     # persona facts to Gemma, speeding up CPU vision prompt evaluation from ~80s to ~3-5s.
     for marker in ("## **A — ДІЯ**", "## A — ДІЯ"):
@@ -76,7 +73,6 @@ def load_persona(profile_key: str, survey_url: str = "") -> str:
             content = content.split(marker)[0].strip()
             break
     try:
-        from persona_graph_memory import get_enhanced_persona
         content = get_enhanced_persona(profile_key, content, survey_url)
     except Exception as e:
         print(f"[survey_agent] Warning: Failed to apply dynamic memory: {e}", flush=True)
@@ -224,7 +220,22 @@ def main() -> None:
             shot_path = os.path.join(screenshot_dir, f"step-{step:03d}.png")
             client.screenshot(shot_path)
             ptxt = client.page_text()
-            topic = reflection.detect_pattern(ptxt)
+            extra_keywords = {}
+            try:
+                import persona_graph_memory
+                db_patterns = persona_graph_memory.list_patterns()
+                for pat in db_patterns:
+                    if pat.get("is_builtin") == 0:
+                        kws = pat.get("keywords", [])
+                        if isinstance(kws, str):
+                            try:
+                                kws = json.loads(kws)
+                            except Exception:
+                                kws = []
+                        extra_keywords[pat["key"]] = kws if isinstance(kws, list) else []
+            except Exception:
+                pass
+            topic = reflection.detect_pattern(ptxt, extra_keywords=extra_keywords)
             try:
                 decision = vision.decide_action(shot_path, persona, step)
             except Exception as _v_err:

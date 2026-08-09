@@ -70,11 +70,14 @@ NEGATIVE_TOKENS: dict[str, list[str]] = {
 }
 
 
-def detect_pattern(page_text: str) -> str | None:
+def detect_pattern(page_text: str, extra_keywords: dict[str, list[str]] | None = None) -> str | None:
     """First TOPIC_KEYWORDS pattern whose substring appears in the first ~600 chars
     of `page_text` (lowercased). None if nothing matches -- never invents a pattern."""
     haystack = page_text.lower()[:600]
-    for pattern, keywords in TOPIC_KEYWORDS.items():
+    topic_map = dict(TOPIC_KEYWORDS)
+    if extra_keywords:
+        topic_map.update(extra_keywords)
+    for pattern, keywords in topic_map.items():
         for kw in keywords:
             if kw in haystack:
                 return pattern

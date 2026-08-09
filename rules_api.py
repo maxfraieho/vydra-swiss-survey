@@ -285,8 +285,15 @@ def get_vocabulary():
     """GET /api/rules/vocabulary: keys from reflection.TOPIC_KEYWORDS + QUALIFYING_POLARITY."""
     try:
         import reflection
+        builtin_keys = list(getattr(reflection, "TOPIC_KEYWORDS", {}).keys())
+        try:
+            db_patterns = persona_graph_memory.list_patterns()
+            extra_keys = [p["key"] for p in db_patterns if not p.get("is_builtin")]
+        except Exception:
+            extra_keys = []
+        combined_keys = list(dict.fromkeys(builtin_keys + extra_keys))
         return jsonify({
-            "topic_keywords": list(getattr(reflection, "TOPIC_KEYWORDS", {}).keys()),
+            "topic_keywords": combined_keys,
             "qualifying_polarity": getattr(reflection, "QUALIFYING_POLARITY", {}),
         })
     except Exception as e:
