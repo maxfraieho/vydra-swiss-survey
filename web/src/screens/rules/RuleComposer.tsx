@@ -97,7 +97,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
         }}
       >
         <div>
-          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
             Створення
           </span>
           <Heading level={3} style={{ marginTop: '4px' }}>
@@ -175,7 +175,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel 
           onPatternChange={setPattern}
         />
         {attemptedSubmit && (!pattern.trim() || !behavior.trim()) && (
-          <div style={{ fontSize: '11px', color: 'var(--color-text-red)', marginTop: '6px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-red)', marginTop: '6px' }}>
             {!pattern.trim() && !behavior.trim()
               ? "Оберіть патерн та введіть інструкцію поведінки"
               : !pattern.trim()

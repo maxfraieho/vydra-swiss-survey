@@ -236,7 +236,7 @@ export const SurveyOps: React.FC = () => {
         </Heading>
         <span
           style={{
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
             padding: '4px 10px',
             borderRadius: '999px',
@@ -304,7 +304,7 @@ export const SurveyOps: React.FC = () => {
                 <div style={{ color: 'var(--color-text-primary)', fontWeight: 600, fontSize: '13px' }}>
                   {task.profile_name} — {task.reward} ({task.duration})
                 </div>
-                <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', wordBreak: 'break-all' }}>{task.url}</div>
+                <div style={{ color: 'var(--color-text-tertiary)', fontSize: '12px', wordBreak: 'break-all' }}>{task.url}</div>
               </div>
               <button
                 style={buttonStyle}
@@ -330,7 +330,7 @@ export const SurveyOps: React.FC = () => {
               <strong>{status.profile}</strong> — {status.reward} ({status.duration})
             </div>
             {status.url && (
-              <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', wordBreak: 'break-all' }}>{status.url}</div>
+              <div style={{ color: 'var(--color-text-tertiary)', fontSize: '12px', wordBreak: 'break-all' }}>{status.url}</div>
             )}
 
             {status.status === 'waiting_auth' && countdown > 0 && (

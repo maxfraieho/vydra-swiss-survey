@@ -170,7 +170,7 @@ export const PersonasPanel: React.FC = () => {
                 </span>
                 <span
                   style={{
-                    fontSize: '10px',
+                    fontSize: '12px',
                     fontWeight: 700,
                     padding: '2px 6px',
                     borderRadius: '4px',
@@ -200,7 +200,7 @@ export const PersonasPanel: React.FC = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-emphasized)', paddingBottom: '12px' }}>
           <div>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
               {selectedKey ? 'Редагування' : 'Створення'}
             </span>
             <Heading level={3} style={{ marginTop: '2px', fontSize: '16px' }}>
@@ -268,7 +268,7 @@ export const PersonasPanel: React.FC = () => {
             placeholder="Введіть опис персони у форматі Markdown..."
             rows={8}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: 'var(--color-text-disabled)' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '12px', color: 'var(--color-text-disabled)' }}>
             {charCount} символів
           </div>
         </div>

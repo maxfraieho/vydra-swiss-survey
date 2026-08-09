@@ -135,7 +135,7 @@ export const Compare: React.FC = () => {
                     <TableCell>
                       <span
                         style={{
-                          fontSize: '10px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: '4px',
@@ -149,9 +149,9 @@ export const Compare: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       {r.effective ? (
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-blue)' }}>✅ win</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
                       )}
                     </TableCell>
                     <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{r.confidence}</TableCell>

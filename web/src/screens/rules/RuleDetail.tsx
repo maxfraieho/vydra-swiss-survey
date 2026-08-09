@@ -69,7 +69,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
     <Card padding={5}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid var(--color-border-emphasized)', paddingBottom: '12px' }}>
         <div>
-          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
             Правило #{rule.id}
           </span>
           <Heading level={3} style={{ marginTop: '4px', fontSize: '18px' }}>
@@ -101,7 +101,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
         <span
           style={{
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
             padding: '3px 8px',
             borderRadius: '4px',
@@ -116,7 +116,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
 
         <span
           style={{
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
             padding: '3px 8px',
             borderRadius: '4px',
@@ -128,22 +128,22 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
           {rule.effective ? '✅ Ефективне' : `⚠️ Затінене #${rule.shadowed_by}`}
         </span>
 
-        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
+        <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
           Хост: <strong>{rule.host}</strong>
         </span>
 
-        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
+        <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
           Персона: <strong>{rule.persona}</strong>
         </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px', fontSize: '12px' }}>
         <Card variant="muted" padding={3}>
-          <span style={{ color: 'var(--color-text-tertiary)', display: 'block', fontSize: '11px' }}>Поведінка (Behavior)</span>
+          <span style={{ color: 'var(--color-text-tertiary)', display: 'block', fontSize: '12px' }}>Поведінка (Behavior)</span>
           <Markdown density="compact" headingLevelStart={4}>{rule.behavior}</Markdown>
         </Card>
         <Card variant="muted" padding={3}>
-          <span style={{ color: 'var(--color-text-tertiary)', display: 'block', fontSize: '11px' }}>Джерело / Confidence</span>
+          <span style={{ color: 'var(--color-text-tertiary)', display: 'block', fontSize: '12px' }}>Джерело / Confidence</span>
           <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{rule.source} ({rule.confidence})</span>
         </Card>
       </div>
@@ -159,7 +159,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose }) => {
               border: '1px solid var(--color-border-emphasized)',
               borderRadius: '8px',
               padding: '12px',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--color-text-secondary)',
               overflowX: 'auto',
               maxHeight: '180px',

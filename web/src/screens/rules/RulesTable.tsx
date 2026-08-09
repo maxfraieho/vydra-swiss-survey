@@ -290,9 +290,9 @@ export const RulesTable: React.FC = () => {
                       <TableCell><Badge variant={statusVariant} label={r.status} /></TableCell>
                       <TableCell>
                         {r.effective ? (
-                          <span style={{ fontSize: '11px', color: 'var(--color-text-blue)' }}>✅ win</span>
+                          <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
                         ) : (
-                          <span style={{ fontSize: '11px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
                         )}
                       </TableCell>
                       <TableCell style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{r.confidence}</TableCell>

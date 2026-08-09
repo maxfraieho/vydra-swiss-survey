@@ -85,7 +85,7 @@ export const TraceDetail: React.FC<TraceDetailProps> = ({ runId, onClose }) => {
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
         <span
           style={{
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
             padding: '3px 8px',
             borderRadius: '4px',
@@ -96,10 +96,10 @@ export const TraceDetail: React.FC<TraceDetailProps> = ({ runId, onClose }) => {
         >
           {trace.outcome || 'unknown'}
         </span>
-        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
+        <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
           Хост: <strong>{trace.host}</strong>
         </span>
-        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
+        <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '4px', background: 'var(--color-background-muted)', color: 'var(--color-text-secondary)' }}>
           Персона: <strong>{trace.persona}</strong>
         </span>
       </div>
@@ -126,11 +126,11 @@ export const TraceDetail: React.FC<TraceDetailProps> = ({ runId, onClose }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
             {steps.map((step, idx) => (
               <div key={idx} style={{ background: 'var(--color-background-page)', border: '1px solid var(--color-border-emphasized)', borderRadius: '8px', padding: '10px', fontSize: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-disabled)', fontSize: '11px', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-disabled)', fontSize: '12px', marginBottom: '4px' }}>
                   <span>Крок #{idx + 1}</span>
                   {step.action && <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>{step.action}</span>}
                 </div>
-                <pre style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                <pre style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {typeof step === 'string' ? step : JSON.stringify(step, null, 2)}
                 </pre>
               </div>

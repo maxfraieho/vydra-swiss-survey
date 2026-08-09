@@ -184,7 +184,7 @@ export const Traces: React.FC = () => {
                       <TableCell>
                         <span
                           style={{
-                            fontSize: '10px',
+                            fontSize: '12px',
                             fontWeight: 700,
                             padding: '2px 6px',
                             borderRadius: '4px',

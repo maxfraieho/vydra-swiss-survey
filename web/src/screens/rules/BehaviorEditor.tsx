@@ -129,7 +129,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                         {!rule.patternIsKnown && (
                           <span
                             style={{
-                              fontSize: '11px',
+                              fontSize: '12px',
                               fontWeight: 600,
                               padding: '2px 6px',
                               borderRadius: '4px',
@@ -179,7 +179,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
                       Нерозпізнані рядки:
                     </div>
                     {parseResult.globalUnparsed.map((u, uIdx) => (
-                      <div key={uIdx} style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-text-disabled)' }}>
+                      <div key={uIdx} style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--color-text-disabled)' }}>
                         L{u.line}: "{u.text}" — {u.reason}
                       </div>
                     ))}

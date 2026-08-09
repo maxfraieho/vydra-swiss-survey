@@ -80,7 +80,7 @@ export const Conflicts: React.FC = () => {
           {data?.conflicts.map((group, idx) => (
             <Card key={idx} padding={4}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#ef4444', color: '#fff', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '12px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#ef4444', color: '#fff', textTransform: 'uppercase' }}>
                   КОНФЛІКТ #{idx + 1}
                 </span>
                 <span style={{ fontSize: '13px', color: 'var(--color-text-primary)', fontWeight: 700 }}>
