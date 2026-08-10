@@ -42,3 +42,12 @@ This project is indexed by GitNexus as **vydra-swiss-survey** (153 symbols, 418 
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## Caveman Skill — Mandatory, First Priority
+
+**MUST** invoke skill `caveman:caveman` (mode `full`) at the very start of any session/task in this repo, before any other skill or exploration step. This is the token-conservation directive for this project — every session working on `vydra-swiss-survey` runs under caveman brevity rules until told `stop caveman`/`normal mode`.
+
+- Load `caveman:caveman` first, ahead of `gitnexus`, `Explore`, or any other skill in the listing.
+- All response text (not code/commits/docs) stays terse per caveman rules — see global `~/.claude/CLAUDE.md` for the full ruleset.
+- Marketplace source: `JuliusBrussee/caveman` (GitHub). If the plugin isn't enabled for the current agent/host, enable it (`enabledPlugins: {"caveman@caveman": true}`) before proceeding — do not skip this step to save a permission prompt.
+- This directive does not relax the gitnexus MUST-rules above (impact analysis, detect_changes) — caveman controls response *style*, gitnexus controls edit *safety*. Both apply simultaneously.
