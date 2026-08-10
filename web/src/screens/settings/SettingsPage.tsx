@@ -10,8 +10,9 @@ import { PatternsPanel } from './PatternsPanel';
 import { ProvidersPanel } from './ProvidersPanel';
 import { AISourcePanel } from './AISourcePanel';
 import { BrowserSourcesPanel } from './BrowserSourcesPanel';
+import { TelegramSettingsPanel } from './TelegramSettingsPanel';
 
-type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers' | 'ai-source' | 'browser';
+type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers' | 'ai-source' | 'browser' | 'telegram';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('hosts');
@@ -43,6 +44,7 @@ export const SettingsPage: React.FC = () => {
           <Tab value="providers" label="Провайдери" />
           <Tab value="ai-source" label="Модель ШІ" />
           <Tab value="browser" label="Браузер" />
+          <Tab value="telegram" label="Telegram" />
         </TabList>
       </Card>
 
@@ -53,6 +55,7 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'providers' && <ProvidersPanel />}
       {activeTab === 'ai-source' && <AISourcePanel />}
       {activeTab === 'browser' && <BrowserSourcesPanel />}
+      {activeTab === 'telegram' && <TelegramSettingsPanel />}
     </VStack>
   );
 };

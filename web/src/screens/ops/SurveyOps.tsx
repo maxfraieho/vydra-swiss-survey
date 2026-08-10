@@ -248,7 +248,18 @@ export const SurveyOps: React.FC = () => {
   };
 
   const handleFetchTelegram = () => {
-    runAction('fetch_telegram', () => apiFetch('/api/survey/fetch_telegram', { method: 'POST' }));
+    runAction('fetch_telegram', async () => {
+      const res = await apiFetch('/api/survey/fetch_telegram', { method: 'POST' });
+      const processed = (res as any)?.processed ?? 0;
+      toast({ body: processed > 0 ? `Оброблено нових: ${processed}` : 'Нових опитувань немає' });
+    });
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (!confirm('Видалити це завдання з черги?')) return;
+    runAction(`delete_task:${taskId}`, () =>
+      apiFetch(`/api/survey/pending_tasks/${taskId}`, { method: 'DELETE' })
+    );
   };
 
   const handleSelectTask = (taskId: string) => {
@@ -438,13 +449,22 @@ export const SurveyOps: React.FC = () => {
                 </div>
                 <div style={{ color: 'var(--color-text-tertiary)', fontSize: '12px', wordBreak: 'break-all' }}>{task.url}</div>
               </div>
-              <button
-                style={buttonStyle}
-                onClick={() => handleSelectTask(task.id)}
-                disabled={busy === `select_task:${task.id}`}
-              >
-                ⚡ Запустити
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  style={buttonStyle}
+                  onClick={() => handleSelectTask(task.id)}
+                  disabled={busy === `select_task:${task.id}`}
+                >
+                  ⚡ Запустити
+                </button>
+                <button
+                  style={dangerButtonStyle ?? secondaryButtonStyle}
+                  onClick={() => handleDeleteTask(task.id)}
+                  disabled={busy === `delete_task:${task.id}`}
+                >
+                  🗑
+                </button>
+              </div>
             </div>
           ))}
         </div>
