@@ -30,7 +30,7 @@ sessionStorage.removeItem('astryx_api_token');
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <Theme theme={neutralTheme}>
+    <Theme theme={neutralTheme} mode="dark">
       <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/" element={<AppShell />}>
