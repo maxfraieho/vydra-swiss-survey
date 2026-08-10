@@ -12,6 +12,7 @@ from flask import Flask, jsonify, request, render_template_string, send_file, re
 from rules_api import rules_bp
 from settings_api import settings_bp
 from auth import auth_bp, is_authed, _site_secret
+import persona_graph_memory
 
 app = Flask(__name__)
 app.secret_key = "astryx_swiss_survey_secret_key_5005"
@@ -49,7 +50,14 @@ def global_auth_gate():
     resp.headers["Vary"] = "Cookie"
     return resp
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok")
+def get_telegram_bot_token() -> str:
+    return (
+        os.environ.get("TELEGRAM_BOT_TOKEN")
+        or persona_graph_memory.get_setting("telegram_bot_token")
+        or "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok"
+    )
+
+TELEGRAM_BOT_TOKEN = get_telegram_bot_token()
 
 PROFILES = {
     "arno": {"name": "Арсен", "label": "Arno (Арсен)"},
@@ -90,7 +98,8 @@ def add_log(msg: str):
             ACTIVE_SURVEY_STATE["log_history"].pop(0)
 
 def fetch_telegram_api():
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+    token = get_telegram_bot_token()
+    url = f"https://api.telegram.org/bot{token}/getUpdates"
     try:
         with urllib.request.urlopen(url, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -139,8 +148,20 @@ def push_task_from_text(text: str):
     }
     
     with STATE_LOCK:
-        # Avoid duplicate task entries
-        existing = [t for t in PENDING_TASKS if t["profile"] == profile and t["reward"] == reward and t["status"] == "waiting_auth"]
+        # Avoid duplicate task entries (ignore expired entries)
+        now = datetime.now()
+        existing = []
+        for t in PENDING_TASKS:
+            if t["profile"] == profile and t["reward"] == reward and t["status"] == "waiting_auth":
+                exp_str = t.get("wait_expires_at")
+                if exp_str:
+                    try:
+                        if now < datetime.fromisoformat(exp_str):
+                            existing.append(t)
+                    except Exception:
+                        existing.append(t)
+                else:
+                    existing.append(t)
         if not existing:
             PENDING_TASKS.append(task_item)
             
@@ -162,12 +183,13 @@ def set_active_task_locked(task_item):
     ACTIVE_SURVEY_STATE["wait_expires_at"] = datetime.fromisoformat(task_item["wait_expires_at"])
 
 def telegram_listener_thread():
-    add_log("🤖 Telegram-бот слухач активний (Token: 8090499262:AAE...).")
+    add_log("🤖 Telegram-бот слухач активний.")
     last_update_id = 0
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
     
     while True:
         try:
+            token = get_telegram_bot_token()
+            url = f"https://api.telegram.org/bot{token}/getUpdates"
             params = urllib.parse.urlencode({"offset": last_update_id + 1, "timeout": 20})
             req = urllib.request.Request(f"{url}?{params}")
             with urllib.request.urlopen(req, timeout=25) as resp:
@@ -673,14 +695,32 @@ def select_task_api():
     data = request.get_json(silent=True) or {}
     task_id = data.get("task_id")
     with STATE_LOCK:
+        global PENDING_TASKS
         matching = [t for t in PENDING_TASKS if t["id"] == task_id]
         if matching:
             set_active_task_locked(matching[0])
+            PENDING_TASKS = [t for t in PENDING_TASKS if t["id"] != task_id]
             ACTIVE_SURVEY_STATE["status"] = "starting"
             chosen = matching[0]
     if matching:
         add_log(f"⚡ Задачу '{chosen['profile_name']}' вибрано для виконання.")
         threading.Thread(target=run_survey_execution, args=(chosen["profile"], chosen["url"]), daemon=True).start()
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error", "message": "Task not found"}), 404
+
+@app.route("/api/survey/pending_tasks/<task_id>", methods=["DELETE"])
+def delete_pending_task_api(task_id: str):
+    with STATE_LOCK:
+        global PENDING_TASKS
+        before = len(PENDING_TASKS)
+        PENDING_TASKS = [t for t in PENDING_TASKS if t["id"] != task_id]
+        removed = before != len(PENDING_TASKS)
+        if removed and ACTIVE_SURVEY_STATE.get("active_task_id") == task_id and ACTIVE_SURVEY_STATE["status"] == "waiting_auth":
+            ACTIVE_SURVEY_STATE["status"] = "idle"
+            ACTIVE_SURVEY_STATE["active_task_id"] = None
+            ACTIVE_SURVEY_STATE["wait_expires_at"] = None
+    if removed:
+        add_log(f"🗑 Завдання {task_id} видалено з черги.")
         return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Task not found"}), 404
 
@@ -838,4 +878,6 @@ def stop_api():
 if __name__ == "__main__":
     threading.Thread(target=telegram_listener_thread, daemon=True).start()
     threading.Thread(target=auto_start_timer_thread, daemon=True).start()
-    app.run(host="0.0.0.0", port=5005, debug=False)
+    port = int(os.environ.get("PORT", 5005))
+    app.run(host="0.0.0.0", port=port, debug=False)
+

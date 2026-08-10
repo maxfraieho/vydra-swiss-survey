@@ -552,3 +552,22 @@ def get_probe_status():
     with _PROBE_LOCK:
         return jsonify(_PROBE_STATE)
 
+
+# --- Telegram Token Routes ---
+
+@settings_bp.route("/api/settings/telegram-token", methods=["GET"])
+def get_telegram_token():
+    val = persona_graph_memory.get_setting("telegram_bot_token")
+    return jsonify({"configured": bool(val), "masked": (f"...{val[-4:]}" if val else None)})
+
+
+@settings_bp.route("/api/settings/telegram-token", methods=["POST"])
+def set_telegram_token():
+    data = request.get_json(silent=True) or {}
+    token = (data.get("token") or "").strip()
+    if not token:
+        return jsonify({"error": "token is required"}), 400
+    persona_graph_memory.set_setting("telegram_bot_token", token)
+    return jsonify({"success": True}), 200
+
+
