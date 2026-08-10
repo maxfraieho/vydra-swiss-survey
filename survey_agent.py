@@ -60,7 +60,7 @@ def heavy_state_busy() -> list[str]:
     return [name for name, active in checks.items() if active]
 
 
-def load_persona(profile_key: str, survey_url: str = "") -> str:
+def load_persona(profile_key: str, survey_url: str = "") -> tuple[str, list[int]]:
     from persona_graph_memory import get_persona, get_enhanced_persona
     p = get_persona(profile_key)
     if p is None:
@@ -72,11 +72,12 @@ def load_persona(profile_key: str, survey_url: str = "") -> str:
         if marker in content:
             content = content.split(marker)[0].strip()
             break
+    applied_rule_ids: list[int] = []
     try:
-        content = get_enhanced_persona(profile_key, content, survey_url)
+        content, applied_rule_ids = get_enhanced_persona(profile_key, content, survey_url)
     except Exception as e:
         print(f"[survey_agent] Warning: Failed to apply dynamic memory: {e}", flush=True)
-    return content
+    return content, applied_rule_ids
 
 
 def load_credentials(site_host: str, profile_key: str) -> dict | None:
@@ -157,7 +158,7 @@ def main() -> None:
         )
         sys.exit(409)
 
-    persona = load_persona(args.profile, args.url)
+    persona, applied_rule_ids = load_persona(args.profile, args.url)
     site_host = args.url.split("//", 1)[-1].split("/", 1)[0].replace("www.", "")
     creds = load_credentials(site_host, args.profile)
 
@@ -336,12 +337,17 @@ def main() -> None:
                 dry_run=args.dry_run,
                 hit_max_steps=(stop_reason == "max_steps"),
             )
-            from persona_graph_memory import record_run_trace
+            from persona_graph_memory import record_run_trace, bump_rule_outcome
             record_run_trace(run_id, outcome=outcome, outcome_reason=reason,
-                              final_text=final_text[:2000], steps=trace_steps)
+                              final_text=final_text[:2000], steps=trace_steps,
+                              rules_used=applied_rule_ids)
+
+            if applied_rule_ids:
+                bump_rule_outcome(applied_rule_ids, outcome)
 
             if outcome in ("disqualified", "incomplete", "error"):
                 lessons = reflection.reflect({
+                    "run_id": run_id,
                     "outcome": outcome, "outcome_reason": reason,
                     "steps": trace_steps, "host": site_host, "persona": args.profile,
                 })

@@ -174,6 +174,10 @@ def _connect() -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
+    try:
+        conn.execute("ALTER TABLE run_traces ADD COLUMN rules_used TEXT DEFAULT '[]'")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 
@@ -400,16 +404,26 @@ def start_run_trace(persona: str, url: str) -> str:
 
 
 def record_run_trace(run_id: str, *, outcome: str, outcome_reason: str,
-                      final_text: str, steps: list[dict]) -> None:
+                      final_text: str, steps: list[dict],
+                      rules_used: Optional[list[int]] = None) -> None:
     """Finalize a run_traces row, then prune old traces beyond 40 per host."""
     conn = _connect()
     try:
-        conn.execute(
-            "UPDATE run_traces SET outcome=?, outcome_reason=?, final_text=?, "
-            "steps_json=?, ended_at=? WHERE run_id=?",
-            (outcome, outcome_reason, (final_text or "")[:2000],
-             json.dumps(steps), _now(), run_id),
-        )
+        rules_used_str = json.dumps(rules_used or [])
+        try:
+            conn.execute(
+                "UPDATE run_traces SET outcome=?, outcome_reason=?, final_text=?, "
+                "steps_json=?, rules_used=?, ended_at=? WHERE run_id=?",
+                (outcome, outcome_reason, (final_text or "")[:2000],
+                 json.dumps(steps), rules_used_str, _now(), run_id),
+            )
+        except sqlite3.OperationalError:
+            conn.execute(
+                "UPDATE run_traces SET outcome=?, outcome_reason=?, final_text=?, "
+                "steps_json=?, ended_at=? WHERE run_id=?",
+                (outcome, outcome_reason, (final_text or "")[:2000],
+                 json.dumps(steps), _now(), run_id),
+            )
         conn.commit()
         row = conn.execute("SELECT host FROM run_traces WHERE run_id=?", (run_id,)).fetchone()
         if row is None:
@@ -550,6 +564,13 @@ def list_traces(
                     d["steps_json"] = json.loads(d["steps_json"])
                 except Exception:
                     pass
+            if d.get("rules_used"):
+                try:
+                    d["rules_used"] = json.loads(d["rules_used"])
+                except Exception:
+                    d["rules_used"] = []
+            else:
+                d["rules_used"] = []
             result.append(d)
         return result
     finally:
@@ -557,7 +578,7 @@ def list_traces(
 
 
 def get_trace(run_id: str) -> Optional[dict]:
-    """Fetch a single run_traces row by run_id with parsed steps_json."""
+    """Fetch a single run_traces row by run_id with parsed steps_json and rules_used."""
     conn = _connect()
     conn.row_factory = sqlite3.Row
     try:
@@ -570,6 +591,13 @@ def get_trace(run_id: str) -> Optional[dict]:
                 d["steps_json"] = json.loads(d["steps_json"])
             except Exception:
                 pass
+        if d.get("rules_used"):
+            try:
+                d["rules_used"] = json.loads(d["rules_used"])
+            except Exception:
+                d["rules_used"] = []
+        else:
+            d["rules_used"] = []
         return d
     finally:
         conn.close()
@@ -818,7 +846,7 @@ def set_host_gate(host: str, playbook_mode: str, *, actor: str = "human",
         conn.close()
 
 
-def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = "") -> str:
+def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = "") -> tuple[str, list[int]]:
     """Appends known REAL facts to the base persona text, for the model to
     reuse when a later survey asks about the same topic - a consistency
     aid, not a source of fabricated qualifying answers. If nothing has
@@ -835,6 +863,7 @@ def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = 
     are only consulted when no host_gates row exists at any of those levels -
     they're the old global switch, kept as a fallback for hosts nobody has
     gated yet, not an override of an explicit host_gates decision."""
+    used_rule_ids: list[int] = []
     facts = get_facts(profile_key)
     result = base_persona if not facts else None
 
@@ -857,12 +886,14 @@ def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = 
         if rules:
             rules = sorted(rules, key=lambda r: -r["confidence"])[:12]
             rules_section = "\n\n---\n## 📋 ПРАВИЛА ЦЬОГО СЕРВІСУ\n\n"
+            candidate_ids = []
             for r in rules:
                 suffix = " (людина)" if r["source"] == "human_override" else ""
                 line = f"   * {r['behavior']}{suffix}\n"
                 if len(rules_section) + len(line) > 1500:
                     break
                 rules_section += line
+                candidate_ids.append(r["id"])
 
             gate_active = None
             for lvl in (host, base_domain(host), "*"):
@@ -877,12 +908,13 @@ def get_enhanced_persona(profile_key: str, base_persona: str, survey_url: str = 
 
             if gate_active:
                 result = (result if result is not None else base_persona) + rules_section
+                used_rule_ids = candidate_ids
             else:
                 print(f"[shadow] would-add host_rules section for {host}: "
                       f"sha256={hashlib.sha256(rules_section.encode()).hexdigest()[:12]} "
                       f"({len(rules_section)} chars)", flush=True)
 
-    return result if result is not None else base_persona
+    return (result if result is not None else base_persona), used_rule_ids
 
 
 def record_survey_outcome(profile_key: str, survey_url: str, status: str,
