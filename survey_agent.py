@@ -305,8 +305,11 @@ def main() -> None:
                     stop_reason = "target_not_found"
                     break
             elif action == "type":
-                if target:
-                    client.click_by_text(target)
+                if target and not client.click_by_text(target):
+                    log(f"Could not find an element matching target_text={target!r} — "
+                        f"stopping this run rather than typing into the wrong field.")
+                    stop_reason = "target_not_found"
+                    break
                 client.type_text(value)
             elif action == "scroll":
                 client.scroll()

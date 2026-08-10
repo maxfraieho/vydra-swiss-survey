@@ -248,7 +248,7 @@ class CDPClient:
   }
 
   function textOf(el) {
-    return (el.innerText || el.value || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-value') || '').trim();
+    return (el.innerText || el.value || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-value') || el.getAttribute('placeholder') || '').trim();
   }
 
   function isVisible(el) {

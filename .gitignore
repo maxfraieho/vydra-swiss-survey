@@ -4,3 +4,5 @@ __pycache__/
 *.log
 survey-agent.pid
 docs/reports/
+backups/
+scratch/

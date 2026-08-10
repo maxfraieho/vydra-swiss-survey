@@ -740,19 +740,23 @@ def override_step_api():
             sys.path.insert(0, os.path.expanduser("~/vydra-swiss-survey"))
             rule_val = f"{target} ({explanation})" if explanation else target
             pattern = ACTIVE_SURVEY_STATE.get("pending_pattern")
-            if pattern:
-                from persona_graph_memory import record_host_rule, norm_host
-                host = norm_host(ACTIVE_SURVEY_STATE.get("url", ""))
-                record_host_rule(host, pattern, rule_val, persona=profile, source="human_override",
-                                  status="active", confidence=0.9,
-                                  evidence={"target": target, "explanation": explanation,
-                                            "page_text": ACTIVE_SURVEY_STATE.get("pending_page_text", "")[:300]})
-                add_log(f"🧠 Записано host_rule [{profile}@{host}] pattern={pattern}: {rule_val}")
-            else:
-                from persona_graph_memory import record_fact
-                topic = f"rule_{int(time.time())}"
-                record_fact(profile, topic, rule_val, ACTIVE_SURVEY_STATE.get("url", ""))
-                add_log(f"🧠 Записано нове правило в Graph Memory [{profile}]: {topic} = {rule_val}")
+            from persona_graph_memory import record_host_rule, norm_host
+            host = norm_host(ACTIVE_SURVEY_STATE.get("url", ""))
+            if not pattern:
+                # No detected survey-question topic (reflection.detect_pattern
+                # only recognizes qualifying-answer topics like "tobacco" -
+                # navigation/login corrections on a brand-new host never get
+                # one). Derive a host-scoped pattern from the target text
+                # instead of the old record_fact() fallback, so navigation
+                # corrections become real host_rules too - persona-scoped
+                # facts had no host_gates control and bled into every host.
+                slug = re.sub(r"[^a-z0-9]+", "_", target.lower()).strip("_")[:40]
+                pattern = f"nav:{slug}" if slug else f"nav:step{data.get('step')}"
+            record_host_rule(host, pattern, rule_val, persona=profile, source="human_override",
+                              status="active", confidence=0.9,
+                              evidence={"target": target, "explanation": explanation,
+                                        "page_text": ACTIVE_SURVEY_STATE.get("pending_page_text", "")[:300]})
+            add_log(f"🧠 Записано host_rule [{profile}@{host}] pattern={pattern}: {rule_val}")
         except Exception as e:
             add_log(f"Помилка запису правила у Graph Memory: {e}")
 
