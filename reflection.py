@@ -184,6 +184,7 @@ def reflect(trace: dict, *, use_llm: bool = False, vision=None) -> list[dict]:
             "behavior": behavior,
             "confidence": confidence,
             "evidence": {
+                "run_id": trace.get("run_id"),
                 "outcome_reason": trace.get("outcome_reason"),
                 "step": step.get("s"),
                 "question": (step.get("q") or "")[:120],
