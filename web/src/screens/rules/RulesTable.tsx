@@ -29,6 +29,10 @@ export interface RuleRow {
   source: string;
   status: 'active' | 'shadow' | 'retired';
   confidence: number;
+  hits?: number;
+  wins?: number;
+  losses?: number;
+  confirmed_runs?: number;
   created_at?: string;
   effective?: boolean;
   shadowed_by?: number | null;
@@ -174,6 +178,9 @@ export const RulesTable: React.FC = () => {
               <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
             )}
             <Badge variant={statusVariant} label={r.status} />
+            {r.confirmed_runs !== undefined && (
+              <Badge variant="info" label={`Підтверджено: ${r.confirmed_runs}`} />
+            )}
           </div>
         </div>
         <MetadataList columns={1} label={{ position: 'start' }}>

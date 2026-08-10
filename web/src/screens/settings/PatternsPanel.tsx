@@ -29,13 +29,17 @@ export const PatternsPanel: React.FC = () => {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [patternToDelete, setPatternToDelete] = useState<PatternRow | null>(null);
 
-  const formatKeywords = (kwStr: string): string => {
-    if (!kwStr) return '—';
-    try {
-      const parsed = JSON.parse(kwStr);
-      if (Array.isArray(parsed)) return parsed.join(', ');
-    } catch {}
-    return kwStr;
+  const formatKeywords = (kw: any): string => {
+    if (!kw) return '—';
+    if (Array.isArray(kw)) return kw.join(', ');
+    if (typeof kw === 'string') {
+      try {
+        const parsed = JSON.parse(kw);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch {}
+      return kw;
+    }
+    return String(kw);
   };
 
   const handleCreate = async (e: React.FormEvent) => {

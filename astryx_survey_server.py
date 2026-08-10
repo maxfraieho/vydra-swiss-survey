@@ -805,26 +805,45 @@ def override_step_api():
 
     if target:
         try:
-            sys.path.insert(0, os.path.expanduser("~/vydra-swiss-survey"))
+            POSITIONAL_RE = re.compile(r'(every-\d+|item\d+|nth-child|every\s+\d+|option\[\d+\])', re.IGNORECASE)
+            confirm_positional = data.get("confirm_positional", False)
             rule_val = f"{target} ({explanation})" if explanation else target
+
+            if POSITIONAL_RE.search(rule_val) and not confirm_positional:
+                return jsonify({
+                    "error": "positional_heuristic_detected",
+                    "message": "Виявлено позиційний селектор (наприклад item30 або every-3rd). Позиційні правила крихкі і можуть зламатися при зміні верстки.",
+                    "requires_confirmation": True,
+                    "rule_val": rule_val
+                }), 422
+
             pattern = ACTIVE_SURVEY_STATE.get("pending_pattern")
             from persona_graph_memory import record_host_rule, norm_host
             host = norm_host(ACTIVE_SURVEY_STATE.get("url", ""))
             if not pattern:
-                # No detected survey-question topic (reflection.detect_pattern
-                # only recognizes qualifying-answer topics like "tobacco" -
-                # navigation/login corrections on a brand-new host never get
-                # one). Derive a host-scoped pattern from the target text
-                # instead of the old record_fact() fallback, so navigation
-                # corrections become real host_rules too - persona-scoped
-                # facts had no host_gates control and bled into every host.
                 slug = re.sub(r"[^a-z0-9]+", "_", target.lower()).strip("_")[:40]
                 pattern = f"nav:{slug}" if slug else f"nav:step{data.get('step')}"
-            record_host_rule(host, pattern, rule_val, persona=profile, source="human_override",
-                              status="active", confidence=0.9,
-                              evidence={"target": target, "explanation": explanation,
-                                        "page_text": ACTIVE_SURVEY_STATE.get("pending_page_text", "")[:300]})
-            add_log(f"🧠 Записано host_rule [{profile}@{host}] pattern={pattern}: {rule_val}")
+
+            is_fragile = bool(POSITIONAL_RE.search(rule_val))
+            task_id = ACTIVE_SURVEY_STATE.get("active_task_id", "")
+            evidence = {
+                "target": target,
+                "explanation": explanation,
+                "run_id": task_id,
+                "page_text": ACTIVE_SURVEY_STATE.get("pending_page_text", "")[:300],
+                "fragile": "positional" if is_fragile else None
+            }
+            record_host_rule(
+                host, 
+                pattern, 
+                rule_val, 
+                persona=profile, 
+                source="human_override",
+                status="shadow", 
+                confidence=0.9,
+                evidence=evidence
+            )
+            add_log(f"🧠 Записано host_rule [{profile}@{host}] (shadow) pattern={pattern}: {rule_val}")
         except Exception as e:
             add_log(f"Помилка запису правила у Graph Memory: {e}")
 

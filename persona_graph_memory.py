@@ -166,6 +166,35 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value               TEXT,
     updated_at          TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS rule_applications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id     INTEGER NOT NULL REFERENCES host_rules(id) ON DELETE CASCADE,
+    run_id      TEXT NOT NULL,
+    outcome     TEXT NOT NULL,
+    applied_at  TEXT NOT NULL,
+    UNIQUE(rule_id, run_id)
+);
+CREATE INDEX IF NOT EXISTS idx_rule_apps_rule_run ON rule_applications(rule_id, run_id);
+
+CREATE TABLE IF NOT EXISTS async_review_queue (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          TEXT NOT NULL UNIQUE,
+    host            TEXT NOT NULL,
+    persona         TEXT NOT NULL,
+    outcome         TEXT NOT NULL,
+    reason          TEXT,
+    triage_category TEXT DEFAULT 'pending'
+                    CHECK(triage_category IN ('pending', 'text_normalization_mismatch', 'dom_structure_change', 'navigation_timeout', 'unclassified')),
+    triage_notes    TEXT,
+    status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending', 'in_review', 'resolved', 'ignored')),
+    created_at      TEXT NOT NULL,
+    reviewed_at     TEXT,
+    reviewer_note   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_async_queue_status ON async_review_queue(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_async_queue_triage ON async_review_queue(triage_category);
 """
 
 # Phase U3 (plan-ui-astryx-addendum.md): valid host_rules.status values for the
@@ -190,6 +219,10 @@ def _connect() -> sqlite3.Connection:
     conn.executescript(SCHEMA)
     try:
         conn.execute("ALTER TABLE run_traces ADD COLUMN rules_used TEXT DEFAULT '[]'")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE host_rules ADD COLUMN provider_id INTEGER REFERENCES providers(id)")
     except sqlite3.OperationalError:
         pass
     return conn
@@ -317,69 +350,97 @@ def record_host_rule(host: str, pattern: str, behavior: str, *,
         conn.close()
 
 
-def get_host_rules(host: str, persona: str, include_shadow: bool = False) -> list[dict]:
-    """Rules for `host`, most specific first: exact host > base_domain(host) > '*';
-    within each level, persona-specific beats '*'. Deduped by pattern (most specific
-    row kept), sorted human_override > seed > self_reflection, then confidence desc."""
+def get_host_rules(
+    host: str, 
+    persona: str = "", 
+    include_shadow: bool = False,
+    active_run_id: str = ""
+) -> list[dict]:
+    """Fetch host rules with exact priority score:
+    exact host (4) > base domain (3) > provider_id (2) > wildcard * (1).
+    Deduplicates per pattern so highest priority rule wins.
+    Fully parameterized query preventing SQL injection."""
     conn = _connect()
     conn.row_factory = sqlite3.Row
     try:
-        h = norm_host(host)
-        levels: list[str] = []
-        for lvl in (h, base_domain(h), "*"):
-            if lvl not in levels:
-                levels.append(lvl)
-        placeholders = ",".join("?" for _ in levels)
-        query = f"SELECT * FROM host_rules WHERE host IN ({placeholders}) AND persona IN (?, '*')"
-        params: list = list(levels) + [persona]
-        if not include_shadow:
-            query += " AND status != 'shadow'"
-        rows = [dict(r) for r in conn.execute(query, params).fetchall()]
+        norm = norm_host(host)
+        base = base_domain(norm)
+        provider_id = None
+        
+        p_row = conn.execute(
+            "SELECT provider_id FROM hosts WHERE hostname = ? OR hostname = ?", 
+            (norm, base)
+        ).fetchone()
+        if p_row and p_row["provider_id"]:
+            provider_id = p_row["provider_id"]
+
+        params = [norm, base, provider_id, persona, norm, base, provider_id, persona]
+
+        if include_shadow:
+            status_clause = "status IN ('active', 'shadow')"
+        elif active_run_id:
+            status_clause = "(status = 'active' OR (status = 'shadow' AND json_extract(evidence, '$.run_id') = ?))"
+            params.append(active_run_id)
+        else:
+            status_clause = "status = 'active'"
+
+        sql = f"""
+            SELECT *,
+                (CASE 
+                    WHEN host = ? THEN 4
+                    WHEN host = ? THEN 3
+                    WHEN (provider_id IS NOT NULL AND provider_id = ?) THEN 2
+                    WHEN host = '*' THEN 1
+                    ELSE 0
+                 END) AS host_score,
+                (CASE 
+                    WHEN persona = ? THEN 2
+                    ELSE 1
+                 END) AS persona_score
+            FROM host_rules
+            WHERE (host = ? OR host = ? OR (provider_id IS NOT NULL AND provider_id = ?) OR host = '*')
+              AND (persona = ? OR persona = '*' OR persona = '' OR persona IS NULL)
+              AND {status_clause}
+            ORDER BY host_score DESC, persona_score DESC, confidence DESC, id ASC
+        """
+        rows = conn.execute(sql, params).fetchall()
+
+        seen_patterns = set()
+        winning_rules = []
+        for r in rows:
+            rule_dict = dict(r)
+            pat = rule_dict["pattern"]
+            if pat not in seen_patterns:
+                seen_patterns.add(pat)
+                winning_rules.append(rule_dict)
+
+        return winning_rules
     finally:
         conn.close()
 
-    source_rank = {"human_override": 0, "seed": 1, "self_reflection": 2}
 
-    def sort_key(r):
-        return (
-            levels.index(r["host"]),
-            0 if r["persona"] == persona else 1,
-            source_rank.get(r["source"], 3),
-            -r["confidence"],
-        )
-
-    rows.sort(key=sort_key)
-
-    seen_patterns: set = set()
-    deduped = []
-    for r in rows:
-        if r["pattern"] in seen_patterns:
-            continue
-        seen_patterns.add(r["pattern"])
-        deduped.append(r)
-    return deduped
-
-
-def bump_rule_outcome(rule_ids: list[int], outcome: str) -> None:
-    """Increment wins/losses for `rule_ids` based on `outcome`, then promote
-    shadow rules to active (if enabled) or retire consistently-losing ones.
-
-    Phase U4 (plan-ui-astryx-addendum.md §2.3, variant B): the shadow->active
-    auto-promote gate is now per-host via host_gates.playbook_mode=='active',
-    not the global VYDRA_PLAYBOOK env var - "turn playbook on for one verified
-    host" was impossible before this. host is read off each rule's own row
-    (host_rules.host), so a '*'-scoped rule is gated by host_gates['*']."""
-    if outcome not in ("completed", "disqualified"):
+def bump_rule_outcome(rule_ids: list[int], outcome: str, run_id: str = "") -> None:
+    """Increment wins/losses for `rule_ids` based on `outcome`, record entry in
+    rule_applications, then promote shadow rules or retire consistently-losing ones.
+    Ignores UNKNOWN outcomes to prevent skewing stats."""
+    if not rule_ids or not outcome or outcome.upper() == "UNKNOWN":
         return
     conn = _connect()
     try:
+        now_str = _now()
+        is_win = (outcome.lower() == "completed")
+        field = "wins" if is_win else "losses"
+        
         for rid in rule_ids:
-            if outcome == "completed":
-                conn.execute("UPDATE host_rules SET wins = wins + 1, updated_at=? WHERE id=?",
-                             (_now(), rid))
-            else:
-                conn.execute("UPDATE host_rules SET losses = losses + 1, updated_at=? WHERE id=?",
-                             (_now(), rid))
+            conn.execute(
+                f"UPDATE host_rules SET {field} = {field} + 1, updated_at = ? WHERE id = ?",
+                (now_str, rid)
+            )
+            if run_id:
+                conn.execute(
+                    "INSERT OR IGNORE INTO rule_applications (rule_id, run_id, outcome, applied_at) VALUES (?, ?, ?, ?)",
+                    (rid, run_id, outcome.lower(), now_str)
+                )
             row = conn.execute(
                 "SELECT host, status, confidence, wins, losses FROM host_rules WHERE id=?", (rid,)
             ).fetchone()
@@ -392,11 +453,40 @@ def bump_rule_outcome(rule_ids: list[int], outcome: str) -> None:
             host_active = bool(gate) and gate[0] == "active"
             if status == "shadow" and wins >= 1 and confidence >= 0.6 and host_active:
                 conn.execute("UPDATE host_rules SET status='active', updated_at=? WHERE id=?",
-                             (_now(), rid))
+                             (now_str, rid))
             elif losses >= 3 and losses > wins:
                 conn.execute("UPDATE host_rules SET status='retired', updated_at=? WHERE id=?",
-                             (_now(), rid))
+                             (now_str, rid))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def auto_promote_rules(min_unique_runs: int = 3) -> int:
+    """Promotes shadow rules to active ONLY if they are confirmed across
+    at least min_unique_runs distinct completed runs in rule_applications."""
+    conn = _connect()
+    try:
+        now_str = _now()
+        cur = conn.execute(
+            """
+            UPDATE host_rules 
+            SET status = 'active', updated_at = ? 
+            WHERE status = 'shadow' 
+              AND wins >= ? 
+              AND wins > (losses * 2)
+              AND (
+                  SELECT COUNT(DISTINCT run_id)
+                  FROM rule_applications
+                  WHERE rule_applications.rule_id = host_rules.id
+                    AND LOWER(outcome) = 'completed'
+              ) >= ?
+            """,
+            (now_str, min_unique_runs, min_unique_runs)
+        )
+        promoted_count = cur.rowcount
+        conn.commit()
+        return promoted_count
     finally:
         conn.close()
 
@@ -420,7 +510,8 @@ def start_run_trace(persona: str, url: str) -> str:
 def record_run_trace(run_id: str, *, outcome: str, outcome_reason: str,
                       final_text: str, steps: list[dict],
                       rules_used: Optional[list[int]] = None) -> None:
-    """Finalize a run_traces row, then prune old traces beyond 40 per host."""
+    """Finalize a run_traces row, enqueue into async_review_queue if failed,
+    then prune old traces beyond 40 per host."""
     conn = _connect()
     try:
         rules_used_str = json.dumps(rules_used or [])
@@ -439,17 +530,31 @@ def record_run_trace(run_id: str, *, outcome: str, outcome_reason: str,
                  json.dumps(steps), _now(), run_id),
             )
         conn.commit()
-        row = conn.execute("SELECT host FROM run_traces WHERE run_id=?", (run_id,)).fetchone()
-        if row is None:
-            return
-        host = row[0]
-        conn.execute(
-            "DELETE FROM run_traces WHERE host=? AND run_id NOT IN ("
-            "  SELECT run_id FROM run_traces WHERE host=? ORDER BY started_at DESC LIMIT 40"
-            ")",
-            (host, host),
-        )
-        conn.commit()
+        row = conn.execute("SELECT host, persona FROM run_traces WHERE run_id=?", (run_id,)).fetchone()
+        if row is not None:
+            host, persona = row[0], row[1]
+            
+            # Enqueue failed run into async_review_queue
+            if outcome and outcome.lower() != "completed":
+                conn.execute(
+                    """
+                    INSERT INTO async_review_queue (run_id, host, persona, outcome, reason, triage_category, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?)
+                    ON CONFLICT(run_id) DO UPDATE SET
+                        outcome=excluded.outcome,
+                        reason=excluded.reason
+                    """,
+                    (run_id, host, persona, outcome, outcome_reason or "", _now())
+                )
+                conn.commit()
+
+            conn.execute(
+                "DELETE FROM run_traces WHERE host=? AND run_id NOT IN ("
+                "  SELECT run_id FROM run_traces WHERE host=? ORDER BY started_at DESC LIMIT 40"
+                ")",
+                (host, host),
+            )
+            conn.commit()
     finally:
         conn.close()
 
@@ -1666,6 +1771,80 @@ def _write_secret_token(token: Optional[str]) -> None:
         os.chmod(TOKEN_SECRET_PATH, 0o600)
     except Exception:
         pass
+
+
+TRIAGE_PROMPT_TEMPLATE = """You are an automated survey failure triage classifier.
+Classify the root cause into EXACTLY ONE category:
+1. "text_normalization_mismatch": Accent/diacritics/case/character differences (e.g. "intensité" vs "intensite").
+2. "dom_structure_change": Missing DOM element, layout changed, modal blocking page.
+3. "navigation_timeout": Network disconnect, CDP timeout, proxy failure, page loading timeout.
+4. "unclassified": Other or screening disqualification.
+
+Failed Run Details:
+Host: {host}
+Outcome: {outcome}
+Reason: {reason}
+Final Page Excerpt: {final_text_excerpt}
+
+Respond with raw JSON only: {{"category": "<one_of_4>", "explanation": "<short_sentence>"}}"""
+
+def auto_triage_pending_queue(limit: int = 10) -> int:
+    """Process pending async_review_queue items using local LLM (Qwen2.5).
+    Uses TRIAGE_LLM_BASE_URL env var. If agent runs on handset/Termux while
+    Ollama is hosted on Orange Pi 5, TRIAGE_LLM_BASE_URL should be set to
+    http://<orange_pi_tailscale_ip>:11434/v1 instead of localhost."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT * FROM async_review_queue WHERE triage_category = 'pending' LIMIT ?", 
+            (limit,)
+        ).fetchall()
+        
+        processed = 0
+        for row in rows:
+            run_id = row["run_id"]
+            t_row = conn.execute("SELECT final_text FROM run_traces WHERE run_id = ?", (run_id,)).fetchone()
+            final_text = (t_row["final_text"] if t_row else "")[:500]
+
+            prompt = TRIAGE_PROMPT_TEMPLATE.format(
+                host=row["host"],
+                outcome=row["outcome"],
+                reason=row["reason"] or "",
+                final_text_excerpt=final_text
+            )
+
+            category = "unclassified"
+            explanation = "Auto-triage fallback"
+
+            try:
+                triage_llm_url = os.environ.get("TRIAGE_LLM_BASE_URL", "http://127.0.0.1:11434/v1") + "/chat/completions"
+                req_payload = json.dumps({
+                    "model": os.environ.get("TRIAGE_LLM_MODEL", "qwen2.5:3b-instruct"),
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.0
+                }).encode("utf-8")
+                
+                req = urllib.request.Request(triage_llm_url, data=req_payload, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=5.0) as resp:
+                    res_data = json.loads(resp.read().decode("utf-8"))
+                    content = res_data["choices"][0]["message"]["content"]
+                    parsed = json.loads(content[content.find("{"):content.rfind("}")+1])
+                    category = parsed.get("category", "unclassified")
+                    explanation = parsed.get("explanation", "")
+            except Exception as err:
+                logger.warning(f"Auto-triage LLM call skipped for run {run_id}: {err}")
+
+            conn.execute(
+                "UPDATE async_review_queue SET triage_category = ?, triage_notes = ? WHERE id = ?",
+                (category, explanation, row["id"])
+            )
+            processed += 1
+        
+        conn.commit()
+        return processed
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

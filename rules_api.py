@@ -115,14 +115,66 @@ def get_rules():
     )
 
     annotated_rules = []
-    for r in raw_rules:
-        eff, shadowed_by = _evaluate_rule_effectiveness(r)
-        r_copy = dict(r)
-        r_copy["effective"] = eff
-        r_copy["shadowed_by"] = shadowed_by
-        annotated_rules.append(r_copy)
+    conn = persona_graph_memory._connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        for r in raw_rules:
+            rule_id = r["id"]
+            conf_row = conn.execute(
+                "SELECT COUNT(DISTINCT run_id) AS cnt FROM rule_applications WHERE rule_id = ? AND LOWER(outcome) = 'completed'",
+                (rule_id,)
+            ).fetchone()
+            confirmed_runs = conf_row["cnt"] if conf_row else 0
+
+            eff, shadowed_by = _evaluate_rule_effectiveness(r)
+            r_copy = dict(r)
+            r_copy["effective"] = eff
+            r_copy["shadowed_by"] = shadowed_by
+            r_copy["confirmed_runs"] = confirmed_runs
+            annotated_rules.append(r_copy)
+    finally:
+        conn.close()
 
     return jsonify(annotated_rules)
+
+
+@rules_bp.route("/api/rules/async_queue", methods=["GET"])
+def get_async_queue():
+    status = request.args.get("status", "pending")
+    category = request.args.get("category")
+    
+    conn = persona_graph_memory._connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        where = ["status = ?"]
+        params = [status]
+        if category and category != "all":
+            where.append("triage_category = ?")
+            params.append(category)
+            
+        sql = f"SELECT * FROM async_review_queue WHERE {' AND '.join(where)} ORDER BY id DESC LIMIT 50"
+        rows = conn.execute(sql, params).fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@rules_bp.route("/api/rules/async_queue/<int:item_id>/resolve", methods=["POST"])
+def resolve_async_item(item_id):
+    data = request.json or {}
+    action = data.get("action", "resolved")
+    note = data.get("note", "")
+    
+    conn = persona_graph_memory._connect()
+    try:
+        conn.execute(
+            "UPDATE async_review_queue SET status = ?, reviewer_note = ?, reviewed_at = ? WHERE id = ?",
+            (action, note, persona_graph_memory._now(), item_id)
+        )
+        conn.commit()
+        return jsonify({"status": "ok"})
+    finally:
+        conn.close()
 
 
 @rules_bp.route("/api/rules/facets", methods=["GET"])
