@@ -223,7 +223,7 @@ def auto_start_timer_thread():
             add_log("⏳ 10 хвилин очікування вичерпано. Автоматичний запуск опитування в автономному режимі!")
             threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
 
-def run_survey_execution(profile: str, url: str):
+def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = None):
     global CURRENT_PROC
     with STATE_LOCK:
         ACTIVE_SURVEY_STATE["status"] = "running"
@@ -231,6 +231,8 @@ def run_survey_execution(profile: str, url: str):
     add_log(f"🚀 Ексклюзивний запуск Gemma 3 4B Survey Agent for {profile}...")
     try:
         cmd = ["bash", os.path.expanduser("~/llm-switch.sh"), "survey", profile, url, "-f"]
+        if resume_tab_url:
+            cmd += ["--resume-tab", resume_tab_url]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         with CURRENT_PROC_LOCK:
             CURRENT_PROC = proc
@@ -707,6 +709,25 @@ def select_task_api():
         threading.Thread(target=run_survey_execution, args=(chosen["profile"], chosen["url"]), daemon=True).start()
         return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Task not found"}), 404
+
+@app.route("/api/survey/resume_tab", methods=["POST"])
+def resume_tab_api():
+    data = request.get_json(silent=True) or {}
+    profile = data.get("profile")
+    tab_url = (data.get("tab_url") or "").strip()
+    if profile not in PROFILES:
+        return jsonify({"status": "error", "message": "Unknown profile"}), 400
+    if not tab_url:
+        return jsonify({"status": "error", "message": "tab_url is required"}), 400
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["status"] = "starting"
+        ACTIVE_SURVEY_STATE["active_task_id"] = None
+        ACTIVE_SURVEY_STATE["profile"] = profile
+        ACTIVE_SURVEY_STATE["url"] = tab_url
+        ACTIVE_SURVEY_STATE["wait_expires_at"] = None
+    add_log(f"🔗 Резюм у відкритій вкладці: {PROFILES[profile]['name']} → {tab_url}")
+    threading.Thread(target=run_survey_execution, args=(profile, tab_url, tab_url), daemon=True).start()
+    return jsonify({"status": "success"})
 
 @app.route("/api/survey/pending_tasks/<task_id>", methods=["DELETE"])
 def delete_pending_task_api(task_id: str):

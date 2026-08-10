@@ -152,6 +152,8 @@ export const SurveyOps: React.FC = () => {
   });
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [resumeProfile, setResumeProfile] = useState<'arno' | 'annet'>('arno');
+  const [resumeUrl, setResumeUrl] = useState<string>('');
   const [overrideAction, setOverrideAction] = useState<'click' | 'type' | 'scroll'>('click');
   const [overrideTarget, setOverrideTarget] = useState('');
   const [overrideValue, setOverrideValue] = useState('');
@@ -268,6 +270,17 @@ export const SurveyOps: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: taskId }),
+      })
+    );
+  };
+
+  const handleResumeTab = () => {
+    if (!resumeUrl.trim()) return;
+    runAction('resume_tab', () =>
+      apiFetch('/api/survey/resume_tab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: resumeProfile, tab_url: resumeUrl.trim() }),
       })
     );
   };
@@ -467,6 +480,50 @@ export const SurveyOps: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Resume in existing tab */}
+      <Card padding={4}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <Heading level={2} style={sectionTitleStyle}>🔗 Продовжити в існуючій вкладці</Heading>
+        </div>
+        <div style={{ display: 'flex', flexDirection: isNarrow ? 'column' : 'row', gap: '10px', alignItems: isNarrow ? 'stretch' : 'center' }}>
+          <select
+            value={resumeProfile}
+            onChange={(e) => setResumeProfile(e.target.value as 'arno' | 'annet')}
+            style={{
+              background: 'var(--color-background-page)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              padding: '8px 10px',
+              color: 'var(--color-text-primary)',
+              fontSize: '13px',
+              minWidth: '150px',
+            }}
+          >
+            <option value="arno">{formatPersonaName('arno')}</option>
+            <option value="annet">{formatPersonaName('annet')}</option>
+          </select>
+
+          <input
+            type="text"
+            placeholder="URL відкритої вкладки (напр. https://meinungsplatz.ch/...)"
+            value={resumeUrl}
+            onChange={(e) => setResumeUrl(e.target.value)}
+            style={inputStyle}
+          />
+
+          <button
+            style={{
+              ...buttonStyle,
+              whiteSpace: 'nowrap',
+            }}
+            onClick={handleResumeTab}
+            disabled={busy === 'resume_tab' || !resumeUrl.trim()}
+          >
+            ▶️ Продовжити в цій вкладці
+          </button>
         </div>
       </Card>
 

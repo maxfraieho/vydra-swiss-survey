@@ -150,6 +150,30 @@ class CDPClient:
         self._prune_stray_tabs()
         return False
 
+    def attach_exact_tab(self, url: str) -> bool:
+        """Attaches to a tab whose URL matches `url` exactly or as a substring
+        (handles trailing query-param drift on the same page). Raises CDPError
+        if no matching tab is found — no blind fallback to opening a new tab or
+        grabbing an unrelated one, per this file's existing convention (see
+        attach_or_open_tab's no-fallback comment above)."""
+        r = requests.get(f"{self.base}/json/list", timeout=5)
+        r.raise_for_status()
+        tabs = [t for t in r.json() if t.get("type") == "page"]
+        matched = [t for t in tabs if t.get("url") == url] or [t for t in tabs if url in t.get("url", "")]
+        if not matched:
+            raise CDPError(f"No open tab matches URL: {url!r}. Open it manually first, then retry.")
+        t = matched[-1]
+        ws_url = t["webSocketDebuggerUrl"]
+        self.target_id = t["id"]
+        self.ws = create_connection(ws_url, timeout=30)
+        self._send("Page.enable")
+        self._send("Runtime.enable")
+        self._send("DOM.enable")
+        self._send("Page.bringToFront")
+        self._prune_stray_tabs()
+        return True
+
+
     def _prune_stray_tabs(self) -> None:
         """Closes leftover survey-domain tabs from crashed prior runs (a run
         that got SIGKILLed/OOM-killed skips its `finally: client.close()`,

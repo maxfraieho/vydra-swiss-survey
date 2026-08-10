@@ -125,6 +125,9 @@ def main() -> None:
                      help="browser_sources.key to use for this run, overriding the active "
                           "source without changing which one is active (default: active source, "
                           "see Settings → Браузер)")
+    ap.add_argument("--resume-tab", default=None,
+                     help="Exact URL of an already-open tab to attach to instead of "
+                          "matching by domain or opening a new tab (manual resume flow).")
     ap.add_argument("--local-port", type=int, default=19225)
     ap.add_argument("--max-steps", type=int, default=60,
                      help="Safety cap against a runaway loop — not a submission-consent gate.")
@@ -174,7 +177,11 @@ def main() -> None:
     try:
         log(f"Connecting to {args.url} as {PROFILES[args.profile]['label']}")
         SURVEY_PROVIDER_KEYWORDS = ("survey", "gfk", "bilendi", "maximiles", "cinode", "opinion", "cst_", "mriweb", "start.aspx")
-        is_existing = client.attach_or_open_tab(args.url)
+        if args.resume_tab:
+            log(f"Resuming in existing tab: {args.resume_tab}")
+            is_existing = client.attach_exact_tab(args.resume_tab)
+        else:
+            is_existing = client.attach_or_open_tab(args.url)
         current_url = client.get_current_url()
         is_active_survey = is_existing and any(k in current_url.lower() for k in SURVEY_PROVIDER_KEYWORDS) and "ipinfo" not in current_url.lower()
         # Only preserve state for a genuinely in-progress survey page -
