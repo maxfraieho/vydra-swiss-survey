@@ -4,6 +4,7 @@ import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { RuleDetail } from './RuleDetail';
 import { RuleComposer } from './RuleComposer';
+import { bulkUpdateRules } from '../../api/rules';
 import { Markdown } from '@astryxdesign/core/Markdown';
 import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
@@ -11,6 +12,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export interface FacetsData {
   hosts: { name: string; count: number; by_status: Record<string, number> }[];
@@ -34,10 +36,15 @@ export interface RuleRow {
 
 export const RulesTable: React.FC = () => {
   const isNarrow = useIsNarrow();
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
   const [composing, setComposing] = useState<boolean>(false);
   const [groupBy, setGroupBy] = useState<'none' | 'host' | 'persona'>('none');
+
+  const [checkedRuleIds, setCheckedRuleIds] = useState<number[]>([]);
+  const [bulkNote, setBulkNote] = useState<string>('');
+  const [bulkBusy, setBulkBusy] = useState<boolean>(false);
 
   const hostFilter = searchParams.get('host') || '';
   const personaFilter = searchParams.get('persona') || '';
@@ -96,8 +103,44 @@ export const RulesTable: React.FC = () => {
     }));
   }, [rules, groupBy]);
 
+  const toggleCheckRule = (id: number, checked: boolean) => {
+    setCheckedRuleIds((prev) =>
+      checked ? [...prev, id] : prev.filter((i) => i !== id)
+    );
+  };
+
+  const toggleCheckGroup = (groupItemIds: number[]) => {
+    const allChecked = groupItemIds.every((id) => checkedRuleIds.includes(id));
+    if (allChecked) {
+      setCheckedRuleIds((prev) => prev.filter((id) => !groupItemIds.includes(id)));
+    } else {
+      setCheckedRuleIds((prev) => Array.from(new Set([...prev, ...groupItemIds])));
+    }
+  };
+
+  const handleBulkAction = async (op: 'promote' | 'retire' | 'delete') => {
+    if (checkedRuleIds.length === 0) return;
+    if (op === 'delete') {
+      const confirmMsg = `Ви дійсно бажаєте видалити ${checkedRuleIds.length} правил? Цю дію неможливо скасувати.`;
+      if (!window.confirm(confirmMsg)) return;
+    }
+    setBulkBusy(true);
+    try {
+      const res = await bulkUpdateRules(checkedRuleIds, op, bulkNote);
+      toast({ body: `Масова операція (${op}): змінено ${res.changed} з ${res.requested} правил` });
+      setCheckedRuleIds([]);
+      setBulkNote('');
+      refetchRules();
+    } catch (err: any) {
+      toast({ body: err?.message || 'Помилка виконання масової операції', type: 'error' });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const renderRuleCard = (r: RuleRow) => {
     const isSelected = selectedRuleId === r.id;
+    const isChecked = checkedRuleIds.includes(r.id);
     const statusVariant: BadgeVariant = r.status === 'active' ? 'success' : r.status === 'shadow' ? 'warning' : 'neutral';
     return (
       <ClickableCard
@@ -107,10 +150,23 @@ export const RulesTable: React.FC = () => {
           setSelectedRuleId(r.id);
           setComposing(false);
         }}
-        style={{ background: isSelected ? 'var(--color-background-muted)' : undefined }}
+        style={{
+          background: isSelected ? 'var(--color-background-muted)' : undefined,
+          border: isChecked ? '1px solid var(--color-accent)' : undefined,
+        }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => toggleCheckRule(r.id, e.target.checked)}
+              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+              title="Обрати правило"
+            />
+            <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {r.effective ? (
               <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
@@ -272,6 +328,7 @@ export const RulesTable: React.FC = () => {
             onClick={() => {
               setSearchParams(new URLSearchParams());
               setGroupBy('none');
+              setCheckedRuleIds([]);
             }}
             style={{
               background: 'var(--color-border)',
@@ -293,14 +350,140 @@ export const RulesTable: React.FC = () => {
         )}
       </Card>
 
+      {/* Bulk Operations Action Bar */}
+      {checkedRuleIds.length > 0 && (
+        <Card
+          padding={3}
+          style={{
+            background: 'var(--color-background-muted)',
+            border: '1px solid var(--color-accent)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '12px',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              ☑️ Обрано правил: {checkedRuleIds.length}
+            </span>
+            <input
+              type="text"
+              placeholder="Примітка аудиту (опціонально)"
+              value={bulkNote}
+              onChange={(e) => setBulkNote(e.target.value)}
+              style={{
+                background: 'var(--color-background-page)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                color: 'var(--color-text-primary)',
+                fontSize: '12px',
+                width: '220px',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleBulkAction('promote')}
+              disabled={bulkBusy}
+              style={{
+                background: '#10b981',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              title="Перевести статус обраних правил в active"
+            >
+              ⚡ Active (Promote)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkAction('retire')}
+              disabled={bulkBusy}
+              style={{
+                background: '#f59e0b',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              title="Перевести статус обраних правил в retired"
+            >
+              💤 Retire
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkAction('delete')}
+              disabled={bulkBusy}
+              style={{
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              title="Видалити обрані правила"
+            >
+              🗑️ Delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setCheckedRuleIds([])}
+              style={{
+                background: 'transparent',
+                color: 'var(--color-text-tertiary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              Скасувати вибір
+            </button>
+          </div>
+        </Card>
+      )}
+
       {/* Main Grid: Table (left) + Inline RuleComposer (right) */}
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : (composing ? '1fr 420px' : '1fr'), gap: '20px' }}>
         {/* Rules Table */}
         <Card padding={0} style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Heading level={2} style={{ fontSize: '15px' }}>
-              База Правил ({rules?.length || 0})
-            </Heading>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Heading level={2} style={{ fontSize: '15px' }}>
+                База Правил ({rules?.length || 0})
+              </Heading>
+              {rules && rules.length > 0 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={rules.length > 0 && rules.every((r) => checkedRuleIds.includes(r.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setCheckedRuleIds(rules.map((r) => r.id));
+                      } else {
+                        setCheckedRuleIds([]);
+                      }
+                    }}
+                  />
+                  Обрати всі ({rules.length})
+                </label>
+              )}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {rulesLoading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Оновлення...</span>}
               <button
@@ -361,9 +544,18 @@ export const RulesTable: React.FC = () => {
                         alignItems: 'center',
                       }}
                     >
-                      <span>
-                        {groupBy === 'host' ? `🌐 Хост: ${group.groupKey}` : `👤 Персона: ${group.groupKey}`}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          checked={group.items.length > 0 && group.items.every((r) => checkedRuleIds.includes(r.id))}
+                          onChange={() => toggleCheckGroup(group.items.map((r) => r.id))}
+                          style={{ cursor: 'pointer' }}
+                          title="Обрати всі в цій групі"
+                        />
+                        <span>
+                          {groupBy === 'host' ? `🌐 Хост: ${group.groupKey}` : `👤 Персона: ${group.groupKey}`}
+                        </span>
+                      </div>
                       <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
                         {group.items.length} правил
                       </span>
@@ -407,3 +599,4 @@ export const RulesTable: React.FC = () => {
     </VStack>
   );
 };
+

@@ -75,4 +75,16 @@ export function resolveConflict(
   });
 }
 
+export function bulkUpdateRules(
+  ids: number[],
+  op: 'promote' | 'retire' | 'delete',
+  note?: string
+): Promise<{ op: string; requested: number; changed: number }> {
+  return apiFetch<{ op: string; requested: number; changed: number }>('/api/rules/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ids, op, note: note?.trim() || undefined }),
+  });
+}
+
+
 

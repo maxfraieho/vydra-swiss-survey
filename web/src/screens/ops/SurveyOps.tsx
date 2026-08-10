@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { apiFetch, getApiBase } from '../../api/client';
 import { usePolling, useResource } from '../../api/hooks';
 import { HostGateData } from '../../api/rules';
+import { RuleRow } from '../rules/RulesTable';
 import { RuleComposer } from '../rules/RuleComposer';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Card } from '@astryxdesign/core/Card';
@@ -63,6 +64,17 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   finished: { bg: 'rgba(16, 185, 129, 0.15)', fg: 'var(--color-text-green)' },
   error: { bg: 'rgba(239, 68, 68, 0.15)', fg: 'var(--color-text-red)' },
 };
+
+const PERSONA_LABELS: Record<string, string> = {
+  arno: 'Арсен',
+  annet: 'Олена',
+};
+
+function formatPersonaName(key: string | null | undefined): string {
+  if (!key) return '';
+  const lower = key.toLowerCase();
+  return PERSONA_LABELS[lower] ? `${PERSONA_LABELS[lower]} (${key})` : key;
+}
 
 function statusColor(status: string): { bg: string; fg: string } {
   return STATUS_COLORS[status] || { bg: 'rgba(148, 163, 184, 0.15)', fg: 'var(--color-text-disabled)' };
@@ -139,9 +151,13 @@ export const SurveyOps: React.FC = () => {
   });
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [overrideAction, setOverrideAction] = useState<'click' | 'type' | 'scroll'>('click');
   const [overrideTarget, setOverrideTarget] = useState('');
+  const [overrideValue, setOverrideValue] = useState('');
   const [overrideExplanation, setOverrideExplanation] = useState('');
   const [countdown, setCountdown] = useState<number>(0);
+  const [verifCountdown, setVerifCountdown] = useState<number>(300);
+  const lastPendingStepRef = useRef<number | string | null>(null);
   const [screenshotTs, setScreenshotTs] = useState<number>(Date.now());
   const [screenshotOk, setScreenshotOk] = useState<boolean>(false);
   const [ruleComposerOpen, setRuleComposerOpen] = useState<boolean>(false);
@@ -151,6 +167,13 @@ export const SurveyOps: React.FC = () => {
   const { data: gateData, refetch: refetchGate } = useResource<HostGateData>(
     activeHost ? `/api/gate/${encodeURIComponent(activeHost)}` : null
   );
+
+  const stepRulesEndpoint = activeHost
+    ? `/api/rules?host=${encodeURIComponent(activeHost)}${
+        status?.profile ? `&persona=${encodeURIComponent(status.profile)}` : ''
+      }`
+    : null;
+  const { data: stepRules } = useResource<RuleRow[]>(stepRulesEndpoint);
 
   // Client-side countdown timer for waiting_auth window.
   useEffect(() => {
@@ -166,6 +189,22 @@ export const SurveyOps: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [status?.status, countdown]);
+
+  // Client-side countdown timer for step verification deadline (300s default wait).
+  useEffect(() => {
+    if (status?.pending_decision && status.pending_step !== lastPendingStepRef.current) {
+      lastPendingStepRef.current = status.pending_step;
+      setVerifCountdown(300);
+    }
+  }, [status?.pending_decision, status?.pending_step]);
+
+  useEffect(() => {
+    if (!status?.pending_decision || verifCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setVerifCountdown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [status?.pending_decision, verifCountdown]);
 
   // Live screenshot polling (~1200ms), independent of status polling.
   useEffect(() => {
@@ -186,8 +225,9 @@ export const SurveyOps: React.FC = () => {
     setBusy(key);
     try {
       await action();
-    } catch (err) {
+    } catch (err: any) {
       console.error(`[SurveyOps] action "${key}" failed`, err);
+      toast({ body: err?.message || `Помилка виконання дії (${key})`, type: 'error' });
     } finally {
       setBusy(null);
     }
@@ -230,16 +270,20 @@ export const SurveyOps: React.FC = () => {
   };
 
   const handleOverrideStep = () => {
-    if (!overrideTarget.trim()) return;
+    if (!overrideTarget.trim() && overrideAction !== 'scroll') return;
     runAction('override_step', async () => {
+      const payload: Record<string, any> = {
+        override_target: overrideTarget.trim(),
+        override_action: overrideAction,
+        explanation: overrideExplanation.trim(),
+      };
+      if (overrideValue.trim()) {
+        payload.override_value = overrideValue.trim();
+      }
       await apiFetch('/api/survey/override_step', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          override_target: overrideTarget,
-          override_action: 'click',
-          explanation: overrideExplanation,
-        }),
+        body: JSON.stringify(payload),
       });
       toast({ body: 'Корекцію збережено в сигналі (shadow)' });
     });
@@ -382,7 +426,7 @@ export const SurveyOps: React.FC = () => {
             >
               <div>
                 <div style={{ color: 'var(--color-text-primary)', fontWeight: 600, fontSize: '13px' }}>
-                  {task.profile_name} — {task.reward} ({task.duration})
+                  Опитування для: {formatPersonaName(task.profile_name || task.profile)} — {task.reward} ({task.duration})
                 </div>
                 <div style={{ color: 'var(--color-text-tertiary)', fontSize: '12px', wordBreak: 'break-all' }}>{task.url}</div>
               </div>
@@ -421,15 +465,20 @@ export const SurveyOps: React.FC = () => {
         {status?.active_task_id && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
-              <strong>{status.profile}</strong> — {status.reward} ({status.duration})
+              Опитування для: <strong>{formatPersonaName(status.profile)}</strong> — {status.reward} ({status.duration})
             </div>
             {status.url && (
               <div style={{ color: 'var(--color-text-tertiary)', fontSize: '12px', wordBreak: 'break-all' }}>{status.url}</div>
             )}
 
             {status.status === 'waiting_auth' && countdown > 0 && (
-              <div style={{ color: 'var(--color-text-yellow)', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}>
-                {formatCountdown(countdown)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ color: 'var(--color-text-yellow)', fontSize: '13px', fontWeight: 600 }}>
+                  ⏳ Очікування авторизації (вікно 10 хв)
+                </div>
+                <div style={{ color: 'var(--color-text-yellow)', fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}>
+                  {formatCountdown(countdown)}
+                </div>
               </div>
             )}
 
@@ -454,11 +503,12 @@ export const SurveyOps: React.FC = () => {
       </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
-        {/* Live screenshot */}
+        {/* Live screenshot & Question text */}
         <Card padding={4}>
-          <Heading level={2} style={sectionTitleStyle}>Живий скріншот</Heading>
+          <Heading level={2} style={sectionTitleStyle}>Живий скріншот &amp; Текст кроку</Heading>
           <div
             style={{
+              position: 'relative',
               background: 'var(--color-background-page)',
               border: '1px solid var(--color-border-emphasized)',
               borderRadius: '8px',
@@ -469,29 +519,45 @@ export const SurveyOps: React.FC = () => {
               overflow: 'hidden',
             }}
           >
-            {screenshotOk ? (
-              <img
-                src={screenshotSrc}
-                onLoad={() => setScreenshotOk(true)}
-                onError={() => setScreenshotOk(false)}
-                style={{ maxWidth: '100%', display: 'block' }}
-                alt="Живий скріншот опитування"
-              />
-            ) : (
-              <>
-                <img
-                  src={screenshotSrc}
-                  onLoad={() => setScreenshotOk(true)}
-                  onError={() => setScreenshotOk(false)}
-                  style={{ display: 'none' }}
-                  alt=""
-                />
-                <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-                  Скріншот очікує першого кроку
-                </span>
-              </>
+            <img
+              src={screenshotSrc}
+              onLoad={() => setScreenshotOk(true)}
+              onError={() => setScreenshotOk(false)}
+              style={{
+                maxWidth: '100%',
+                display: screenshotOk ? 'block' : 'none',
+              }}
+              alt="Живий скріншот опитування"
+            />
+            {!screenshotOk && (
+              <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
+                Скріншот очікує першого кроку
+              </span>
             )}
           </div>
+
+          {/* A2: pending_page_text next to / below screenshot */}
+          {status?.pending_page_text && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '10px 14px',
+                background: 'var(--color-background-page)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: 'var(--color-text-primary)',
+                lineHeight: '1.4',
+              }}
+            >
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-tertiary)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                📄 Текст питання / сторінки (pending_page_text)
+              </div>
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {status.pending_page_text}
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Human training panel */}
@@ -522,6 +588,18 @@ export const SurveyOps: React.FC = () => {
                 </div>
               )}
 
+              {/* A7: Verification deadline timer */}
+              {status?.pending_decision && (
+                <div style={{ padding: '8px 12px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '6px' }}>
+                  <div style={{ color: '#c084fc', fontSize: '13px', fontWeight: 700, fontFamily: 'monospace' }}>
+                    ⏱️ Дедлайн верифікації: {formatCountdown(verifCountdown)}
+                  </div>
+                  <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', marginTop: '2px' }}>
+                    Якщо не виконати коригування до кінця відліку, агент продовжить із власним рішенням.
+                  </div>
+                </div>
+              )}
+
               {status?.pending_decision && (
                 <>
                   <div style={{ color: '#c084fc', fontSize: '13px' }}>
@@ -546,26 +624,63 @@ export const SurveyOps: React.FC = () => {
 
               <div style={{ height: '1px', background: 'var(--color-background-muted)', margin: '4px 0' }} />
 
-              <input
-                type="text"
-                placeholder="Точна назва кнопки/пункту"
-                value={overrideTarget}
-                onChange={(e) => setOverrideTarget(e.target.value)}
-                style={inputStyle}
-              />
-              <textarea
-                placeholder="Пояснення правила (поведінка агента)"
-                value={overrideExplanation}
-                onChange={(e) => setOverrideExplanation(e.target.value)}
-                rows={3}
-                style={{ ...inputStyle, resize: 'vertical' }}
-              />
+              {/* A5: Expanded Override Form */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  🛠️ Власне рішення людини (Override):
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    value={overrideAction}
+                    onChange={(e) => setOverrideAction(e.target.value as 'click' | 'type' | 'scroll')}
+                    style={{
+                      background: 'var(--color-background-page)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      padding: '8px 10px',
+                      color: 'var(--color-text-primary)',
+                      fontSize: '13px',
+                      width: '130px',
+                    }}
+                  >
+                    <option value="click">click (клік)</option>
+                    <option value="type">type (ввід)</option>
+                    <option value="scroll">scroll (прокрутка)</option>
+                  </select>
+
+                  <input
+                    type="text"
+                    placeholder="Точна назва кнопки/пункту або селектор"
+                    value={overrideTarget}
+                    onChange={(e) => setOverrideTarget(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+
+                {overrideAction === 'type' && (
+                  <input
+                    type="text"
+                    placeholder="Текст для введення (override_value)"
+                    value={overrideValue}
+                    onChange={(e) => setOverrideValue(e.target.value)}
+                    style={inputStyle}
+                  />
+                )}
+
+                <textarea
+                  placeholder="Пояснення правила (поведінка агента)"
+                  value={overrideExplanation}
+                  onChange={(e) => setOverrideExplanation(e.target.value)}
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   style={secondaryButtonStyle}
                   onClick={handleOverrideStep}
-                  disabled={busy === 'override_step' || !overrideTarget.trim()}
+                  disabled={busy === 'override_step' || (!overrideTarget.trim() && overrideAction !== 'scroll')}
                 >
                   🎓 Навчити Агента (сигнал)
                 </button>
@@ -622,6 +737,81 @@ export const SurveyOps: React.FC = () => {
         </Card>
       </div>
 
+      {/* A4: Panel "Правила, що діють на цей крок" */}
+      {activeHost && (
+        <Card padding={4}>
+          <Heading level={2} style={sectionTitleStyle}>
+            ⚡ Правила, що діють на цей крок (Хост: {activeHost})
+          </Heading>
+          {(!stepRules || stepRules.length === 0) ? (
+            <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
+              Немає завантажених правил для {activeHost}.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {stepRules.map((r) => {
+                const isMatchingPattern = Boolean(status?.pending_pattern && r.pattern === status.pending_pattern);
+                return (
+                  <div
+                    key={r.id}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: isMatchingPattern ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-background-page)',
+                      border: isMatchingPattern ? '2px solid #10b981' : '1px solid var(--color-border)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+                        <span style={{ color: 'var(--color-accent)' }}>🎯 {r.pattern}</span>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: r.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                            color: r.status === 'active' ? '#10b981' : '#f59e0b',
+                          }}
+                        >
+                          {r.status.toUpperCase()}
+                        </span>
+                        {isMatchingPattern && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              background: '#10b981',
+                              color: '#ffffff',
+                            }}
+                          >
+                            🎯 ДІЄ НА ЦЕЙ КРОК
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--color-text-primary)', marginTop: '4px' }}>
+                        {r.behavior}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
+                      Персона: {r.persona} | Conf: {r.confidence}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* System log */}
       <Card padding={4}>
         <Heading level={2} style={sectionTitleStyle}>Системний лог</Heading>
@@ -672,7 +862,7 @@ export const SurveyOps: React.FC = () => {
                 initialPattern={status?.pending_pattern || ''}
                 initialBehavior={
                   overrideExplanation ||
-                  (overrideTarget ? `Клікнути "${overrideTarget}"` : '') ||
+                  (overrideTarget ? `${overrideAction} "${overrideTarget}"` : '') ||
                   (status?.pending_decision?.target_text ? `Клікнути "${status.pending_decision.target_text}"` : '')
                 }
                 onCreated={() => {
