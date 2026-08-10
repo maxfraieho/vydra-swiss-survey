@@ -10,6 +10,7 @@ export const Nav: React.FC = () => {
         <SideNavItem as={Link} href="/rules" label="Правила" isSelected={pathname === '/rules'} />
         <SideNavItem as={Link} href="/rules/compare" label="Порівняння" isSelected={pathname === '/rules/compare'} />
         <SideNavItem as={Link} href="/rules/conflicts" label="Конфлікти" isSelected={pathname === '/rules/conflicts'} />
+        <SideNavItem as={Link} href="/gate" label="Гейт хоста" isSelected={pathname.startsWith('/gate')} />
       </SideNavSection>
       <SideNavSection title="🔍 Аудит">
         <SideNavItem as={Link} href="/traces" label="Прогони (Traces)" isSelected={pathname.startsWith('/traces')} />

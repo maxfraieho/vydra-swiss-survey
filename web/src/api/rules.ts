@@ -36,3 +36,32 @@ export function updateRule(id: number, v: RuleFormValues) {
 export function fetchRule(id: number) {
   return apiFetch<RuleDetailData>(`/api/rules/${id}`);
 }
+
+export interface HostGateData {
+  host: string;
+  playbook_mode: 'shadow' | 'active' | 'off';
+  gated_by: string | null;
+  unreviewed_shadow_rules: number;
+  conflicts_count: number;
+  missing_evidence_rules: number;
+  total_rules: number;
+  active_rules: number;
+  retired_rules: number;
+  has_completed_run: boolean;
+  ready_for_active: boolean;
+}
+
+export function fetchHostGate(host: string): Promise<HostGateData> {
+  return apiFetch<HostGateData>(`/api/gate/${encodeURIComponent(host)}`);
+}
+
+export function approveHostGate(
+  host: string,
+  options?: { playbook_mode?: string; promote_reviewed_shadow?: boolean; note?: string }
+): Promise<{ host: string; playbook_mode: string; promoted_rule_ids: number[]; gate: any }> {
+  return apiFetch(`/api/gate/${encodeURIComponent(host)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  });
+}
+

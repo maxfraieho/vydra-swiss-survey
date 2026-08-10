@@ -21,6 +21,7 @@ import { Traces } from './screens/audit/Traces';
 import { Report } from './screens/audit/Report';
 import { SurveyOps } from './screens/ops/SurveyOps';
 import { SettingsPage } from './screens/settings/SettingsPage';
+import { HostGate } from './screens/gate/HostGate';
 
 const basename = getAppBasename();
 
@@ -37,6 +38,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="rules" element={<RulesTable />} />
             <Route path="rules/compare" element={<Compare />} />
             <Route path="rules/conflicts" element={<Conflicts />} />
+            <Route path="gate" element={<HostGate />} />
+            <Route path="gate/:host" element={<HostGate />} />
             <Route path="traces" element={<Traces />} />
             <Route path="traces/:runId" element={<Traces />} />
             <Route path="report" element={<Report />} />
