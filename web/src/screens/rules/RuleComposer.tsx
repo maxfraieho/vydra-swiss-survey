@@ -17,18 +17,29 @@ import { useToast } from '@astryxdesign/core/Toast';
 export interface RuleComposerProps {
   onCreated: (rule: RuleDetailData) => void;
   onCancel: () => void;
+  initialHost?: string;
+  initialPersona?: string;
+  initialPattern?: string;
+  initialBehavior?: string;
 }
 
-export const RuleComposer: React.FC<RuleComposerProps> = ({ onCreated, onCancel }) => {
+export const RuleComposer: React.FC<RuleComposerProps> = ({
+  onCreated,
+  onCancel,
+  initialHost = '',
+  initialPersona = '*',
+  initialPattern = '',
+  initialBehavior = '',
+}) => {
   const isNarrow = useIsNarrow();
   const toast = useToast();
   const { data: hostsData, loading: hostsLoading } = useResource<HostRow[]>('/api/settings/hosts');
   const { data: personasData, loading: personasLoading } = useResource<PersonaRow[]>('/api/settings/personas');
 
-  const [host, setHost] = useState<string>('');
-  const [persona, setPersona] = useState<string>('*');
-  const [pattern, setPattern] = useState<string>('');
-  const [behavior, setBehavior] = useState<string>('');
+  const [host, setHost] = useState<string>(initialHost);
+  const [persona, setPersona] = useState<string>(initialPersona);
+  const [pattern, setPattern] = useState<string>(initialPattern);
+  const [behavior, setBehavior] = useState<string>(initialBehavior);
   const [confidence, setConfidence] = useState<number>(0.7);
   const [status, setStatus] = useState<'active' | 'shadow' | 'retired'>('shadow');
   const [note, setNote] = useState<string>('');

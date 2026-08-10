@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { useIsNarrow } from '../../shell/useIsNarrow';
@@ -37,6 +37,7 @@ export const RulesTable: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
   const [composing, setComposing] = useState<boolean>(false);
+  const [groupBy, setGroupBy] = useState<'none' | 'host' | 'persona'>('none');
 
   const hostFilter = searchParams.get('host') || '';
   const personaFilter = searchParams.get('persona') || '';
@@ -44,6 +45,15 @@ export const RulesTable: React.FC = () => {
   const sourceFilter = searchParams.get('source') || '';
   const qFilter = searchParams.get('q') || '';
   const sortFilter = searchParams.get('sort') || '';
+  const isNewParam = searchParams.get('new') === 'true';
+  const patternParam = searchParams.get('pattern') || '';
+
+  // Auto open composer if URL has new=true
+  useEffect(() => {
+    if (isNewParam) {
+      setComposing(true);
+    }
+  }, [isNewParam]);
 
   const queryParams = new URLSearchParams();
   if (hostFilter) queryParams.set('host', hostFilter);
@@ -66,6 +76,61 @@ export const RulesTable: React.FC = () => {
       newParams.delete(key);
     }
     setSearchParams(newParams);
+  };
+
+  // Grouping logic
+  const groupedRules = useMemo(() => {
+    if (!rules || groupBy === 'none') return null;
+
+    const map = new Map<string, RuleRow[]>();
+    for (const r of rules) {
+      const key = groupBy === 'host' ? r.host || '*' : r.persona || '*';
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries()).map(([groupKey, items]) => ({
+      groupKey,
+      items,
+    }));
+  }, [rules, groupBy]);
+
+  const renderRuleCard = (r: RuleRow) => {
+    const isSelected = selectedRuleId === r.id;
+    const statusVariant: BadgeVariant = r.status === 'active' ? 'success' : r.status === 'shadow' ? 'warning' : 'neutral';
+    return (
+      <ClickableCard
+        key={r.id}
+        label={`Правило #${r.id}`}
+        onClick={() => {
+          setSelectedRuleId(r.id);
+          setComposing(false);
+        }}
+        style={{ background: isSelected ? 'var(--color-background-muted)' : undefined }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {r.effective ? (
+              <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
+            ) : (
+              <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
+            )}
+            <Badge variant={statusVariant} label={r.status} />
+          </div>
+        </div>
+        <MetadataList columns={1} label={{ position: 'start' }}>
+          <MetadataListItem label="Хост">{r.host}</MetadataListItem>
+          <MetadataListItem label="Персона">{r.persona}</MetadataListItem>
+          <MetadataListItem label="Патерн">{r.pattern}</MetadataListItem>
+          <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
+        </MetadataList>
+        <div style={{ marginTop: '8px' }}>
+          <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
+        </div>
+      </ClickableCard>
+    );
   };
 
   return (
@@ -167,6 +232,24 @@ export const RulesTable: React.FC = () => {
         </select>
 
         <select
+          value={groupBy}
+          onChange={(e) => setGroupBy(e.target.value as 'none' | 'host' | 'persona')}
+          style={{
+            background: 'var(--color-background-page)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            color: 'var(--color-accent)',
+            fontSize: '13px',
+            fontWeight: 600,
+          }}
+        >
+          <option value="none">Групування: Без групування</option>
+          <option value="host">Групувати за Хостом</option>
+          <option value="persona">Групувати за Персоною</option>
+        </select>
+
+        <select
           value={sortFilter}
           onChange={(e) => updateParam('sort', e.target.value)}
           style={{
@@ -184,9 +267,12 @@ export const RulesTable: React.FC = () => {
           <option value="host">За хостом</option>
         </select>
 
-        {(hostFilter || personaFilter || statusFilter || sourceFilter || qFilter || sortFilter) && (
+        {(hostFilter || personaFilter || statusFilter || sourceFilter || qFilter || sortFilter || groupBy !== 'none') && (
           <button
-            onClick={() => setSearchParams(new URLSearchParams())}
+            onClick={() => {
+              setSearchParams(new URLSearchParams());
+              setGroupBy('none');
+            }}
             style={{
               background: 'var(--color-border)',
               color: 'var(--color-text-primary)',
@@ -256,43 +342,40 @@ export const RulesTable: React.FC = () => {
             </div>
           )}
 
+          {/* Grouped view or flat view */}
           {rules && rules.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
-              {rules.map((r) => {
-                const isSelected = selectedRuleId === r.id;
-                const statusVariant: BadgeVariant = r.status === 'active' ? 'success' : r.status === 'shadow' ? 'warning' : 'neutral';
-                return (
-                  <ClickableCard
-                    key={r.id}
-                    label={`Правило #${r.id}`}
-                    onClick={() => {
-                      setSelectedRuleId(r.id);
-                      setComposing(false);
-                    }}
-                    style={{ background: isSelected ? 'var(--color-background-muted)' : undefined }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {r.effective ? (
-                          <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
-                        ) : (
-                          <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
-                        )}
-                        <Badge variant={statusVariant} label={r.status} />
-                      </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px' }}>
+              {groupedRules ? (
+                groupedRules.map((group) => (
+                  <div key={group.groupKey} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div
+                      style={{
+                        padding: '6px 12px',
+                        background: 'var(--color-background-muted)',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: 'var(--color-text-primary)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span>
+                        {groupBy === 'host' ? `🌐 Хост: ${group.groupKey}` : `👤 Персона: ${group.groupKey}`}
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
+                        {group.items.length} правил
+                      </span>
                     </div>
-                    <MetadataList columns={1} label={{ position: 'start' }}>
-                      <MetadataListItem label="Хост">{r.host}</MetadataListItem>
-                      <MetadataListItem label="Патерн">{r.pattern}</MetadataListItem>
-                      <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
-                    </MetadataList>
-                    <div style={{ marginTop: '8px' }}>
-                      <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {group.items.map(renderRuleCard)}
                     </div>
-                  </ClickableCard>
-                );
-              })}
+                  </div>
+                ))
+              ) : (
+                rules.map(renderRuleCard)
+              )}
             </div>
           )}
         </Card>
@@ -301,6 +384,10 @@ export const RulesTable: React.FC = () => {
         {composing && (
           <div>
             <RuleComposer
+              initialHost={hostFilter}
+              initialPersona={personaFilter || '*'}
+              initialPattern={patternParam}
+              initialBehavior={qFilter}
               onCreated={(result) => {
                 setComposing(false);
                 setSelectedRuleId(result.id);
@@ -312,7 +399,11 @@ export const RulesTable: React.FC = () => {
         )}
       </div>
 
-      <RuleDetail ruleId={selectedRuleId} onClose={() => setSelectedRuleId(null)} />
+      <RuleDetail
+        ruleId={selectedRuleId}
+        onClose={() => setSelectedRuleId(null)}
+        onUpdated={() => refetchRules()}
+      />
     </VStack>
   );
 };

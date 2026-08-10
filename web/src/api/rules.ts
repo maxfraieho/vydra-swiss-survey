@@ -65,3 +65,14 @@ export function approveHostGate(
   });
 }
 
+export function resolveConflict(
+  ruleId: number,
+  options: { winner_id: number; loser_action: 'retire' | 'delete'; note?: string }
+): Promise<{ winner_id: number; loser_ids: number[]; loser_action: string }> {
+  return apiFetch(`/api/rules/${ruleId}/resolve_conflict`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  });
+}
+
+

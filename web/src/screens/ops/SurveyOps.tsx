@@ -1,10 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { apiFetch, getApiBase } from '../../api/client';
-import { usePolling } from '../../api/hooks';
+import { usePolling, useResource } from '../../api/hooks';
+import { HostGateData } from '../../api/rules';
+import { RuleComposer } from '../rules/RuleComposer';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
+import { Layout, LayoutContent } from '@astryxdesign/core/Layout';
+import { useToast } from '@astryxdesign/core/Toast';
 
 export interface PendingDecision {
   action: string;
@@ -41,6 +47,8 @@ export interface SurveyStatus {
   training_mode: boolean;
   pending_step: number | string | null;
   pending_decision: PendingDecision | null;
+  pending_pattern?: string | null;
+  pending_page_text?: string | null;
   log_history: string[];
   last_error: string | null;
   wait_seconds_remaining: number;
@@ -112,8 +120,20 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+const getHostFromUrl = (urlStr: string | null): string => {
+  if (!urlStr) return '';
+  try {
+    const parsed = new URL(urlStr.startsWith('http') ? urlStr : `https://${urlStr}`);
+    return parsed.hostname;
+  } catch {
+    return urlStr.replace(/^https?:\/\//, '').split('/')[0] || '';
+  }
+};
+
 export const SurveyOps: React.FC = () => {
   const isNarrow = useIsNarrow();
+  const navigate = useNavigate();
+  const toast = useToast();
   const { data: status, error: statusError } = usePolling<SurveyStatus>('/api/survey/status', {
     intervalMs: 1000,
   });
@@ -124,7 +144,13 @@ export const SurveyOps: React.FC = () => {
   const [countdown, setCountdown] = useState<number>(0);
   const [screenshotTs, setScreenshotTs] = useState<number>(Date.now());
   const [screenshotOk, setScreenshotOk] = useState<boolean>(false);
+  const [ruleComposerOpen, setRuleComposerOpen] = useState<boolean>(false);
   const logRef = useRef<HTMLDivElement | null>(null);
+
+  const activeHost = getHostFromUrl(status?.url || null);
+  const { data: gateData, refetch: refetchGate } = useResource<HostGateData>(
+    activeHost ? `/api/gate/${encodeURIComponent(activeHost)}` : null
+  );
 
   // Client-side countdown timer for waiting_auth window.
   useEffect(() => {
@@ -215,8 +241,7 @@ export const SurveyOps: React.FC = () => {
           explanation: overrideExplanation,
         }),
       });
-      setOverrideTarget('');
-      setOverrideExplanation('');
+      toast({ body: 'Корекцію збережено в сигналі (shadow)' });
     });
   };
 
@@ -229,7 +254,7 @@ export const SurveyOps: React.FC = () => {
 
   return (
     <VStack gap={5}>
-      {/* Status badge */}
+      {/* Header with Status & Host Playbook Mode */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <Heading level={1} style={{ fontSize: '18px' }}>
           🎓 Режим Навчання — HITL Опитування
@@ -247,6 +272,61 @@ export const SurveyOps: React.FC = () => {
         >
           {status?.status || 'idle'}
         </span>
+
+        {/* Host & Playbook Mode Badges */}
+        {activeHost && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Link
+              to={`/gate/${encodeURIComponent(activeHost)}`}
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: '999px',
+                background: 'var(--color-background-muted)',
+                color: 'var(--color-accent)',
+                textDecoration: 'none',
+              }}
+              title="Перейти до гейта хоста"
+            >
+              🌐 {activeHost}
+            </Link>
+            {gateData && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  textTransform: 'uppercase',
+                  background:
+                    gateData.playbook_mode === 'active'
+                      ? 'rgba(16, 185, 129, 0.15)'
+                      : gateData.playbook_mode === 'shadow'
+                      ? 'rgba(245, 158, 11, 0.15)'
+                      : 'rgba(107, 114, 128, 0.15)',
+                  color:
+                    gateData.playbook_mode === 'active'
+                      ? 'var(--color-text-green)'
+                      : gateData.playbook_mode === 'shadow'
+                      ? 'var(--color-text-yellow)'
+                      : '#9ca3af',
+                  border: `1px solid ${
+                    gateData.playbook_mode === 'active'
+                      ? '#059669'
+                      : gateData.playbook_mode === 'shadow'
+                      ? '#d97706'
+                      : '#4b5563'
+                  }`,
+                }}
+                title={`Режим гейта для ${activeHost}`}
+              >
+                GATE: {gateData.playbook_mode.toUpperCase()}
+              </span>
+            )}
+          </div>
+        )}
+
         {statusError && (
           <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>
             Помилка опитування статусу: {statusError.message}
@@ -320,7 +400,21 @@ export const SurveyOps: React.FC = () => {
 
       {/* Active task */}
       <Card padding={4}>
-        <Heading level={2} style={sectionTitleStyle}>Активне завдання</Heading>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <Heading level={2} style={sectionTitleStyle}>Активне завдання</Heading>
+          {activeHost && gateData && (
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: gateData.playbook_mode === 'active' ? 'var(--color-text-green)' : 'var(--color-text-yellow)',
+              }}
+            >
+              Гейт хоста: <strong>{gateData.playbook_mode.toUpperCase()}</strong> ({activeHost})
+            </span>
+          )}
+        </div>
+
         {!status?.active_task_id && (
           <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>Немає активного завдання.</div>
         )}
@@ -404,27 +498,53 @@ export const SurveyOps: React.FC = () => {
         <Card padding={4}>
           <Heading level={2} style={sectionTitleStyle}>Панель навчання людини</Heading>
 
-          {status?.pending_decision ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ color: '#c084fc', fontSize: '13px' }}>
-                Крок {status.pending_step}: <strong>{status.pending_decision.action?.toUpperCase()}</strong>
-              </div>
-              {status.pending_decision.target_text && (
-                <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
-                  Ціль: {status.pending_decision.target_text}
-                </div>
-              )}
-              {status.pending_decision.value && (
-                <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
-                  Значення: {status.pending_decision.value}
+          {status?.pending_decision || status?.pending_pattern || overrideTarget ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Pattern Badge */}
+              {status?.pending_pattern && (
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    border: '1px solid #6366f1',
+                    color: '#818cf8',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    width: 'fit-content',
+                  }}
+                  title="Розпізнаний патерн сторінки зі словника"
+                >
+                  🎯 Патерн: {status.pending_pattern}
                 </div>
               )}
 
-              <button style={buttonStyle} onClick={handleApproveStep} disabled={busy === 'approve_step'}>
-                ✅ Затвердити рішення Gemma
-              </button>
+              {status?.pending_decision && (
+                <>
+                  <div style={{ color: '#c084fc', fontSize: '13px' }}>
+                    Крок {status.pending_step}: <strong>{status.pending_decision.action?.toUpperCase()}</strong>
+                  </div>
+                  {status.pending_decision.target_text && (
+                    <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
+                      Ціль: {status.pending_decision.target_text}
+                    </div>
+                  )}
+                  {status.pending_decision.value && (
+                    <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
+                      Значення: {status.pending_decision.value}
+                    </div>
+                  )}
 
-              <div style={{ height: '1px', background: 'var(--color-background-muted)', margin: '8px 0' }} />
+                  <button style={buttonStyle} onClick={handleApproveStep} disabled={busy === 'approve_step'}>
+                    ✅ Затвердити рішення Gemma
+                  </button>
+                </>
+              )}
+
+              <div style={{ height: '1px', background: 'var(--color-background-muted)', margin: '4px 0' }} />
 
               <input
                 type="text"
@@ -434,19 +554,65 @@ export const SurveyOps: React.FC = () => {
                 style={inputStyle}
               />
               <textarea
-                placeholder="Пояснення правила"
+                placeholder="Пояснення правила (поведінка агента)"
                 value={overrideExplanation}
                 onChange={(e) => setOverrideExplanation(e.target.value)}
                 rows={3}
                 style={{ ...inputStyle, resize: 'vertical' }}
               />
-              <button
-                style={secondaryButtonStyle}
-                onClick={handleOverrideStep}
-                disabled={busy === 'override_step' || !overrideTarget.trim()}
-              >
-                🎓 Навчити Агента
-              </button>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  style={secondaryButtonStyle}
+                  onClick={handleOverrideStep}
+                  disabled={busy === 'override_step' || !overrideTarget.trim()}
+                >
+                  🎓 Навчити Агента (сигнал)
+                </button>
+
+                {/* Bridge to Rule Creation */}
+                <button
+                  type="button"
+                  style={{
+                    ...buttonStyle,
+                    background: 'var(--color-accent)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onClick={() => setRuleComposerOpen(true)}
+                >
+                  📝 Оформити як правило
+                </button>
+              </div>
+
+              {activeHost && (
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-accent)',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      padding: 0,
+                    }}
+                    onClick={() => {
+                      const query = new URLSearchParams({
+                        host: activeHost,
+                        persona: status?.profile || '*',
+                        pattern: status?.pending_pattern || '',
+                        q: overrideTarget || status?.pending_decision?.target_text || '',
+                      });
+                      navigate(`/rules?${query.toString()}`);
+                    }}
+                  >
+                    Відкрити в базі правил (/rules) ↗
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
@@ -480,6 +646,45 @@ export const SurveyOps: React.FC = () => {
           )}
         </div>
       </Card>
+
+      {/* Bridge Modal: Rule Composer */}
+      <Dialog
+        isOpen={ruleComposerOpen}
+        onOpenChange={(open) => setRuleComposerOpen(open)}
+        variant="standard"
+        width={620}
+        maxHeight="85vh"
+        purpose="info"
+      >
+        <Layout
+          header={
+            <DialogHeader
+              title="📝 Оформити корекцію як правило"
+              subtitle={activeHost ? `Хост: ${activeHost}` : undefined}
+              onOpenChange={(open) => setRuleComposerOpen(open)}
+            />
+          }
+          content={
+            <LayoutContent>
+              <RuleComposer
+                initialHost={activeHost}
+                initialPersona={status?.profile || '*'}
+                initialPattern={status?.pending_pattern || ''}
+                initialBehavior={
+                  overrideExplanation ||
+                  (overrideTarget ? `Клікнути "${overrideTarget}"` : '') ||
+                  (status?.pending_decision?.target_text ? `Клікнути "${status.pending_decision.target_text}"` : '')
+                }
+                onCreated={() => {
+                  setRuleComposerOpen(false);
+                  refetchGate();
+                }}
+                onCancel={() => setRuleComposerOpen(false)}
+              />
+            </LayoutContent>
+          }
+        />
+      </Dialog>
     </VStack>
   );
 };
