@@ -126,6 +126,20 @@ CREATE TABLE IF NOT EXISTS hosts (
     updated_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS browser_sources (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    key         TEXT NOT NULL UNIQUE,
+    label       TEXT NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'direct_cdp' CHECK(kind IN ('direct_cdp','mcp_bridge')),
+    host        TEXT NOT NULL,
+    port        INTEGER NOT NULL,
+    mcp_server  TEXT,
+    note        TEXT,
+    is_active   INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS personas (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     key         TEXT NOT NULL UNIQUE,
@@ -1087,6 +1101,156 @@ def delete_host(id: int) -> bool:
         conn.close()
 
 
+def list_browser_sources() -> list[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM browser_sources ORDER BY id ASC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def create_browser_source(
+    key: str,
+    label: str,
+    kind: str = "direct_cdp",
+    host: str = "",
+    port: int = 0,
+    mcp_server: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    if not key or not str(key).strip():
+        raise ValueError("key cannot be empty")
+    if not label or not str(label).strip():
+        raise ValueError("label cannot be empty")
+    if not host or not str(host).strip():
+        raise ValueError("host cannot be empty")
+    if kind not in ("direct_cdp", "mcp_bridge"):
+        raise ValueError("kind must be direct_cdp or mcp_bridge")
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        conn.execute(
+            "INSERT INTO browser_sources (key, label, kind, host, port, mcp_server, note, is_active, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+            (key.strip(), label.strip(), kind, host.strip(), int(port), mcp_server, note, now, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM browser_sources WHERE key=?", (key.strip(),)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_browser_source(id: int, **fields) -> dict:
+    allowed = {"key", "label", "kind", "host", "port", "mcp_server", "note"}
+    invalid = set(fields.keys()) - allowed
+    if invalid:
+        raise ValueError(f"Invalid fields for browser_source update: {sorted(invalid)}")
+    if "key" in fields and (not fields["key"] or not str(fields["key"]).strip()):
+        raise ValueError("key cannot be empty")
+    if "label" in fields and (not fields["label"] or not str(fields["label"]).strip()):
+        raise ValueError("label cannot be empty")
+    if "host" in fields and (not fields["host"] or not str(fields["host"]).strip()):
+        raise ValueError("host cannot be empty")
+    if "kind" in fields and fields["kind"] not in ("direct_cdp", "mcp_bridge"):
+        raise ValueError("kind must be direct_cdp or mcp_bridge")
+
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            raise LookupError(f"browser_source id={id} not found")
+        if not fields:
+            return dict(existing)
+        sets, params = [], []
+        for k, v in fields.items():
+            sets.append(f"{k}=?")
+            if k in ("key", "label", "host") and isinstance(v, str):
+                params.append(v.strip())
+            elif k == "port":
+                params.append(int(v))
+            else:
+                params.append(v)
+        now = _now()
+        sets.append("updated_at=?")
+        params.append(now)
+        params.append(id)
+        conn.execute(f"UPDATE browser_sources SET {', '.join(sets)} WHERE id=?", params)
+        conn.commit()
+        row = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def delete_browser_source(id: int) -> bool:
+    conn = _connect()
+    try:
+        existing = conn.execute("SELECT id FROM browser_sources WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            return False
+        conn.execute("DELETE FROM browser_sources WHERE id=?", (id,))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def set_active_browser_source(id: int) -> dict:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        now = _now()
+        conn.execute("UPDATE browser_sources SET is_active=0")
+        existing = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
+        if existing is None:
+            conn.rollback()
+            raise LookupError(f"browser_source id={id} not found")
+        conn.execute(
+            "UPDATE browser_sources SET is_active=1, updated_at=? WHERE id=?",
+            (now, id),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def get_active_browser_source() -> Optional[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM browser_sources WHERE is_active=1 LIMIT 1").fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_browser_source(id: int) -> Optional[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_browser_source_by_key(key: str) -> Optional[dict]:
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM browser_sources WHERE key=?", (key.strip(),)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
 def list_personas() -> list[dict]:
     conn = _connect()
     conn.row_factory = sqlite3.Row
@@ -1353,6 +1517,20 @@ def migrate_settings(
                         "VALUES (?, ?, ?, 1, ?, ?)",
                         (p_key, p_label, p_content, now, now),
                     )
+
+        # 4. browser_sources
+        conn.execute(
+            "INSERT OR IGNORE INTO browser_sources (key, label, kind, host, port, mcp_server, note, is_active, created_at, updated_at) "
+            "VALUES ('legacy_184', 'Legacy CDP (.184:9226)', 'direct_cdp', '192.168.3.184', 9226, NULL, "
+            "'Попередній цільовий хост, лишений як альтернатива після консолідації на .30.', 0, ?, ?)",
+            (now, now),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO browser_sources (key, label, kind, host, port, mcp_server, note, is_active, created_at, updated_at) "
+            "VALUES ('swiss_perplexity_comet', 'Swiss Perplexity Comet (.30)', 'mcp_bridge', '192.168.3.30', 9226, "
+            "'comet-win,browser-harness-win', 'SOCKS5 100.66.97.93:1080 вбудовано на рівні браузера. Доступний також через MCP-мости comet-win (8765) і browser-harness-win (8766) — обидва ведуть на той самий CDP.', 1, ?, ?)",
+            (now, now),
+        )
 
         conn.commit()
     finally:

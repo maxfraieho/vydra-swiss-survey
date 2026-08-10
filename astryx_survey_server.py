@@ -338,7 +338,7 @@ ASTRYX_HTML_TEMPLATE = """
           ⚡ Авторизувати та Запустити негайно
         </button>
         <button onclick="openLiveBrowser()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all">
-          🌐 Live CDP Браузер (Порт 9226)
+          🌐 Live CDP Браузер{% if active_browser_source %} ({{ active_browser_source.host }}:{{ active_browser_source.port }}){% endif %}
         </button>
         <button onclick="stopCurrent()" class="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs px-4 py-2.5 rounded-xl transition-all ml-auto">
           🛑 Зупинити
@@ -586,7 +586,12 @@ ASTRYX_HTML_TEMPLATE = """
     }
 
     function openLiveBrowser() {
-      window.open('http://192.168.3.184:9226', '_blank');
+      const target = {{ (('http://' ~ active_browser_source.host ~ ':' ~ active_browser_source.port) if active_browser_source else '') | tojson }};
+      if (!target) {
+        alert('Активне джерело браузера не налаштовано (Налаштування → Браузер)');
+        return;
+      }
+      window.open(target, '_blank');
     }
 
     setInterval(fetchStatus, 800);
@@ -616,7 +621,9 @@ def serve_app(path):
 
 @app.route("/legacy")
 def index():
-    return render_template_string(ASTRYX_HTML_TEMPLATE)
+    from persona_graph_memory import get_active_browser_source
+    active_browser_source = get_active_browser_source()
+    return render_template_string(ASTRYX_HTML_TEMPLATE, active_browser_source=active_browser_source)
 
 
 @app.route("/api/survey/screenshot/latest")

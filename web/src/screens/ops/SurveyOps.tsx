@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { apiFetch, getApiBase } from '../../api/client';
 import { usePolling, useResource } from '../../api/hooks';
 import { HostGateData } from '../../api/rules';
+import { BrowserSourceRow } from '../../api/settings';
 import { RuleRow } from '../rules/RulesTable';
 import { RuleComposer } from '../rules/RuleComposer';
 import { useIsNarrow } from '../../shell/useIsNarrow';
@@ -175,6 +176,9 @@ export const SurveyOps: React.FC = () => {
     : null;
   const { data: stepRules } = useResource<RuleRow[]>(stepRulesEndpoint);
 
+  const { data: browserSources } = useResource<BrowserSourceRow[]>('/api/settings/browser-sources');
+  const activeBrowserSource = browserSources?.find((s) => s.is_active === 1) || null;
+
   // Client-side countdown timer for waiting_auth window.
   useEffect(() => {
     if (status?.status === 'waiting_auth' && (status.wait_seconds_remaining || 0) > 0) {
@@ -290,7 +294,11 @@ export const SurveyOps: React.FC = () => {
   };
 
   const openLiveBrowser = () => {
-    window.open('http://192.168.3.184:9226', '_blank');
+    if (!activeBrowserSource) {
+      toast({ body: 'Активне джерело браузера не налаштовано (Налаштування → Браузер)', type: 'error' });
+      return;
+    }
+    window.open(`http://${activeBrowserSource.host}:${activeBrowserSource.port}`, '_blank');
   };
 
   const color = statusColor(status?.status || 'idle');

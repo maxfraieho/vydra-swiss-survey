@@ -295,3 +295,97 @@ export function getProbeStatus(): Promise<ProbeStatus> {
   return apiFetch<ProbeStatus>('/api/settings/ai-source/probe-status');
 }
 
+// Browser Sources API
+export type BrowserSourceKind = 'direct_cdp' | 'mcp_bridge';
+
+export interface BrowserSourceRow {
+  id: number;
+  key: string;
+  label: string;
+  kind: BrowserSourceKind;
+  host: string;
+  port: number;
+  mcp_server: string | null;
+  note: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateBrowserSourceFormValues {
+  key: string;
+  label: string;
+  kind: BrowserSourceKind;
+  host: string;
+  port: number;
+  mcp_server?: string;
+  note?: string;
+}
+
+export interface UpdateBrowserSourceFormValues {
+  key?: string;
+  label?: string;
+  kind?: BrowserSourceKind;
+  host?: string;
+  port?: number;
+  mcp_server?: string | null;
+  note?: string | null;
+}
+
+export interface BrowserSourceTestResult {
+  ok: boolean;
+  detail: string;
+}
+
+export function listBrowserSources(): Promise<BrowserSourceRow[]> {
+  return apiFetch<BrowserSourceRow[]>('/api/settings/browser-sources');
+}
+
+export function createBrowserSource(v: CreateBrowserSourceFormValues): Promise<BrowserSourceRow> {
+  return apiFetch<BrowserSourceRow>('/api/settings/browser-sources', {
+    method: 'POST',
+    body: JSON.stringify({
+      key: v.key.trim(),
+      label: v.label.trim(),
+      kind: v.kind,
+      host: v.host.trim(),
+      port: v.port,
+      mcp_server: v.mcp_server?.trim() || undefined,
+      note: v.note?.trim() || undefined,
+    }),
+  });
+}
+
+export function updateBrowserSource(id: number, v: UpdateBrowserSourceFormValues): Promise<BrowserSourceRow> {
+  return apiFetch<BrowserSourceRow>(`/api/settings/browser-sources/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      key: v.key !== undefined ? v.key.trim() : undefined,
+      label: v.label !== undefined ? v.label.trim() : undefined,
+      kind: v.kind,
+      host: v.host !== undefined ? v.host.trim() : undefined,
+      port: v.port,
+      mcp_server: v.mcp_server !== undefined ? v.mcp_server?.trim() || null : undefined,
+      note: v.note !== undefined ? v.note?.trim() || null : undefined,
+    }),
+  });
+}
+
+export function deleteBrowserSource(id: number): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/api/settings/browser-sources/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function activateBrowserSource(id: number): Promise<BrowserSourceRow> {
+  return apiFetch<BrowserSourceRow>(`/api/settings/browser-sources/${id}/activate`, {
+    method: 'POST',
+  });
+}
+
+export function testBrowserSource(id: number): Promise<BrowserSourceTestResult> {
+  return apiFetch<BrowserSourceTestResult>(`/api/settings/browser-sources/${id}/test`, {
+    method: 'POST',
+  });
+}
+

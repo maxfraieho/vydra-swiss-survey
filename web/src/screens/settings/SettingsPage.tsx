@@ -9,8 +9,9 @@ import { PersonasPanel } from './PersonasPanel';
 import { PatternsPanel } from './PatternsPanel';
 import { ProvidersPanel } from './ProvidersPanel';
 import { AISourcePanel } from './AISourcePanel';
+import { BrowserSourcesPanel } from './BrowserSourcesPanel';
 
-type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers' | 'ai-source';
+type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers' | 'ai-source' | 'browser';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('hosts');
@@ -41,6 +42,7 @@ export const SettingsPage: React.FC = () => {
           <Tab value="patterns" label="Патерни" />
           <Tab value="providers" label="Провайдери" />
           <Tab value="ai-source" label="Модель ШІ" />
+          <Tab value="browser" label="Браузер" />
         </TabList>
       </Card>
 
@@ -50,6 +52,7 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'patterns' && <PatternsPanel />}
       {activeTab === 'providers' && <ProvidersPanel />}
       {activeTab === 'ai-source' && <AISourcePanel />}
+      {activeTab === 'browser' && <BrowserSourcesPanel />}
     </VStack>
   );
 };

@@ -21,7 +21,7 @@ import sys
 import tempfile
 import time
 
-from cdp_client import CDPClient, REMOTE_PORTS, ensure_tunnel
+from cdp_client import CDPClient
 from vision import GemmaVision, VisionError
 import reflection
 
@@ -121,8 +121,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Vydra mode 3: Swiss survey agent (Gemma vision)")
     ap.add_argument("--profile", required=True, choices=sorted(PROFILES))
     ap.add_argument("--url", required=True)
-    ap.add_argument("--cdp-target", default="survey", choices=sorted(REMOTE_PORTS),
-                     help="Which isolated Swiss Chrome window to drive (default: survey, port 9225)")
+    ap.add_argument("--cdp-target", default=None,
+                     help="browser_sources.key to use for this run, overriding the active "
+                          "source without changing which one is active (default: active source, "
+                          "see Settings → Браузер)")
     ap.add_argument("--local-port", type=int, default=19225)
     ap.add_argument("--max-steps", type=int, default=60,
                      help="Safety cap against a runaway loop — not a submission-consent gate.")
@@ -162,11 +164,9 @@ def main() -> None:
     site_host = args.url.split("//", 1)[-1].split("/", 1)[0].replace("www.", "")
     creds = load_credentials(site_host, args.profile)
 
-    remote_port = REMOTE_PORTS[args.cdp_target]
-    log(f"Ensuring CDP tunnel: local:{args.local_port} -> laptop:{remote_port} ({args.cdp_target})")
-    ensure_tunnel(remote_port, args.local_port)
-
-    client = CDPClient(args.local_port)
+    log(f"Resolving browser source (--cdp-target={args.cdp_target or 'active'})")
+    client = CDPClient(args.local_port, cdp_target_key=args.cdp_target)
+    log(f"CDP target resolved: {client.base}")
     vision = GemmaVision(use_gpu=args.gpu)
     screenshot_dir = tempfile.mkdtemp(prefix="survey-agent-")
     log(f"Screenshots for this run: {screenshot_dir}")

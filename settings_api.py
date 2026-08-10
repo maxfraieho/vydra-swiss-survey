@@ -236,6 +236,93 @@ def delete_pattern(key: str):
         return jsonify({"error": str(e)}), 500
 
 
+# --- Browser Sources Routes ---
+
+@settings_bp.route("/api/settings/browser-sources", methods=["GET"])
+def get_browser_sources():
+    try:
+        sources = persona_graph_memory.list_browser_sources()
+        return jsonify(sources)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/settings/browser-sources", methods=["POST"])
+def create_browser_source():
+    try:
+        data = request.get_json(silent=True) or {}
+        key = data.get("key")
+        label = data.get("label")
+        host = data.get("host")
+        if not key or not label or not host:
+            return jsonify({"error": "key, label, and host are required"}), 400
+        kind = data.get("kind", "direct_cdp")
+        port = data.get("port", 0)
+        mcp_server = data.get("mcp_server")
+        note = data.get("note")
+        res = persona_graph_memory.create_browser_source(
+            key=key, label=label, kind=kind, host=host, port=port, mcp_server=mcp_server, note=note
+        )
+        return jsonify(res), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/settings/browser-sources/<int:id>", methods=["PATCH"])
+def update_browser_source(id: int):
+    try:
+        data = request.get_json(silent=True) or {}
+        res = persona_graph_memory.update_browser_source(id, **data)
+        return jsonify(res), 200
+    except LookupError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/settings/browser-sources/<int:id>", methods=["DELETE"])
+def delete_browser_source(id: int):
+    try:
+        ok = persona_graph_memory.delete_browser_source(id)
+        if not ok:
+            return jsonify({"error": f"browser_source id={id} not found"}), 404
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/settings/browser-sources/<int:id>/activate", methods=["POST"])
+def activate_browser_source(id: int):
+    try:
+        res = persona_graph_memory.set_active_browser_source(id)
+        return jsonify(res), 200
+    except LookupError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/settings/browser-sources/<int:id>/test", methods=["POST"])
+def test_browser_source(id: int):
+    try:
+        row = persona_graph_memory.get_browser_source(id)
+        if not row:
+            return jsonify({"error": f"browser_source id={id} not found"}), 404
+        try:
+            r = requests.get(f"http://{row['host']}:{row['port']}/json/version", timeout=3)
+            if r.ok:
+                return jsonify({"ok": True, "detail": r.text[:300]})
+            return jsonify({"ok": False, "detail": f"HTTP {r.status_code}"})
+        except Exception as e:
+            return jsonify({"ok": False, "detail": str(e)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # --- AI Source Routes ---
 
 _PROBE_LOCK = threading.Lock()

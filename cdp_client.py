@@ -26,34 +26,20 @@ import time
 import requests
 from websocket import create_connection
 
-SSH_HOST = "192.168.3.184"  # laptop, LAN IP - the Tailscale IP (100.68.179.102) this
-# used to point at is unreachable from this phone now (no `tailscale` CLI/VPN active
-# in Termux; SSH to it times out), while the LAN IP answers SSH immediately. Switched
-# 2026-07-27 after confirming both empirically.
+import persona_graph_memory
+
 SSH_USER = "vokov"
 SSH_PASS = os.environ.get("SWISS_LAPTOP_SSH_PASS", "0523")
-
-# port -> which isolated Swiss-proxied Chrome window on the laptop
-REMOTE_PORTS = {
-    "survey": 9226,   # Swiss Survey Browser.bat (port 9224)
-    "perplexity": 9224,  # Swiss Perplexity.bat
-    "survey_legacy": 9225,
-}
 
 
 class CDPError(RuntimeError):
     pass
 
 
-def ensure_tunnel(remote_port: int, local_port: int, wait_seconds: float = 8.0) -> int:
-    try:
-        r = requests.get("http://192.168.3.184:9226/json/version", timeout=1.0)
-        if r.ok:
-            return 9226
-    except Exception:
-        pass
-    """Self-heal SSH tunnel: reuse if already up, otherwise auto-detect
-    active Chrome CDP port on laptop (9225 or 9224) and bring up SSH tunnel."""
+def ensure_tunnel(ssh_host: str, remote_port: int, local_port: int, wait_seconds: float = 8.0) -> int:
+    """Self-heal SSH tunnel from `local_port` to `ssh_host`:`remote_port`.
+    Only used for kind='direct_cdp' browser_sources — mcp_bridge sources are
+    LAN-reachable directly and never go through this."""
     try:
         r = requests.get(f"http://127.0.0.1:{local_port}/json/version", timeout=0.5)
         if r.ok:
@@ -61,41 +47,71 @@ def ensure_tunnel(remote_port: int, local_port: int, wait_seconds: float = 8.0) 
     except requests.RequestException:
         pass
 
-    ports_to_try = [remote_port] + [p for p in (9226, 9225, 9224) if p != remote_port]
-    for rport in ports_to_try:
-        subprocess.run(
-            ["pkill", "-f", f"ssh .*-L {local_port}:127.0.0.1:"],
-            capture_output=True,
-        )
+    subprocess.run(
+        ["pkill", "-f", f"ssh .*-L {local_port}:127.0.0.1:"],
+        capture_output=True,
+    )
+    time.sleep(0.2)
+
+    subprocess.Popen(
+        ["sshpass", "-p", SSH_PASS, "ssh", "-o", "StrictHostKeyChecking=no",
+         "-L", f"{local_port}:127.0.0.1:{remote_port}",
+         f"{SSH_USER}@{ssh_host}", "-N"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+
+    deadline = time.time() + wait_seconds
+    while time.time() < deadline:
+        try:
+            r = requests.get(f"http://127.0.0.1:{local_port}/json/version", timeout=0.5)
+            if r.ok:
+                return remote_port
+        except requests.RequestException:
+            pass
         time.sleep(0.2)
 
-        subprocess.Popen(
-            ["sshpass", "-p", SSH_PASS, "ssh", "-o", "StrictHostKeyChecking=no",
-             "-L", f"{local_port}:127.0.0.1:{rport}",
-             f"{SSH_USER}@{SSH_HOST}", "-N"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-
-        deadline = time.time() + 3.0
-        while time.time() < deadline:
-            try:
-                r = requests.get(f"http://127.0.0.1:{local_port}/json/version", timeout=0.5)
-                if r.ok:
-                    return rport
-            except requests.RequestException:
-                pass
-            time.sleep(0.2)
-
-    raise CDPError(f"Tunnel to laptop:{remote_port} (or fallback 9225/9224) via {local_port} did not come up "
-                    f"in {wait_seconds}s — is the corresponding .bat running on the laptop?")
+    raise CDPError(f"Tunnel to {ssh_host}:{remote_port} via {local_port} did not come up "
+                    f"in {wait_seconds}s — is the browser running on {ssh_host}?")
 
 
 _SURVEY_DOMAIN_HINTS = ("meinungsplatz", "bilendi", "survey", "gfk", "maximiles", "cinode", "opinion", "mriweb")
 
 
 class CDPClient:
-    def __init__(self, local_port: int):
-        self.base = f"http://192.168.3.184:9226"
+    def __init__(self, local_port: int, cdp_target_key: str | None = None):
+        """Resolves its CDP target from `browser_sources` (Settings → Браузер)
+        instead of a hardcoded host. `cdp_target_key`, if given, overrides the
+        active row for this run only (does not change which row is active).
+        No fallback to any other browser on failure — fails loud instead, per
+        product requirement: an unreachable target means report the problem,
+        not improvise a substitute browser session."""
+        if cdp_target_key:
+            source = persona_graph_memory.get_browser_source_by_key(cdp_target_key)
+            if source is None:
+                raise CDPError(f"No browser_source with key={cdp_target_key!r} found "
+                                f"(Settings → Браузер)")
+        else:
+            source = persona_graph_memory.get_active_browser_source()
+            if source is None:
+                raise CDPError("No active browser_source configured — set one via Settings → Браузер")
+
+        if source["kind"] == "direct_cdp":
+            ensure_tunnel(source["host"], source["port"], local_port)
+            self.base = f"http://127.0.0.1:{local_port}"
+        elif source["kind"] == "mcp_bridge":
+            try:
+                r = requests.get(f"http://{source['host']}:{source['port']}/json/version", timeout=3)
+                r.raise_for_status()
+            except Exception as e:
+                raise CDPError(
+                    f"Active browser_source '{source['label']}' ({source['host']}:{source['port']}) "
+                    f"is unreachable: {e}. It may not have started yet or crashed — do not fall back "
+                    f"to a substitute browser. Wait/retry, or report this."
+                ) from e
+            self.base = f"http://{source['host']}:{source['port']}"
+        else:
+            raise CDPError(f"Unknown browser_source kind: {source['kind']!r}")
+
         self._ids = itertools.count(1)
         self.ws = None
         self.target_id = None
