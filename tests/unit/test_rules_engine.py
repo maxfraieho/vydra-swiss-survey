@@ -65,3 +65,17 @@ def test_get_host_rules_priority_cascade():
         winning_rule = tobacco_rules[0]
         assert winning_rule['host'] == "survey.tolunastart.com", f"Expected exact host winner, got {winning_rule['host']}"
         assert winning_rule['behavior'] == "Exact host tobacco rule"
+
+
+def test_classify_outcome_study_already_participated():
+    """Verify classify_outcome accurately classifies 'MALHEUREUSEMENT VOUS AVEZ DÉJÀ PARTICIPÉ À CETTE ÉTUDE.' as disqualified."""
+    import reflection
+    page_text = "MALHEUREUSEMENT VOUS AVEZ DÉJÀ PARTICIPÉ À CETTE ÉTUDE. Pourquoi ne pas mettre à jour votre profil maintenant ?"
+    outcome, reason = reflection.classify_outcome(
+        final_text=page_text,
+        final_url="https://survey.maximiles.com/survey",
+        gemma_said_done=False,
+        dry_run=False
+    )
+    assert outcome == "disqualified"
+    assert "déjà participé" in reason

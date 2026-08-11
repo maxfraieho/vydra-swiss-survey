@@ -46,11 +46,14 @@ QUALIFYING_POLARITY: dict[str, str] = {
 # text) since German thank-you pages can also be disqualifications.
 DQ_PHRASES: dict[str, list[str]] = {
     "de": ["nicht qualifiziert", "quote ist voll", "leider passen sie nicht",
-           "umfrage ist bereits voll", "bereits teilgenommen", "haushalt"],
-    "fr": ["vous ne correspondez pas", "quota atteint", "malheureusement vous ne", "déjà participé"],
-    "it": ["non sei idoneo", "quota raggiunta", "purtroppo non corrispondi", "già partecipato"],
-    "en": ["you do not qualify", "quota is full", "unfortunately you do not", "already participated", "already completed"],
-    "uk": ["вже проходив", "членів сім'ї", "вже взяли участь"],
+           "umfrage ist bereits voll", "bereits teilgenommen", "bereits an dieser studie", "haushalt"],
+    "fr": ["vous ne correspondez pas", "quota atteint", "malheureusement vous ne",
+           "vous avez déjà participé", "déjà participé à cette étude", "déjà participé"],
+    "it": ["non sei idoneo", "quota raggiunta", "purtroppo non corrispondi",
+           "hai già partecipato", "già partecipato a questo studio", "già partecipato"],
+    "en": ["you do not qualify", "quota is full", "unfortunately you do not",
+           "already participated in this study", "already completed this survey", "already participated"],
+    "uk": ["вже проходив", "членів сім'ї", "вже взяли участь", "ви вже брали участь"],
 }
 
 # Completion confirmation phrases per language.
