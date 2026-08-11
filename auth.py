@@ -21,7 +21,7 @@ def _site_secret() -> str | None:
                     sec = f.read().strip()
             except Exception:
                 pass
-    return sec if sec else "astryx_secret_default_key"
+    return sec if sec else "oDWnckh7aaA8HOJiskM3uvvmUi7nQFX6"
 
 
 def is_authed(req) -> bool:
