@@ -99,9 +99,10 @@ def add_log(msg: str):
 
 def fetch_telegram_api():
     token = get_telegram_bot_token()
-    url = f"https://api.telegram.org/bot{token}/getUpdates"
+    url = f"https://api.telegram.org/bot{token}/getUpdates?offset=-20"
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        req = urllib.request.Request(url, headers={"User-Agent": "AstryxSurveyServer/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             count = 0
             if data.get("ok"):
@@ -109,13 +110,14 @@ def fetch_telegram_api():
                     msg = update.get("message") or update.get("channel_post") or {}
                     text = msg.get("text", "")
                     if text:
-                        push_task_from_text(text)
-                        count += 1
+                        task = push_task_from_text(text, force=True)
+                        if task:
+                            count += 1
             return {"status": "success", "processed": count}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def push_task_from_text(text: str):
+def push_task_from_text(text: str, force: bool = False):
     profile = None
     if "Арсена" in text or "Arno" in text or "Арсен" in text:
         profile = "arno"
@@ -134,7 +136,9 @@ def push_task_from_text(text: str):
     url_match = re.search(r'(https?://[^\s]+)', text)
     survey_url = url_match.group(1) if url_match else "https://meinungsplatz.ch/"
     
-    task_id = f"task_{profile}_{int(time.time()*1000)}"
+    import uuid
+    now_dt = datetime.now()
+    task_id = f"task_{profile}_{int(now_dt.timestamp()*1000)}_{uuid.uuid4().hex[:4]}"
     task_item = {
         "id": task_id,
         "profile": profile,
@@ -142,31 +146,31 @@ def push_task_from_text(text: str):
         "url": survey_url,
         "reward": reward,
         "duration": duration,
-        "created_at": datetime.now().strftime("%H:%M:%S"),
-        "wait_expires_at": (datetime.now() + timedelta(minutes=10)).isoformat(),
+        "created_at": now_dt.strftime("%H:%M:%S"),
+        "created_timestamp": now_dt.timestamp(),
+        "wait_expires_at": (now_dt + timedelta(minutes=10)).isoformat(),
         "status": "waiting_auth"
     }
     
     with STATE_LOCK:
-        # Avoid duplicate task entries (ignore expired entries)
-        now = datetime.now()
-        existing = []
-        for t in PENDING_TASKS:
-            if t["profile"] == profile and t["reward"] == reward and t["status"] == "waiting_auth":
-                exp_str = t.get("wait_expires_at")
-                if exp_str:
-                    try:
-                        if now < datetime.fromisoformat(exp_str):
-                            existing.append(t)
-                    except Exception:
-                        existing.append(t)
-                else:
-                    existing.append(t)
-        if not existing:
-            PENDING_TASKS.append(task_item)
+        # Check for duplicate submissions (only if previous task is still actively waiting_auth)
+        is_recent_duplicate = False
+        if not force:
+            for t in PENDING_TASKS:
+                if t["profile"] == profile and t["reward"] == reward and t["status"] == "waiting_auth":
+                    created_ts = t.get("created_timestamp", 0)
+                    if now_dt.timestamp() - created_ts < 30 and ACTIVE_SURVEY_STATE.get("active_task_id") == t["id"] and ACTIVE_SURVEY_STATE.get("status") == "waiting_auth":
+                        is_recent_duplicate = True
+                        task_item = t
+                        break
+
+        if not is_recent_duplicate or force:
+            # If force or not recent duplicate, ensure task is in queue
+            if not any(t["id"] == task_item["id"] for t in PENDING_TASKS):
+                PENDING_TASKS.append(task_item)
             
-            # If system is idle, set as active
-            if ACTIVE_SURVEY_STATE["status"] in ("idle", "finished", "error"):
+            # If system is idle or missing active task, set as active automatically
+            if ACTIVE_SURVEY_STATE["status"] in ("idle", "finished", "error") or not ACTIVE_SURVEY_STATE.get("active_task_id"):
                 set_active_task_locked(task_item)
                 
     add_log(f"🔔 Нове опитування додано в чергу: {PROFILES[profile]['name']} ({reward}, {duration})")
@@ -687,7 +691,7 @@ def telegram_push_api():
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
     if text:
-        task_item = push_task_from_text(text)
+        task_item = push_task_from_text(text, force=True)
         if task_item:
             return jsonify({"status": "success", "task": task_item})
     return jsonify({"status": "error", "message": "Could not parse survey trigger from text"}), 400
