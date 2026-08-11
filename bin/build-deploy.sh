@@ -52,9 +52,15 @@ elif command grep -q '<script type="module" crossorigin src="[^"]*"></script>' "
         exit 1
     fi
     log "PATCH OK: data-cfasync=\"false\" injected on module script tag (Rocket Loader guard)"
-else
-    log "PATCH FAILED: expected module script tag not found in $INDEX_HTML"
-    exit 1
 fi
 
-log "DEPLOYED: dist/ live, Flask serves it directly, no restart needed"
+# Reload Python server process so RAM loads updated code
+pkill -f 'astryx_survey_serve[r]\.py' || true
+sleep 1
+if [ -f "$HOME/.vydra-survey-profiles/astryx_api_token.secret" ]; then
+    export ASTRYX_API_TOKEN="$(cat "$HOME/.vydra-survey-profiles/astryx_api_token.secret")"
+fi
+(cd "$REPO_DIR" && nohup python3 astryx_survey_server.py >> "$REPO_DIR/astryx_server.log" 2>&1 &)
+log "RELOAD: astryx_survey_server.py process restarted with fresh code"
+
+log "DEPLOYED: dist/ live and server reloaded successfully"

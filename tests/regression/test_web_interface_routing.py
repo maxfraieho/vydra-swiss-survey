@@ -33,3 +33,16 @@ def test_cloudflared_config_mapping():
             content = f.read()
         assert "survey.exodus.pp.ua" in content, "Missing survey.exodus.pp.ua ingress rule in cloudflared config.yml"
         assert "localhost:5005" in content or "127.0.0.1:5005" in content
+
+
+def test_auth_password_accepts_user_token():
+    """Regression Test for Incident: User password oDWnckh7aaA8HOJiskM3uvvmUi7nQFX6 rejected."""
+    with astryx_survey_server.app.test_client() as client:
+        resp = client.post(
+            "/api/auth",
+            json={"key": "oDWnckh7aaA8HOJiskM3uvvmUi7nQFX6"},
+            headers={"Accept": "application/json"}
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data.get("ok") is True
