@@ -502,6 +502,33 @@ export const SurveyOps: React.FC = () => {
               📊 Прогрес промоції правила: {status.tutor_activity.promotion_info.unique_runs} / {status.tutor_activity.promotion_info.target_runs} унікальних прогонів
             </div>
           )}
+
+          {/* Interactive Tutor HITL Panel */}
+          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              style={buttonStyle}
+              onClick={handleApproveStep}
+              disabled={busy === 'approve_step' || !status?.pending_decision}
+            >
+              ✅ Підтвердити крок агента
+            </button>
+            <button
+              style={secondaryButtonStyle}
+              onClick={() => {
+                const el = document.getElementById('override-target-input');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              ✏️ Внести корекцію тутора
+            </button>
+            <button
+              style={secondaryButtonStyle}
+              onClick={handleFetchTelegram}
+              disabled={busy === 'fetch_telegram'}
+            >
+              🔄 Оновити статус тутора
+            </button>
+          </div>
         </Card>
       )}
 
