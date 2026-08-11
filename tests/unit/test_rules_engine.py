@@ -27,7 +27,7 @@ def test_get_host_rules_priority_cascade():
     and exact persona (2) > wildcard persona (1).
     Highest priority score MUST win and deduplicate per pattern.
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         test_db = os.path.join(tmpdir, "test_rules.db")
         persona_graph_memory.DB_PATH = test_db
         

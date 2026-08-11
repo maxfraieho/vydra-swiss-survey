@@ -23,7 +23,7 @@ def test_regression_dual_promotion_prevention():
     DOES NOT promote a shadow rule to active. Rule MUST remain shadow until
     auto_promote_rules(min_unique_runs=3) confirms N >= 3 distinct run_ids.
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         persona_graph_memory.DB_PATH = os.path.join(tmpdir, "reg_test1.db")
         conn = persona_graph_memory._connect()
         conn.close()
@@ -70,7 +70,7 @@ def test_regression_sql_injection_in_get_host_rules():
     is 100% parameterized via '?' placeholders and does NOT cause SQL injection,
     syntax errors, or unexpected row leaks.
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         persona_graph_memory.DB_PATH = os.path.join(tmpdir, "reg_test2.db")
         conn = persona_graph_memory._connect()
         conn.close()
@@ -112,7 +112,7 @@ def test_regression_unknown_outcome_handling():
     Verify that UNKNOWN outcome ignores the run, does NOT increment wins or losses,
     and does NOT insert into rule_applications.
     """
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         persona_graph_memory.DB_PATH = os.path.join(tmpdir, "reg_test3.db")
         conn = persona_graph_memory._connect()
         conn.close()
