@@ -173,9 +173,30 @@ class CDPClient:
         self._send("Runtime.enable")
         self._send("DOM.enable")
         self._send("Page.bringToFront")
-        self._inject_stealth_anti_bot_overrides()
-        self._prune_stray_tabs()
-        return True
+    def check_and_attach_new_tab(self) -> str | None:
+        """Checks if a new page tab was opened by a click action and switches target_id to it.
+        Returns the new URL if switched, or None if no new tab was detected."""
+        try:
+            r = requests.get(f"{self.base}/json/list", timeout=3)
+            if not r.ok:
+                return None
+            tabs = [t for t in r.json() if t.get("type") == "page"]
+            for t in reversed(tabs):
+                if t.get("id") != self.target_id:
+                    ws_url = t.get("webSocketDebuggerUrl")
+                    if ws_url:
+                        self.target_id = t["id"]
+                        self.ws = create_connection(ws_url, timeout=30)
+                        self._send("Page.enable")
+                        self._send("Runtime.enable")
+                        self._send("DOM.enable")
+                        self._send("Page.bringToFront")
+                        self._inject_stealth_anti_bot_overrides()
+                        new_url = self.get_current_url()
+                        return new_url
+        except Exception:
+            pass
+        return None
 
     def _inject_stealth_anti_bot_overrides(self) -> None:
         stealth_js = r"""
