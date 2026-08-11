@@ -341,6 +341,11 @@ def record_host_rule(host: str, pattern: str, behavior: str, *,
             (host, persona, pattern, behavior, source, status, confidence, ev, now, now),
         )
         conn.commit()
+        try:
+            from synapse_adapter import SynapseAdapter
+            SynapseAdapter.sync_rule_async(host, pattern, behavior, persona=persona, status=status)
+        except Exception:
+            pass
         row = conn.execute(
             "SELECT id FROM host_rules WHERE host=? AND persona=? AND pattern=? AND source=?",
             (host, persona, pattern, source),
@@ -551,6 +556,11 @@ def record_run_trace(run_id: str, *, outcome: str, outcome_reason: str,
                 (host, host),
             )
             conn.commit()
+            try:
+                from synapse_adapter import SynapseAdapter
+                SynapseAdapter.sync_trace_async(run_id, host, persona, outcome, len(steps))
+            except Exception:
+                pass
     finally:
         conn.close()
 
