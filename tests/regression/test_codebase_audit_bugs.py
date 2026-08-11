@@ -113,6 +113,8 @@ def test_regression_unknown_outcome_handling():
     and does NOT insert into rule_applications.
     """
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        import time
+        time.sleep(0.05)
         persona_graph_memory.DB_PATH = os.path.join(tmpdir, "reg_test3.db")
         conn = persona_graph_memory._connect()
         conn.close()

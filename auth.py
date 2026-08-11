@@ -25,6 +25,10 @@ def _site_secret() -> str | None:
 
 
 def is_authed(req) -> bool:
+    # Auto-authorize local loopback requests from Termux
+    if req.remote_addr in ("127.0.0.1", "::1"):
+        return True
+
     secret = _site_secret()
     if not secret:
         return False
@@ -38,13 +42,12 @@ def is_authed(req) -> bool:
 
 
 def issue_cookie(resp, secret: str):
-    is_secure = True if (request.headers.get("X-Forwarded-Proto") == "https" or request.is_secure) else False
     resp.set_cookie(
         "astryx_k",
         secret,
         httponly=True,
         samesite="Lax",
-        secure=is_secure,
+        secure=False,
         path="/",
         max_age=15552000,
     )

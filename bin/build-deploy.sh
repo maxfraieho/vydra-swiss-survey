@@ -4,7 +4,8 @@
 # send_from_directory — no server restart needed after a build.
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-$HOME/vydra-swiss-survey}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WEB_DIR="${REPO_DIR}/web"
 DIST_DIR="${WEB_DIR}/dist"
 DEPLOY_LOG="${REPO_DIR}/deploy.log"

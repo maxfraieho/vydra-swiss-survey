@@ -3,7 +3,8 @@
 # if the process is dead, restarts it and logs the restart (never silent).
 set -uo pipefail
 
-REPO_DIR="${REPO_DIR:-$HOME/vydra-swiss-survey}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SERVER_SCRIPT="astryx_survey_server.py"
 SERVER_LOG="${REPO_DIR}/astryx_server.log"
 WATCHDOG_LOG="${REPO_DIR}/watchdog.log"
