@@ -83,10 +83,27 @@ ACTIVE_SURVEY_STATE = {
     "verification_event": threading.Event(),
     "verification_result": None,
     "log_history": [],
-    "last_error": None
+    "last_error": None,
+    "tutor_activity": {
+        "last_action_source": "idle",
+        "tutor_explanation": "Тутор активний. Очікування вибору опитування або ручної корекції.",
+        "matched_rule": None,
+        "promotion_info": None,
+        "updated_at": None
+    }
 }
 
 STATE_LOCK = threading.Lock()
+
+def update_tutor_activity(source: str, explanation: str, rule: dict | None = None, promo: dict | None = None):
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["tutor_activity"] = {
+            "last_action_source": source,
+            "tutor_explanation": explanation,
+            "matched_rule": rule,
+            "promotion_info": promo,
+            "updated_at": datetime.now().strftime("%H:%M:%S")
+        }
 
 def add_log(msg: str):
     timestamp = datetime.now().strftime("%H:%M:%S")

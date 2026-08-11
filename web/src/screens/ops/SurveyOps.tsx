@@ -32,6 +32,23 @@ export interface PendingTask {
   status: string;
 }
 
+export interface TutorActivity {
+  last_action_source: 'human_override' | 'shadow_rule' | 'active_rule' | 'vision_model' | 'idle';
+  tutor_explanation: string;
+  matched_rule?: {
+    pattern: string;
+    behavior: string;
+    status: string;
+    confidence: number;
+    host?: string;
+  } | null;
+  promotion_info?: {
+    unique_runs: number;
+    target_runs: number;
+  } | null;
+  updated_at?: string | null;
+}
+
 export interface SurveyStatus {
   status:
     | 'idle'
@@ -55,6 +72,7 @@ export interface SurveyStatus {
   last_error: string | null;
   wait_seconds_remaining: number;
   pending_tasks: PendingTask[];
+  tutor_activity?: TutorActivity | null;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -422,6 +440,70 @@ export const SurveyOps: React.FC = () => {
           🎓 Режим Навчання (Пауза &amp; Коригування)
         </label>
       </Card>
+
+      {/* Tutor Live Activity Card */}
+      {status?.training_mode && status.tutor_activity && (
+        <Card padding={4} style={{ border: '1px solid #6366f1', background: 'rgba(99, 102, 241, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <Heading level={2} style={{ fontSize: '14px', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🎓 Активність Тутора Навчання
+            </Heading>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                textTransform: 'uppercase',
+                background:
+                  status.tutor_activity.last_action_source === 'human_override'
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : status.tutor_activity.last_action_source === 'shadow_rule'
+                    ? 'rgba(245, 158, 11, 0.2)'
+                    : status.tutor_activity.last_action_source === 'active_rule'
+                    ? 'rgba(99, 102, 241, 0.2)'
+                    : 'rgba(148, 163, 184, 0.2)',
+                color:
+                  status.tutor_activity.last_action_source === 'human_override'
+                    ? '#34d399'
+                    : status.tutor_activity.last_action_source === 'shadow_rule'
+                    ? '#fbbf24'
+                    : status.tutor_activity.last_action_source === 'active_rule'
+                    ? '#818cf8'
+                    : '#94a3b8',
+              }}
+            >
+              {status.tutor_activity.last_action_source === 'human_override'
+                ? '🟢 Human Override'
+                : status.tutor_activity.last_action_source === 'shadow_rule'
+                ? '🟡 Shadow Rule (Learning)'
+                : status.tutor_activity.last_action_source === 'active_rule'
+                ? '🔵 Active Rule'
+                : status.tutor_activity.last_action_source === 'vision_model'
+                ? '🟣 Vision Model'
+                : '⚪ Tutor Ready'}
+            </span>
+          </div>
+
+          <div style={{ fontSize: '13px', color: 'var(--color-text-primary)', marginBottom: '8px' }}>
+            {status.tutor_activity.tutor_explanation}
+          </div>
+
+          {status.tutor_activity.matched_rule && (
+            <div style={{ fontSize: '12px', background: 'var(--color-background-page)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', marginTop: '6px' }}>
+              <div><strong>Патерн:</strong> <code>{status.tutor_activity.matched_rule.pattern}</code></div>
+              <div><strong>Поведінка:</strong> {status.tutor_activity.matched_rule.behavior}</div>
+              <div><strong>Статус правила:</strong> <span style={{ textTransform: 'uppercase', fontWeight: 600, color: status.tutor_activity.matched_rule.status === 'active' ? '#34d399' : '#fbbf24' }}>{status.tutor_activity.matched_rule.status}</span></div>
+            </div>
+          )}
+
+          {status.tutor_activity.promotion_info && (
+            <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-tertiary)' }}>
+              📊 Прогрес промоції правила: {status.tutor_activity.promotion_info.unique_runs} / {status.tutor_activity.promotion_info.target_runs} унікальних прогонів
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Queue from Telegram */}
       <Card padding={4}>
