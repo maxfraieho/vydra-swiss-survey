@@ -439,6 +439,7 @@ class CDPClient:
         return json.loads(value)
 
     def click_by_text(self, text: str) -> bool:
+        import random
         el = self.find_element(text)
         if el is None:
             # Fallback for common survey continuation/next buttons across French/German/English
@@ -454,25 +455,37 @@ class CDPClient:
                     el = self.find_submit_button()
         if el is None:
             return False
-        x, y = el["x"], el["y"]
+        
+        # Human reading/thinking delay before click
+        time.sleep(random.uniform(0.4, 1.1))
+
+        # Add Gaussian coordinate offset jitter (+-10% of element size)
+        x = el["x"] + random.uniform(-4.0, 4.0)
+        y = el["y"] + random.uniform(-3.0, 3.0)
+
+        # Humanized mouse movement: hover before press
         self._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
+        time.sleep(random.uniform(0.08, 0.22))
+
+        # Mouse press hold delay
         self._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": x, "y": y,
                                                   "button": "left", "clickCount": 1})
+        time.sleep(random.uniform(0.05, 0.15))
         self._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x, "y": y,
                                                   "button": "left", "clickCount": 1})
         return True
 
     def type_text(self, text: str) -> None:
-        # Best-effort: assumes a field was already focused by a prior
-        # click_by_text() call on its label/placeholder. Select-all first -
-        # confirmed live 2026-07-27 that a pre-filled/autofilled field (e.g.
-        # a remembered email address) gets Input.insertText APPENDED to its
-        # existing value rather than replacing it, corrupting the field.
+        import random
         self._send("Runtime.evaluate", {
             "expression": "(function(){var e=document.activeElement;"
                           "if(e&&typeof e.select==='function'){e.select();}})()"
         })
-        self._send("Input.insertText", {"text": text})
+        time.sleep(random.uniform(0.2, 0.4))
+        # Char-by-char typing with natural human inter-keystroke delays
+        for char in text:
+            self._send("Input.insertText", {"text": char})
+            time.sleep(random.uniform(0.04, 0.12))
 
     def scroll(self, dy: int = 400) -> None:
         self._send("Input.dispatchMouseEvent", {
