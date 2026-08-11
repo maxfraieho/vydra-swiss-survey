@@ -23,7 +23,11 @@ app.register_blueprint(settings_bp)
 
 @app.before_request
 def global_auth_gate():
-    if request.path.startswith(("/api/auth", "/api/survey/telegram_push", "/api/survey/fetch_telegram")):
+    # Allow authentication endpoints, Telegram webhooks, and static frontend assets
+    if request.path.startswith(("/api/auth", "/api/survey/telegram_push", "/api/survey/fetch_telegram", "/assets/")):
+        return None
+
+    if request.path.endswith((".js", ".css", ".map", ".svg", ".png", ".woff", ".woff2", ".ico")):
         return None
 
     if is_authed(request):
@@ -39,11 +43,6 @@ def global_auth_gate():
 
     if request.path.startswith("/api/"):
         return jsonify({"error": "unauthorized"}), 401
-
-    if request.path.endswith((".js", ".css", ".map", ".svg", ".png", ".woff", ".woff2")):
-        resp = make_response("", 404)
-        resp.headers["Cache-Control"] = "no-store"
-        return resp
 
     resp = make_response(render_template("gate.html"), 200)
     resp.headers["Cache-Control"] = "no-store, must-revalidate"
@@ -114,35 +113,84 @@ def add_log(msg: str):
         if len(ACTIVE_SURVEY_STATE["log_history"]) > 200:
             ACTIVE_SURVEY_STATE["log_history"].pop(0)
 
-def fetch_telegram_api():
-    token = get_telegram_bot_token()
-    url = f"https://api.telegram.org/bot{token}/getUpdates?offset=-20"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "AstryxSurveyServer/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            count = 0
-            if data.get("ok"):
-                for update in data.get("result", []):
-                    msg = update.get("message") or update.get("channel_post") or {}
-                    text = msg.get("text", "")
-                    if text:
-                        task = push_task_from_text(text, force=True)
-                        if task:
-                            count += 1
-            return {"status": "success", "processed": count}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+RECENT_TELEGRAM_PUSHES = []
 
-def push_task_from_text(text: str, force: bool = False):
+def extract_text_and_url_from_payload(payload):
+    text = ""
+    extracted_url = None
+
+    if isinstance(payload, str):
+        text = payload
+    elif isinstance(payload, dict):
+        msg = payload.get("message") or payload.get("channel_post") or payload.get("edited_message") or payload.get("edited_channel_post") or payload
+        text = msg.get("text") or msg.get("caption") or payload.get("text") or ""
+        
+        entities = msg.get("entities") or msg.get("caption_entities") or payload.get("entities") or []
+        for ent in entities:
+            if isinstance(ent, dict) and ent.get("type") == "text_link" and ent.get("url"):
+                extracted_url = ent["url"]
+                break
+
+    if not extracted_url and text:
+        md_match = re.search(r'\[.*?\]\((https?://[^\s\)]+)\)', text)
+        if md_match:
+            extracted_url = md_match.group(1)
+        else:
+            url_match = re.search(r'(https?://[^\s>"\']+)', text)
+            if url_match:
+                extracted_url = url_match.group(1)
+
+    return text, extracted_url
+
+def fetch_telegram_api(optional_payload=None):
+    count = 0
+    
+    # 1. Process optional_payload if provided
+    if optional_payload:
+        text, url = extract_text_and_url_from_payload(optional_payload)
+        if text:
+            task = push_task_from_text(text, force=True, override_url=url)
+            if task:
+                count += 1
+
+    # 2. Check recent cached Telegram push messages in RAM
+    with STATE_LOCK:
+        cached_msgs = list(RECENT_TELEGRAM_PUSHES)
+    for raw in cached_msgs:
+        text, url = extract_text_and_url_from_payload(raw)
+        if text:
+            task = push_task_from_text(text, force=True, override_url=url)
+            if task:
+                count += 1
+
+    # 3. Query Telegram getUpdates API
+    token = get_telegram_bot_token()
+    if token:
+        try:
+            req_url = f"https://api.telegram.org/bot{token}/getUpdates?offset=-20"
+            req = urllib.request.Request(req_url, headers={"User-Agent": "AstryxSurveyServer/1.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("ok"):
+                    for update in data.get("result", []):
+                        text, url = extract_text_and_url_from_payload(update)
+                        if text:
+                            task = push_task_from_text(text, force=True, override_url=url)
+                            if task:
+                                count += 1
+        except Exception as e:
+            add_log(f"⚠️ getUpdates warning: {e}")
+
+    return {"status": "success", "processed": count}
+
+def push_task_from_text(text: str, force: bool = False, override_url: str | None = None):
     profile = None
     if "Арсена" in text or "Arno" in text or "Арсен" in text:
         profile = "arno"
     elif "Олени" in text or "Annette" in text or "Олена" in text:
         profile = "annet"
-        
-    if not profile:
-        return None
+    else:
+        profile = "arno"  # Default fallback profile
         
     reward_match = re.search(r'([\d\.]+\s*CHF)', text)
     reward = reward_match.group(1) if reward_match else "1.0 CHF"
@@ -150,8 +198,11 @@ def push_task_from_text(text: str, force: bool = False):
     duration_match = re.search(r'([\d\.]+\s*min)', text)
     duration = duration_match.group(1) if duration_match else "10 min"
     
-    url_match = re.search(r'(https?://[^\s]+)', text)
-    survey_url = url_match.group(1) if url_match else "https://meinungsplatz.ch/"
+    if override_url:
+        survey_url = override_url
+    else:
+        url_match = re.search(r'(https?://[^\s>"\']+)', text)
+        survey_url = url_match.group(1) if url_match else "https://meinungsplatz.ch/"
     
     import uuid
     now_dt = datetime.now()
@@ -700,15 +751,20 @@ def status_api():
 
 @app.route("/api/survey/fetch_telegram", methods=["POST"])
 def fetch_telegram_route():
-    res = fetch_telegram_api()
+    payload = request.get_json(silent=True) or request.form.to_dict() or {}
+    res = fetch_telegram_api(optional_payload=payload)
     return jsonify(res)
 
 @app.route("/api/survey/telegram_push", methods=["POST"])
 def telegram_push_api():
-    data = request.get_json(silent=True) or {}
-    text = data.get("text", "")
+    payload = request.get_json(silent=True) or request.form.to_dict() or {}
+    text, url = extract_text_and_url_from_payload(payload)
     if text:
-        task_item = push_task_from_text(text, force=True)
+        with STATE_LOCK:
+            RECENT_TELEGRAM_PUSHES.append(payload)
+            if len(RECENT_TELEGRAM_PUSHES) > 50:
+                RECENT_TELEGRAM_PUSHES.pop(0)
+        task_item = push_task_from_text(text, force=True, override_url=url)
         if task_item:
             return jsonify({"status": "success", "task": task_item})
     return jsonify({"status": "error", "message": "Could not parse survey trigger from text"}), 400
