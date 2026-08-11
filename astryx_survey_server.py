@@ -82,6 +82,7 @@ ACTIVE_SURVEY_STATE = {
     "training_mode": True,
     "pending_step": None,
     "pending_decision": None,
+    "bounding_boxes": [],
     "verification_event": threading.Event(),
     "verification_result": None,
     "log_history": [],
@@ -842,6 +843,7 @@ def verify_step_api():
         ACTIVE_SURVEY_STATE["pending_decision"] = data.get("decision")
         ACTIVE_SURVEY_STATE["pending_pattern"] = data.get("pattern")
         ACTIVE_SURVEY_STATE["pending_page_text"] = data.get("page_text", "")
+        ACTIVE_SURVEY_STATE["bounding_boxes"] = data.get("bounding_boxes", [])
         ACTIVE_SURVEY_STATE["verification_event"].clear()
         ACTIVE_SURVEY_STATE["verification_result"] = None
         if training_mode:

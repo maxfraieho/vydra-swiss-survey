@@ -368,6 +368,39 @@ class CDPClient:
 })()
 """
 
+    _GET_BOUNDING_BOXES_JS = r"""
+(function() {
+  function isVisible(el) {
+    if (el.offsetWidth <= 0 || el.offsetHeight <= 0) return false;
+    var style = window.getComputedStyle(el);
+    if (style.display === 'none') return false;
+    var r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
+
+  var vw = window.innerWidth || document.documentElement.clientWidth || 1;
+  var vh = window.innerHeight || document.documentElement.clientHeight || 1;
+  var els = Array.from(document.querySelectorAll('button, input, label, select')).filter(isVisible);
+  var boxes = [];
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    var r = el.getBoundingClientRect();
+    var text = (el.innerText || el.value || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim();
+    boxes.push({
+      tag: el.tagName.toLowerCase(),
+      type: el.type || null,
+      text: text.slice(0, 60),
+      x: Math.round((r.left / vw) * 10000) / 100,
+      y: Math.round((r.top / vh) * 10000) / 100,
+      width: Math.round((r.width / vw) * 10000) / 100,
+      height: Math.round((r.height / vh) * 10000) / 100
+    });
+  }
+  return JSON.stringify(boxes);
+})()
+"""
+
+
     def find_element(self, text: str) -> dict | None:
         clean_text = text
         contains_match = re.search(r':contains\(["\'](.*?)["\']\)', text, re.IGNORECASE)
@@ -446,6 +479,17 @@ class CDPClient:
             "type": "mouseWheel", "x": 400, "y": 400,
             "deltaX": 0, "deltaY": dy,
         })
+
+    def get_interactive_bounding_boxes(self) -> list[dict]:
+        try:
+            res = self._send("Runtime.evaluate", {"expression": self._GET_BOUNDING_BOXES_JS, "returnByValue": True})
+            val = res.get("result", {}).get("value")
+            if val:
+                return json.loads(val) if isinstance(val, str) else val
+        except Exception:
+            pass
+        return []
+
 
     def close(self) -> None:
         if self.ws is not None:
