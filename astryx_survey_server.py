@@ -23,7 +23,7 @@ app.register_blueprint(settings_bp)
 
 @app.before_request
 def global_auth_gate():
-    if request.path in ("/api/auth", "/api/auth/logout"):
+    if request.path in ("/api/auth", "/api/auth/logout", "/api/survey/telegram_push", "/api/survey/fetch_telegram"):
         return None
 
     if is_authed(request):
