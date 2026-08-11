@@ -126,6 +126,8 @@ def test_regression_unknown_outcome_handling():
         persona_graph_memory.bump_rule_outcome([rule_id], "UNKNOWN", run_id="run_unknown_1")
         persona_graph_memory.bump_rule_outcome([rule_id], "unknown", run_id="run_unknown_2")
 
+        import time
+        time.sleep(0.05)
         c = persona_graph_memory._connect()
         row = c.execute("SELECT wins, losses FROM host_rules WHERE id=?", (rule_id,)).fetchone()
         apps_count = c.execute("SELECT COUNT(*) FROM rule_applications WHERE rule_id=?", (rule_id,)).fetchone()[0]
