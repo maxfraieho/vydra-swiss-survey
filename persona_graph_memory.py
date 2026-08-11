@@ -68,6 +68,9 @@ CREATE TABLE IF NOT EXISTS host_rules (
     evidence    TEXT,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL,
+    provider_id INTEGER REFERENCES providers(id),
+    scope       TEXT,
+    structure_hash TEXT,
     UNIQUE(host, persona, pattern, source)
 );
 CREATE INDEX IF NOT EXISTS idx_host_rules_lookup ON host_rules(host, persona, status);
@@ -225,6 +228,14 @@ def _connect() -> sqlite3.Connection:
         conn.execute("ALTER TABLE host_rules ADD COLUMN provider_id INTEGER REFERENCES providers(id)")
     except sqlite3.OperationalError:
         pass
+    try:
+        conn.execute("ALTER TABLE host_rules ADD COLUMN scope TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE host_rules ADD COLUMN structure_hash TEXT")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 
@@ -321,10 +332,62 @@ def base_domain(host: str) -> str:
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
+def compute_structure_hash(dom_elements: list[dict]) -> str:
+    """Computes SHA-256 fingerprint of DOM structural layout.
+    Uses tag names, element types, aria roles, and control counts.
+    EXCLUDES all innerText, labels, and question/answer contents!
+    """
+    tokens = []
+    for el in dom_elements:
+        tag = str(el.get("tag") or el.get("tag_name") or "").strip().lower()
+        el_type = str(el.get("type") or "").strip().lower()
+        role = str(el.get("role") or "").strip().lower()
+        tokens.append(f"{tag}:{el_type}:{role}")
+    skeleton_str = "|".join(tokens)
+    return hashlib.sha256(skeleton_str.encode("utf-8")).hexdigest()[:16]
+
+
+SEED_PROVIDERS = [
+    {"key": "qualtrics", "label": "Qualtrics", "url_pattern": "%qualtrics.com%"},
+    {"key": "keyresponses", "label": "KeyResponses", "url_pattern": "%keyresponses.com%"},
+    {"key": "meinungsplatz", "label": "Meinungsplatz", "url_pattern": "%meinungsplatz.ch%"},
+    {"key": "decipher", "label": "Decipher", "url_pattern": "%decipherinc.com%"},
+    {"key": "forsta", "label": "Forsta", "url_pattern": "%forsta.com%"},
+]
+
+
+def seed_providers(conn: Optional[sqlite3.Connection] = None) -> list[dict]:
+    """Initialize Qualtrics, KeyResponses, Meinungsplatz, Decipher, Forsta rows in providers table if empty."""
+    own = conn is None
+    if own:
+        conn = _connect()
+    orig_factory = conn.row_factory
+    conn.row_factory = sqlite3.Row
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM providers").fetchone()[0]
+        if count == 0:
+            now = _now()
+            for p in SEED_PROVIDERS:
+                conn.execute(
+                    "INSERT OR IGNORE INTO providers (key, label, url_pattern, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                    (p["key"], p["label"], p.get("url_pattern"), now, now),
+                )
+            conn.commit()
+        rows = conn.execute("SELECT * FROM providers ORDER BY id ASC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.row_factory = orig_factory
+        if own:
+            conn.close()
+
+
 def record_host_rule(host: str, pattern: str, behavior: str, *,
                       persona: str = "*", source: str,
                       status: str = "shadow", confidence: float = 0.5,
-                      evidence: Optional[dict] = None) -> int:
+                      evidence: Optional[dict] = None,
+                      scope: Optional[str] = None,
+                      structure_hash: Optional[str] = None,
+                      provider_id: Optional[int] = None) -> int:
     """UPSERT a host_rule by (host, persona, pattern, source)."""
     conn = _connect()
     try:
@@ -332,13 +395,17 @@ def record_host_rule(host: str, pattern: str, behavior: str, *,
         ev = json.dumps(evidence) if evidence is not None else None
         conn.execute(
             "INSERT INTO host_rules (host, persona, pattern, behavior, source, status, "
-            "confidence, evidence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "confidence, evidence, created_at, updated_at, provider_id, scope, structure_hash) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(host, persona, pattern, source) DO UPDATE SET "
             "behavior=excluded.behavior, "
             "confidence=MIN(0.95, host_rules.confidence + 0.15), "
             "evidence=excluded.evidence, "
-            "updated_at=excluded.updated_at",
-            (host, persona, pattern, behavior, source, status, confidence, ev, now, now),
+            "updated_at=excluded.updated_at, "
+            "provider_id=COALESCE(excluded.provider_id, host_rules.provider_id), "
+            "scope=COALESCE(excluded.scope, host_rules.scope), "
+            "structure_hash=COALESCE(excluded.structure_hash, host_rules.structure_hash)",
+            (host, persona, pattern, behavior, source, status, confidence, ev, now, now, provider_id, scope, structure_hash),
         )
         conn.commit()
         try:
@@ -359,28 +426,39 @@ def get_host_rules(
     host: str, 
     persona: str = "", 
     include_shadow: bool = False,
-    active_run_id: str = ""
+    active_run_id: str = "",
+    structure_hash: str = "",
+    provider_id: Optional[int] = None,
+    scope: str = "",
 ) -> list[dict]:
-    """Fetch host rules with exact priority score:
-    exact host (4) > base domain (3) > provider_id (2) > wildcard * (1).
-    Deduplicates per pattern so highest priority rule wins.
-    Fully parameterized query preventing SQL injection."""
+    """Fetch host rules evaluating 4-level scope hierarchy:
+    1. EXACT_LAYOUT (host + provider_id + structure_hash)
+    2. PROVIDER_PATTERN (provider_id + pattern)
+    3. HOST_PATTERN (host + pattern)
+    4. GLOBAL_PATTERN (* + pattern)
+    Deduplicates per pattern so highest priority rule wins."""
     conn = _connect()
     conn.row_factory = sqlite3.Row
     try:
         norm = norm_host(host)
         base = base_domain(norm)
-        provider_id = None
-        
-        p_row = conn.execute(
-            "SELECT provider_id FROM hosts WHERE hostname = ? OR hostname = ?", 
-            (norm, base)
-        ).fetchone()
-        if p_row and p_row["provider_id"]:
-            provider_id = p_row["provider_id"]
 
-        params = [norm, base, provider_id, persona, norm, base, provider_id, persona]
+        if provider_id is None and norm != "*":
+            p_row = conn.execute(
+                "SELECT provider_id FROM hosts WHERE hostname = ? OR hostname = ?",
+                (norm, base),
+            ).fetchone()
+            if p_row and p_row["provider_id"]:
+                provider_id = p_row["provider_id"]
+            else:
+                p_match = conn.execute(
+                    "SELECT id FROM providers WHERE url_pattern IS NOT NULL AND (? LIKE url_pattern OR ? LIKE url_pattern)",
+                    (f"%{norm}%", f"%{base}%"),
+                ).fetchone()
+                if p_match and p_match["id"]:
+                    provider_id = p_match["id"]
 
+        params = [persona]
         if include_shadow:
             status_clause = "status IN ('active', 'shadow')"
         elif active_run_id:
@@ -390,38 +468,89 @@ def get_host_rules(
             status_clause = "status = 'active'"
 
         sql = f"""
-            SELECT *,
-                (CASE 
-                    WHEN host = ? THEN 4
-                    WHEN host = ? THEN 3
-                    WHEN (provider_id IS NOT NULL AND provider_id = ?) THEN 2
-                    WHEN host = '*' THEN 1
-                    ELSE 0
-                 END) AS host_score,
-                (CASE 
-                    WHEN persona = ? THEN 2
-                    ELSE 1
-                 END) AS persona_score
-            FROM host_rules
-            WHERE (host = ? OR host = ? OR (provider_id IS NOT NULL AND provider_id = ?) OR host = '*')
-              AND (persona = ? OR persona = '*' OR persona = '' OR persona IS NULL)
+            SELECT * FROM host_rules
+            WHERE (persona = ? OR persona = '*' OR persona = '' OR persona IS NULL)
               AND {status_clause}
-            ORDER BY host_score DESC, persona_score DESC, confidence DESC, id ASC
         """
         rows = conn.execute(sql, params).fetchall()
 
-        seen_patterns = set()
-        winning_rules = []
+        scored_rules = []
         for r in rows:
             rule_dict = dict(r)
+            r_host = rule_dict.get("host") or "*"
+            r_scope = (rule_dict.get("scope") or "").upper()
+            r_hash = rule_dict.get("structure_hash") or ""
+            r_pid = rule_dict.get("provider_id")
+            r_persona = rule_dict.get("persona") or "*"
+
+            scope_score = 0
+
+            # Level 1: EXACT_LAYOUT
+            if (r_scope == "EXACT_LAYOUT" or r_hash) and structure_hash and r_hash == structure_hash:
+                if r_host in (norm, base, "*") and (r_pid is None or provider_id is None or r_pid == provider_id):
+                    scope_score = 400
+
+            # Level 2: PROVIDER_PATTERN
+            if scope_score == 0:
+                if (r_scope == "PROVIDER_PATTERN" or (r_pid is not None and r_host == "*")) and provider_id is not None and r_pid == provider_id:
+                    scope_score = 300
+
+            # Level 3: HOST_PATTERN
+            if scope_score == 0:
+                if r_scope == "HOST_PATTERN" or (r_host != "*" and r_host in (norm, base)):
+                    if r_host == norm:
+                        scope_score = 240
+                    elif r_host == base:
+                        scope_score = 200
+
+            # Level 4: GLOBAL_PATTERN
+            if scope_score == 0:
+                if r_scope == "GLOBAL_PATTERN" or r_host == "*":
+                    scope_score = 100
+
+            if scope_score == 0:
+                continue
+
+            if scope and r_scope and r_scope != scope.upper():
+                continue
+
+            persona_score = 20 if (r_persona == persona and persona != "") else 10
+            confidence_score = float(rule_dict.get("confidence") or 0.0)
+            total_score = scope_score + persona_score + confidence_score
+
+            rule_dict["host_score"] = scope_score
+            rule_dict["persona_score"] = persona_score
+            rule_dict["_total_score"] = total_score
+            if not rule_dict.get("scope"):
+                if scope_score == 400:
+                    rule_dict["scope"] = "EXACT_LAYOUT"
+                elif scope_score == 300:
+                    rule_dict["scope"] = "PROVIDER_PATTERN"
+                elif scope_score in (240, 200):
+                    rule_dict["scope"] = "HOST_PATTERN"
+                else:
+                    rule_dict["scope"] = "GLOBAL_PATTERN"
+
+            scored_rules.append((total_score, rule_dict.get("id", 0), rule_dict))
+
+        scored_rules.sort(key=lambda item: (-item[0], item[1]))
+
+        seen_patterns = set()
+        winning_rules = []
+        for _, _, rule_dict in scored_rules:
             pat = rule_dict["pattern"]
             if pat not in seen_patterns:
                 seen_patterns.add(pat)
+                rule_dict.pop("_total_score", None)
                 winning_rules.append(rule_dict)
 
         return winning_rules
     finally:
         conn.close()
+
+
+get_matching_rules = get_host_rules
+_get_host_rules = get_host_rules
 
 
 def bump_rule_outcome(rule_ids: list[int], outcome: str, run_id: str = "") -> None:
@@ -755,7 +884,10 @@ def record_rule_audit(rule_id: int, action: str, before: Optional[dict], after: 
 def update_host_rule(rule_id: int, *, behavior: Optional[str] = None,
                       confidence: Optional[float] = None, status: Optional[str] = None,
                       actor: str = "human", note: Optional[str] = None,
-                      audit_action: str = "edit") -> dict:
+                      audit_action: str = "edit",
+                      scope: Optional[str] = None,
+                      structure_hash: Optional[str] = None,
+                      provider_id: Optional[int] = None) -> dict:
     """Write exactly the given fields to an existing host_rules row (+ updated_at).
 
     Unlike record_host_rule(), this NEVER bumps confidence - it is the write
@@ -791,6 +923,15 @@ def update_host_rule(rule_id: int, *, behavior: Optional[str] = None,
         if status is not None:
             sets.append("status=?")
             params.append(status)
+        if scope is not None:
+            sets.append("scope=?")
+            params.append(scope)
+        if structure_hash is not None:
+            sets.append("structure_hash=?")
+            params.append(structure_hash)
+        if provider_id is not None:
+            sets.append("provider_id=?")
+            params.append(provider_id)
         if not sets:
             return before
 
@@ -810,7 +951,9 @@ def update_host_rule(rule_id: int, *, behavior: Optional[str] = None,
 
 def create_manual_rule(host: str, pattern: str, behavior: str, *, persona: str = "*",
                         confidence: float = 0.7, status: str = "active",
-                        actor: str = "human", note: Optional[str] = None) -> int:
+                        actor: str = "human", note: Optional[str] = None,
+                        scope: Optional[str] = None, structure_hash: Optional[str] = None,
+                        provider_id: Optional[int] = None) -> int:
     """Create a new host_rules row directly, source='human_override' always.
 
     Unlike record_host_rule(), raises ValueError if a row already exists for
@@ -843,10 +986,10 @@ def create_manual_rule(host: str, pattern: str, behavior: str, *, persona: str =
         now = _now()
         cur = conn.execute(
             "INSERT INTO host_rules (host, persona, pattern, behavior, source, status, "
-            "confidence, evidence, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, 'human_override', ?, ?, ?, ?, ?)",
+            "confidence, evidence, created_at, updated_at, provider_id, scope, structure_hash) "
+            "VALUES (?, ?, ?, ?, 'human_override', ?, ?, ?, ?, ?, ?, ?, ?)",
             (host, persona, pattern, behavior, status, confidence,
-             json.dumps({"created_by": actor}), now, now),
+             json.dumps({"created_by": actor}), now, now, provider_id, scope, structure_hash),
         )
         rule_id = cur.lastrowid
         record_rule_audit(rule_id, "create", None, {

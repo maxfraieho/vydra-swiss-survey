@@ -79,3 +79,77 @@ def test_classify_outcome_study_already_participated():
     )
     assert outcome == "disqualified"
     assert "déjà participé" in reason
+
+
+def test_structure_hash_ignores_text_changes():
+    """Verify compute_structure_hash produces identical hash when question/answer text changes but DOM skeleton is identical."""
+    dom_v1 = [
+        {"tag": "div", "type": "", "role": "container", "text": "What is your primary age group?"},
+        {"tag": "input", "type": "radio", "role": "option", "label": "18-24 years old"},
+        {"tag": "input", "type": "radio", "role": "option", "label": "25-34 years old"},
+        {"tag": "button", "type": "submit", "role": "button", "innerText": "Next Page"},
+    ]
+    dom_v2 = [
+        {"tag": "div", "type": "", "role": "container", "text": "Quel est votre niveau d'études?"},
+        {"tag": "input", "type": "radio", "role": "option", "label": "Secondaire / Bac"},
+        {"tag": "input", "type": "radio", "role": "option", "label": "Université / Master"},
+        {"tag": "button", "type": "submit", "role": "button", "innerText": "Page Suivante"},
+    ]
+    hash_v1 = persona_graph_memory.compute_structure_hash(dom_v1)
+    hash_v2 = persona_graph_memory.compute_structure_hash(dom_v2)
+    assert hash_v1 == hash_v2, f"Expected identical structure hash, got {hash_v1} vs {hash_v2}"
+
+    dom_v3 = [
+        {"tag": "div", "type": "", "role": "container", "text": "What is your primary age group?"},
+        {"tag": "input", "type": "checkbox", "role": "option", "label": "18-24 years old"},
+        {"tag": "button", "type": "submit", "role": "button", "innerText": "Next Page"},
+    ]
+    hash_v3 = persona_graph_memory.compute_structure_hash(dom_v3)
+    assert hash_v1 != hash_v3, "Expected different structure hash when skeleton changes"
+
+
+def test_4_level_scope_priority():
+    """Verify EXACT_LAYOUT overrides HOST_PATTERN in 4-level scope hierarchy."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        test_db = os.path.join(tmpdir, "test_scope.db")
+        persona_graph_memory.DB_PATH = test_db
+
+        conn = persona_graph_memory._connect()
+        conn.close()
+        target_hash = "layout_hash_12345"
+
+        # Host pattern rule
+        persona_graph_memory.record_host_rule(
+            host="survey.qualtrics.com",
+            pattern="tobacco",
+            behavior="Host pattern tobacco rule",
+            persona="arno",
+            source="human_override",
+            status="active",
+            scope="HOST_PATTERN"
+        )
+
+        # Exact layout rule
+        persona_graph_memory.record_host_rule(
+            host="survey.qualtrics.com",
+            pattern="tobacco",
+            behavior="Exact layout tobacco rule",
+            persona="arno",
+            source="human_override",
+            status="active",
+            structure_hash=target_hash,
+            scope="EXACT_LAYOUT"
+        )
+
+        # Query with structure_hash matching EXACT_LAYOUT
+        rules = persona_graph_memory.get_host_rules(
+            host="survey.qualtrics.com",
+            persona="arno",
+            structure_hash=target_hash
+        )
+
+        assert len(rules) == 1, f"Expected 1 deduplicated rule, got {len(rules)}"
+        winning_rule = rules[0]
+        assert winning_rule["scope"] == "EXACT_LAYOUT"
+        assert winning_rule["behavior"] == "Exact layout tobacco rule", f"EXACT_LAYOUT did not override HOST_PATTERN: {winning_rule['behavior']}"
+
