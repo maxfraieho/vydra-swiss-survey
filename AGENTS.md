@@ -7,6 +7,7 @@ This project is indexed by GitNexus as **vydra-swiss-survey** (153 symbols, 418 
 
 ## Always Do
 
+- **MUST follow SDD Workflow (Spec First, Code Second).** For EVERY new feature, UI component, or API endpoint, the agent MUST first read `.agents/skills/sdd-workflow/SKILL.md` using `view_file` and create `specs/<feature>/spec.md`, `plan.md`, and `tasks.md` BEFORE modifying implementation code.
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
@@ -15,6 +16,7 @@ This project is indexed by GitNexus as **vydra-swiss-survey** (153 symbols, 418 
 
 ## Never Do
 
+- NEVER write or edit feature code without an active specification document in `specs/<feature>/spec.md`.
 - NEVER edit a function, class, or method without first running `impact` on it.
 - NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
 - NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
