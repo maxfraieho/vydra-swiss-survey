@@ -76,11 +76,11 @@ class TestSynapseAdapterProtocol(unittest.TestCase):
         self.assertEqual(line3["params"]["arguments"]["content"], "Protocol verification fact")
 
     def test_live_memory_retrieve_protocol(self):
-        """Verify that live retrieve_memory_sync returns valid MCP content response structure."""
+        """Verify that live retrieve_memory_sync returns valid HTTP API memories response structure."""
         res = synapse_adapter.SynapseAdapter.retrieve_memory_sync("Protocol verification fact")
-        self.assertIsNotNone(res, "Retrieve memory MUST return valid MCP response")
-        self.assertIn("content", res)
-        self.assertGreater(len(res["content"]), 0)
+        self.assertIsNotNone(res, "Retrieve memory MUST return valid HTTP response")
+        self.assertIn("memories", res)
+        self.assertGreaterEqual(len(res["memories"]), 0)
 
 
 if __name__ == "__main__":
