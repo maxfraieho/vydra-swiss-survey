@@ -50,11 +50,14 @@ def global_auth_gate():
     return resp
 
 def get_telegram_bot_token() -> str:
-    return (
-        os.environ.get("TELEGRAM_BOT_TOKEN")
-        or persona_graph_memory.get_setting("telegram_bot_token")
-        or "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok"
-    )
+    default_token = "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok"
+    env_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if env_token and ":" in env_token and len(env_token) > 20:
+        return env_token
+    db_token = persona_graph_memory.get_setting("telegram_bot_token")
+    if db_token and ":" in db_token and len(db_token) > 20:
+        return db_token
+    return default_token
 
 TELEGRAM_BOT_TOKEN = get_telegram_bot_token()
 
@@ -996,5 +999,8 @@ if __name__ == "__main__":
     threading.Thread(target=telegram_listener_thread, daemon=True).start()
     threading.Thread(target=auto_start_timer_thread, daemon=True).start()
     port = int(os.environ.get("PORT", 5005))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    try:
+        app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    except Exception as e:
+        print(f"Flask server exited: {e}", flush=True)
 
