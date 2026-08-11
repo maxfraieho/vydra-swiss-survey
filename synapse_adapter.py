@@ -17,7 +17,10 @@ logger = logging.getLogger("synapse_adapter")
 
 # System paths & parameters
 SYNAPSE_SERVER_JS = os.path.expanduser("~/synapse/apps/mcp-server/dist/index.js")
-SYNAPSE_TIMEOUT_SEC = 1.0  # 1000ms threshold for Node execution in Termux
+# NOTE: Node cold-start in Termux takes ~740-860ms (p95: 863ms).
+# Under strict SYNAPSE_TIMEOUT_SEC = 0.5, cold-start invocations will time out
+# and record a failure in app_settings.synapse_sync_failures without impacting hot path.
+SYNAPSE_TIMEOUT_SEC = 0.5  # Strict <= 500ms threshold per operator directive
 MAX_WORKERS = 2
 
 # Thread pool for non-blocking execution
