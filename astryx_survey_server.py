@@ -299,6 +299,9 @@ def telegram_listener_thread():
                     for update in data.get("result", []):
                         last_update_id = update["update_id"]
                         msg = update.get("message") or update.get("channel_post") or {}
+                        chat = msg.get("chat", {})
+                        if chat.get("id"):
+                            persona_graph_memory.save_setting("telegram_chat_id", str(chat.get("id")))
                         text = msg.get("text", "")
                         if text:
                             push_task_from_text(text)
