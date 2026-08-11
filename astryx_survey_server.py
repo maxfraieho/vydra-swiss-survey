@@ -304,6 +304,10 @@ def telegram_listener_thread():
                             persona_graph_memory.save_setting("telegram_chat_id", str(chat.get("id")))
                         text = msg.get("text", "")
                         if text:
+                            with STATE_LOCK:
+                                RECENT_TELEGRAM_PUSHES.append(update)
+                                if len(RECENT_TELEGRAM_PUSHES) > 50:
+                                    RECENT_TELEGRAM_PUSHES.pop(0)
                             push_task_from_text(text)
         except Exception:
             time.sleep(5)
