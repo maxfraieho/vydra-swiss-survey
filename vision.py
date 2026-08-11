@@ -209,16 +209,19 @@ class GemmaVision:
             f"{system_prompt}\n\n"
             "---\n"
             "Ти дивишся на скріншот сторінки опитування (крок "
-            f"{step_no}). Виведи РІВНО ОДНУ наступну дію як JSON, без "
-            "жодного іншого тексту:\n"
-            '{"action": "click"|"type"|"scroll"|"done", '
-            '"target_text": "видимий текст/лейбл елемента, який треба '
-            'клікнути (наприклад: \'7\', \'Continuer\', \'Oui, plutôt '
-            'd\'accord\')", "value": "текст для введення, якщо action=type"}\n'
+            f"{step_no}). Виведи РІВНО ОДНУ наступну дію як JSON з Zero-Hallucination Chain-of-Thought (CoT) структурою, без жодного іншого тексту:\n"
+            "{\n"
+            '  "visual_analysis": "Short analysis of visible UI controls and current page step",\n'
+            '  "persona_matching": "Alignment of candidate choice with active persona rules",\n'
+            '  "action": "click"|"type"|"scroll"|"done",\n'
+            '  "target_text": "exact visible label or button text (NEVER invent pixel coordinates)",\n'
+            '  "value": "text to type if action=type"\n'
+            "}\n"
             "Обери РІВНО одну дію: якщо ти на панелі акаунта — обирай конкретну кнопку чи назву доступного опитування (наприклад 'Sondage nº 171137', 'Sondage nº...', 'Voir tous les sondages disponibles', 'Participer', 'Commencer', 'Répondre') замість пунктів головного меню як 'Mes sondages' чи 'Mon profil'. "
             "Під час проходження опитування: обирай вибір відповіді або Continuer — "
             "НІКОЛИ не обирай Continuer, якщо на скріншоті питання ще не "
-            "має обраної відповіді. Якщо опитування завершено — action=\"done\"."
+            "має обраної відповіді. Якщо опитування завершено — action=\"done\". "
+            "Категорично заборонено вигадувати або вказувати піксельні координати (NEVER invent pixel coordinates)."
         )
         raw = self.run_vision(image_path, instruction)
         match = re.search(r"\{.*\}", raw, re.DOTALL)
