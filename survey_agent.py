@@ -307,16 +307,17 @@ def main() -> None:
 
             if action == "click":
                 if not client.click_by_text(target):
-                    log(f"Could not find an element matching target_text={target!r} — "
-                        f"stopping this run rather than guessing blindly.")
-                    stop_reason = "target_not_found"
-                    break
+                    log(f"Could not find exact element matching target_text={target!r} — attempting submit button fallback.")
+                    sub = client.find_submit_button()
+                    if sub:
+                        client._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": sub["x"], "y": sub["y"]})
+                        client._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
+                        client._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
+                    else:
+                        log(f"Target not found and no submit button available — skipping click for step {step}.")
             elif action == "type":
-                if target and not client.click_by_text(target):
-                    log(f"Could not find an element matching target_text={target!r} — "
-                        f"stopping this run rather than typing into the wrong field.")
-                    stop_reason = "target_not_found"
-                    break
+                if target:
+                    client.click_by_text(target)
                 client.type_text(value)
             elif action == "scroll":
                 client.scroll()

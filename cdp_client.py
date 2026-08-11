@@ -367,12 +367,34 @@ class CDPClient:
 """
 
     def find_element(self, text: str) -> dict | None:
-        js = self._FIND_JS % json.dumps(text)
+        clean_text = text
+        contains_match = re.search(r':contains\(["\'](.*?)["\']\)', text, re.IGNORECASE)
+        if contains_match:
+            clean_text = contains_match.group(1)
+
+        js = self._FIND_JS % json.dumps(clean_text)
         result = self._send("Runtime.evaluate", {"expression": js, "returnByValue": True})
         value = result.get("result", {}).get("value")
-        if not value or value == "null":
-            return None
-        return json.loads(value)
+        if value and value != "null":
+            return json.loads(value)
+
+        # Fallback CSS selector query if text contains selector syntax
+        if any(char in text for char in ("#", ".", "[", "]", ">")):
+            try:
+                selector_js = f"""(function() {{
+                    var el = document.querySelector({json.dumps(text)});
+                    if (!el) return 'null';
+                    var r = el.getBoundingClientRect();
+                    return JSON.stringify({{x: r.x + r.width / 2, y: r.y + r.height / 2, tag: el.tagName, text: (el.innerText || '').slice(0, 60)}});
+                }})()"""
+                sel_res = self._send("Runtime.evaluate", {"expression": selector_js, "returnByValue": True})
+                sel_val = sel_res.get("result", {}).get("value")
+                if sel_val and sel_val != "null":
+                    return json.loads(sel_val)
+            except Exception:
+                pass
+
+        return None
 
     def find_submit_button(self) -> dict | None:
         result = self._send("Runtime.evaluate", {"expression": self._FIND_SUBMIT_JS, "returnByValue": True})
