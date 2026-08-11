@@ -9,6 +9,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import cdp_client
 import reflection
 
 
@@ -54,6 +55,30 @@ class TestCDPDiacriticsHandling(unittest.TestCase):
         ]
 
         self.assertEqual(len(matched_elements), 0, "Absent target MUST return 0 matches to prevent random clicks")
+
+    def test_french_diacritics_nfd_normalization(self):
+        self.assertEqual(cdp_client.normalize_survey_text("intensité"), "intensite")
+        self.assertTrue(cdp_client.match_survey_text("intensité", "intensite"))
+
+    def test_german_umlaut_expansion(self):
+        self.assertEqual(cdp_client.normalize_survey_text("ä"), "ae")
+        self.assertEqual(cdp_client.normalize_survey_text("ö"), "oe")
+        self.assertEqual(cdp_client.normalize_survey_text("ü"), "ue")
+        self.assertEqual(cdp_client.normalize_survey_text("ß"), "ss")
+        self.assertEqual(cdp_client.normalize_survey_text("Präferenz"), "praeferenz")
+        self.assertEqual(cdp_client.normalize_survey_text("Groß"), "gross")
+        self.assertTrue(cdp_client.match_survey_text("Präferenz", "Praeferenz"))
+        self.assertTrue(cdp_client.match_survey_text("Groß", "Gross"))
+
+    def test_short_token_strict_guard(self):
+        false_positives = [
+            ("oui", "ou"),
+            ("non", "on"),
+            ("ja", "jan"),
+            ("nein", "neinheit"),
+        ]
+        for token, fp in false_positives:
+            self.assertFalse(cdp_client.match_survey_text(token, fp))
 
 
 if __name__ == "__main__":

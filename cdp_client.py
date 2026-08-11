@@ -20,8 +20,10 @@ import base64
 import itertools
 import json
 import os
+import re
 import subprocess
 import time
+import unicodedata
 
 import requests
 from websocket import create_connection
@@ -463,3 +465,34 @@ class CDPClient:
             except Exception:
                 pass
             self.target_id = None
+
+
+def normalize_survey_text(text: str) -> str:
+    if not text:
+        return ""
+    text = text.replace("\xa0", " ")
+    umlaut_map = {
+        "ä": "ae", "ö": "oe", "ü": "ue",
+        "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+        "ß": "ss"
+    }
+    for char, replacement in umlaut_map.items():
+        text = text.replace(char, replacement)
+    normalized = unicodedata.normalize("NFD", text)
+    stripped = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+    cleaned = re.sub(r"[^\w\s]", " ", stripped).lower()
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
+def match_survey_text(target: str, candidate: str) -> bool:
+    norm_target = normalize_survey_text(target)
+    norm_candidate = normalize_survey_text(candidate)
+    if not norm_target or not norm_candidate:
+        return False
+    if norm_target == norm_candidate:
+        return True
+    short_guard_tokens = {"oui", "non", "ja", "nein"}
+    if len(norm_target) <= 3 or len(norm_candidate) <= 3 or norm_target in short_guard_tokens or norm_candidate in short_guard_tokens:
+        return norm_target == norm_candidate
+    return norm_target in norm_candidate or norm_candidate in norm_target
+
