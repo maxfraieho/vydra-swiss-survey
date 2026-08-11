@@ -168,3 +168,18 @@ description: Spec-Driven Development (SDD) methodology guide for specify-cli, pr
 Підтверди створення файлу скіла, перевір його валідність та виведи короткий звіт про готовність репозиторію до SDD-розробки.
 ```
 
+---
+
+## 📦 5. Каталог Спеціалізованих SDD Скілів у Проєкті
+
+У директорії `.agents/skills/` (та засихронізовано в `.claude/skills/`) підключено наступні 7 open-source скілів розширення Spec Kit:
+
+1. **`speckit-constitution`:** Формування та перевірка недоторканних інваріантів у `.specify/constitution.md`.
+2. **`speckit-specify`:** Трансформація ідей у Given-When-Then специфікації (`specs/<feature>/spec.md`).
+3. **`speckit-clarify`:** Брейнштормінг-інтерв'юер для знаходження «сліпих плям» та зняття неоднозначностей.
+4. **`speckit-plan`:** Декомпозиція та планування тасок (`specs/<feature>/plan.md` & `tasks.md`).
+5. **`speckit-assumptions`:** Скіл Адді Османі для явного опису блока `ASSUMPTIONS I'M MAKING` та межам 6 зон бізнес-контексту.
+6. **`speckit-architecture-guard`:** Автоматичний перевіряючий безпеки (OWASP, SQL Injection) та захисту гарячого шляху під час планування.
+7. **`speckit-canon`:** Відстеження дрейфу специфікацій (`spec-drift`) для існуючих вихідних файлів проєкту.
+
+
