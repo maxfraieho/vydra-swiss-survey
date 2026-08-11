@@ -442,24 +442,20 @@ def bump_rule_outcome(rule_ids: list[int], outcome: str, run_id: str = "") -> No
                     (rid, run_id, outcome.lower(), now_str)
                 )
             row = conn.execute(
-                "SELECT host, status, confidence, wins, losses FROM host_rules WHERE id=?", (rid,)
+                "SELECT wins, losses FROM host_rules WHERE id=?", (rid,)
             ).fetchone()
             if row is None:
                 continue
-            host, status, confidence, wins, losses = row
-            gate = conn.execute(
-                "SELECT playbook_mode FROM host_gates WHERE host=?", (host,)
-            ).fetchone()
-            host_active = bool(gate) and gate[0] == "active"
-            if status == "shadow" and wins >= 1 and confidence >= 0.6 and host_active:
-                conn.execute("UPDATE host_rules SET status='active', updated_at=? WHERE id=?",
-                             (now_str, rid))
-            elif losses >= 3 and losses > wins:
+            wins, losses = row
+            if losses >= 3 and losses > wins:
                 conn.execute("UPDATE host_rules SET status='retired', updated_at=? WHERE id=?",
                              (now_str, rid))
         conn.commit()
     finally:
         conn.close()
+
+    # Trigger strict N>=3 unique run_id auto-promotion
+    auto_promote_rules(min_unique_runs=3)
 
 
 def auto_promote_rules(min_unique_runs: int = 3) -> int:
