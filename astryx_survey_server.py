@@ -187,6 +187,31 @@ def fetch_telegram_api(optional_payload=None):
 
     return {"status": "success", "processed": count}
 
+def notify_tutor_captcha_blocking(persona: str, url: str, captchas: list[str]) -> bool:
+    token = get_telegram_bot_token()
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID") or persona_graph_memory.get_setting("telegram_chat_id")
+    if not token or not chat_id:
+        add_log("⚠️ notify_tutor_captcha_blocking: Telegram token or chat_id missing")
+        return False
+    captcha_str = ", ".join(captchas) if captchas else "unknown"
+    msg_text = f"⚠️ CAPTCHA Blocking detected!\nPersona: {persona}\nURL: {url}\nCAPTCHAs: {captcha_str}"
+    try:
+        req_url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = json.dumps({"chat_id": chat_id, "text": msg_text}).encode("utf-8")
+        req = urllib.request.Request(
+            req_url,
+            data=payload,
+            headers={"Content-Type": "application/json", "User-Agent": "AstryxSurveyServer/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            res_data = json.loads(resp.read().decode("utf-8"))
+            if res_data.get("ok"):
+                add_log(f"📲 Telegram captcha alert sent to {chat_id}")
+                return True
+    except Exception as e:
+        add_log(f"⚠️ Failed to send Telegram captcha alert: {e}")
+    return False
+
 def push_task_from_text(text: str, force: bool = False, override_url: str | None = None):
     profile = None
     if "Арсена" in text or "Arno" in text or "Арсен" in text:

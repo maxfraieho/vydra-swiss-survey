@@ -490,6 +490,21 @@ class CDPClient:
             pass
         return []
 
+    def detect_captcha_signatures(self) -> list[str]:
+        js = r"""(function() {
+            var html = document.documentElement ? document.documentElement.innerHTML.toLowerCase() : '';
+            var sigs = ['cf-turnstile', 'g-recaptcha', 'hcaptcha', 'geetest'];
+            return JSON.stringify(sigs.filter(function(s) { return html.indexOf(s) !== -1; }));
+        })()"""
+        try:
+            res = self._send("Runtime.evaluate", {"expression": js, "returnByValue": True})
+            val = res.get("result", {}).get("value")
+            if val:
+                return json.loads(val) if isinstance(val, str) else val
+        except Exception:
+            pass
+        return []
+
 
     def close(self) -> None:
         if self.ws is not None:

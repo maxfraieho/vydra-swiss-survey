@@ -139,6 +139,8 @@ def main() -> None:
                      help="Skip the shared-GPU busy-check gate (mirrors llm-switch.sh -f).")
     ap.add_argument("--gpu", action="store_true",
                      help="Enable OpenCL GPU offload for Gemma vision (default is CPU-only for stability).")
+    ap.add_argument("--no-recovery", action="store_true",
+                     help="Exit immediately on captcha detection instead of pausing/recovering.")
     args = ap.parse_args()
 
     def log(msg: str) -> None:
@@ -184,31 +186,10 @@ def main() -> None:
             is_existing = client.attach_or_open_tab(args.url)
         current_url = client.get_current_url()
         is_active_survey = is_existing and any(k in current_url.lower() for k in SURVEY_PROVIDER_KEYWORDS) and "ipinfo" not in current_url.lower()
-        # Only preserve state for a genuinely in-progress survey page -
-        # "just sitting somewhere on the site" (home page, /login) is NOT
-        # evidence of being authenticated, and there's no positive
-        # logged-in check available. Skipping login whenever the tab
-        # merely matched site_host previously caused the vision loop to
-        # be handed an unauthenticated page it has no credentials to fix
-        # (Gemma never sees the real email/password, only try_login()
-        # does) and get stuck clicking the same label/submit pair in
-        # circles. Confirmed live 2026-07-27. Re-running try_login() on
-        # an already-authenticated session is harmless: click_by_text()
-        # simply finds no login fields and falls through to the vision
-        # loop, same as any other login attempt.
 
         if is_active_survey:
             log(f"Attached to active tab on '{current_url}' — PRESERVING PAGE STATE (no re-navigation).")
         elif creds:
-            # Log in via the dedicated /login page, not the home page's
-            # compact header widget - that widget's fields aren't proper
-            # <label>-linked inputs (cdp_client.py's textOf() only reads
-            # innerText/value/aria-label/title, never `placeholder`), so
-            # click_by_text("Password") has nothing reliable to match and
-            # can click the wrong element - confirmed live 2026-07-27: the
-            # email field ended up with garbage appended instead of the
-            # password reaching its own field. The full /login page has a
-            # real form with distinct labeled fields (verified manually).
             scheme = args.url.split("://", 1)[0]
             login_url = f"{scheme}://{site_host}/login"
             log(f"Navigating to dedicated login page '{login_url}' (current URL was '{current_url}')...")
@@ -225,6 +206,45 @@ def main() -> None:
         trace_steps: list[dict] = []
         stop_reason = None
         for step in range(1, args.max_steps + 1):
+            captchas = client.detect_captcha_signatures()
+            if captchas:
+                log(f"CAPTCHA detected: {captchas}")
+                if getattr(args, "no_recovery", False):
+                    log("CLI flag --no-recovery set. Exiting immediately.")
+                    stop_reason = "captcha_detected"
+                    break
+                else:
+                    log("Pausing in waiting_captcha state and notifying tutor...")
+                    try:
+                        from astryx_survey_server import notify_tutor_captcha_blocking
+                        notify_tutor_captcha_blocking(args.profile, current_url, captchas)
+                    except Exception as _e:
+                        log(f"Warning: notify_tutor_captcha_blocking failed: {_e}")
+
+                    try:
+                        import astryx_survey_server
+                        astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "waiting_captcha"
+                    except Exception:
+                        pass
+
+                    resolved = False
+                    start_wait = time.time()
+                    while time.time() - start_wait < 600:
+                        time.sleep(3.0)
+                        if not client.detect_captcha_signatures():
+                            resolved = True
+                            log("CAPTCHA resolved by tutor. Resuming execution.")
+                            try:
+                                import astryx_survey_server
+                                astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "running"
+                            except Exception:
+                                pass
+                            break
+                    if not resolved:
+                        log("CAPTCHA was not resolved within timeout.")
+                        stop_reason = "captcha_timeout"
+                        break
+
             shot_path = os.path.join(screenshot_dir, f"step-{step:03d}.png")
             client.screenshot(shot_path)
             ptxt = client.page_text()
@@ -305,6 +325,7 @@ def main() -> None:
                 stop_reason = "dry_run_final"
                 break
 
+            step_failed = False
             if action == "click":
                 if not client.click_by_text(target):
                     log(f"Could not find exact element matching target_text={target!r} — attempting submit button fallback.")
@@ -315,15 +336,22 @@ def main() -> None:
                         client._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
                     else:
                         log(f"Target not found and no submit button available — skipping click for step {step}.")
+                        step_failed = True
             elif action == "type":
-                if target:
-                    client.click_by_text(target)
+                if target and not client.click_by_text(target):
+                    step_failed = True
                 client.type_text(value)
             elif action == "scroll":
                 client.scroll()
             else:
                 log(f"Unknown action {action!r} from Gemma — stopping.")
                 stop_reason = "unknown_action"
+                step_failed = True
+
+            if step_failed and step == 1 and not captchas:
+                log(f"⚠️ Undetected captcha or page blockage suspected at {current_url}")
+
+            if stop_reason and stop_reason != "done":
                 break
 
             time.sleep(1.0)
