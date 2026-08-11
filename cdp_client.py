@@ -144,6 +144,7 @@ class CDPClient:
                     self._send("Runtime.enable")
                     self._send("DOM.enable")
                     self._send("Page.bringToFront")
+                    self._inject_stealth_anti_bot_overrides()
                     self._prune_stray_tabs()
                     return True
         except Exception:
@@ -172,8 +173,33 @@ class CDPClient:
         self._send("Runtime.enable")
         self._send("DOM.enable")
         self._send("Page.bringToFront")
+        self._inject_stealth_anti_bot_overrides()
         self._prune_stray_tabs()
         return True
+
+    def _inject_stealth_anti_bot_overrides(self) -> None:
+        stealth_js = r"""
+        (function() {
+            try {
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            } catch(e) {}
+            try {
+                if (!window.chrome) window.chrome = {};
+                if (!window.chrome.runtime) window.chrome.runtime = {};
+            } catch(e) {}
+            try {
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            } catch(e) {}
+            try {
+                Object.defineProperty(navigator, 'languages', {get: () => ['de-CH', 'de', 'fr-CH', 'en-US']});
+            } catch(e) {}
+        })()
+        """
+        try:
+            self._send("Page.addScriptToEvaluateOnNewDocument", {"source": stealth_js})
+            self._send("Runtime.evaluate", {"expression": stealth_js})
+        except Exception:
+            pass
 
 
     def _prune_stray_tabs(self) -> None:
