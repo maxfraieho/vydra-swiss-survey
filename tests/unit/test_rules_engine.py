@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""
+tests/unit/test_rules_engine.py
+Unit tests for persona_graph_memory host normalization and priority cascade matching.
+"""
+import os
+import sys
+import tempfile
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import persona_graph_memory
+
+
+def test_norm_host_extraction():
+    """Verify norm_host correctly extracts clean hostname and base domain."""
+    assert persona_graph_memory.norm_host("https://survey.tolunastart.com/path?query=1") == "survey.tolunastart.com"
+    assert persona_graph_memory.norm_host("HTTP://meinungsplatz.ch/SURVEY") == "meinungsplatz.ch"
+    assert persona_graph_memory.base_domain("survey.tolunastart.com") == "tolunastart.com"
+    assert persona_graph_memory.base_domain("*") == "*"
+
+
+def test_get_host_rules_priority_cascade():
+    """
+    Verify priority cascade in get_host_rules():
+    Score precedence: exact host (4) > base domain (3) > provider_id (2) > wildcard * (1)
+    and exact persona (2) > wildcard persona (1).
+    Highest priority score MUST win and deduplicate per pattern.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_db = os.path.join(tmpdir, "test_rules.db")
+        persona_graph_memory.DB_PATH = test_db
+        
+        # Init schema
+        conn = persona_graph_memory._connect()
+        conn.close()
+
+        # Insert 3 competing rules for same pattern 'tobacco'
+        # Rule 1: Wildcard host '*', wildcard persona '*' (Score: 1 + 1 = 2)
+        persona_graph_memory.record_host_rule(
+            host="*", pattern="tobacco", behavior="Global tobacco rule",
+            persona="*", source="seed", status="active"
+        )
+
+        # Rule 2: Base domain 'tolunastart.com', exact persona 'arno' (Score: 3 + 2 = 5)
+        persona_graph_memory.record_host_rule(
+            host="tolunastart.com", pattern="tobacco", behavior="Base domain tobacco rule",
+            persona="arno", source="human_override", status="active"
+        )
+
+        # Rule 3: Exact host 'survey.tolunastart.com', exact persona 'arno' (Score: 4 + 2 = 6)
+        persona_graph_memory.record_host_rule(
+            host="survey.tolunastart.com", pattern="tobacco", behavior="Exact host tobacco rule",
+            persona="arno", source="human_override", status="active"
+        )
+
+        # Query rules for exact host 'survey.tolunastart.com' and persona 'arno'
+        rules = persona_graph_memory.get_host_rules(host="survey.tolunastart.com", persona="arno")
+
+        # Must return EXACTLY 1 rule for pattern 'tobacco'
+        tobacco_rules = [r for r in rules if r['pattern'] == 'tobacco']
+        assert len(tobacco_rules) == 1, f"Expected 1 deduplicated rule, got {len(tobacco_rules)}"
+
+        # The winning rule MUST be Rule 3 (Exact host score 6)
+        winning_rule = tobacco_rules[0]
+        assert winning_rule['host'] == "survey.tolunastart.com", f"Expected exact host winner, got {winning_rule['host']}"
+        assert winning_rule['behavior'] == "Exact host tobacco rule"
