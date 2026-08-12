@@ -218,3 +218,27 @@ description: Spec-Driven Development (SDD) methodology guide for specify-cli, pr
 7. **`speckit-canon`:** Відстеження дрейфу специфікацій (`spec-drift`) для існуючих вихідних файлів проєкту.
 
 
+---
+
+## 🛠️ 6. Розгортання /sdd:* Slash-Команд
+
+Для автоматизації та зручного виклику 5 ключових шаблонів SDD-розробки у проєкті розгорнуто систему slash-команд у `.claude/commands/sdd/` з документаційним описом у [`docs/prompts/README-sdd-commands.md`](file:///data/data/com.termux/files/home/vydra-swiss-survey/docs/prompts/README-sdd-commands.md).
+
+### 1. Для Claude Code (`.claude/commands/sdd/`)
+Усі 5 команд розміщені в `.claude/commands/sdd/` і посилаються на Шаблони з `docs/sdd-development-methodology.md`:
+* **`/sdd:feature`** — Запускає Шаблон 1 ("🎨 Нова Фіча"): створює `specs/<NNN>-<slug>/spec.md`, виконує `check_gitnexus_impact.py`, створює RED->GREEN тести та реалізацію.
+* **`/sdd:bugfix`** — Запускає Шаблон 2 ("🐛 Виправлення Бага"): ізоляція багу, тест відтворення RED, рефакторинг та GREEN підтвердження.
+* **`/sdd:refactor`** — Запускає Шаблон 3 ("♻️ Безпечний Рефакторинг"): перевірка існуючого покриття, impact-аналіз залежностей через GitNexus, ізольовані зміни без регресії.
+* **`/sdd:integration`** — Запускає Шаблон 4 ("🔌 Інтеграція Сервісів / Протоколів"): розробка адаптера, verification-скрипт `verify_<service>_roundtrip.py`, regression-тести.
+* **`/sdd:teaching`** — Запускає Шаблон 5 ("🎓 Навчання Агента та Формалізація Правил"): аналіз HITL-корекцій, створення shadow-правила, N>=3 промоція.
+
+### 2. Для Агента Agy (AntiGravity / `agy`)
+Агент Agy виконує еквівалент slash-команд через:
+* **Активацію Скіла:** `.agents/skills/sdd-workflow/SKILL.md` (чи `/speckit.*`).
+* **Прямий виклик у промпті:** Сформулюйте запит із вказівкою номера Шаблону (наприклад, *"Виконай SDD Шаблон 1 з docs/sdd-development-methodology.md для фічі X"*). Agy зчитує відповідний Шаблон напряму з методики, гарантуючи 100% відсутність розбіжностей (spec-drift).
+
+### 3. Для Інших Агентів (Qwen 2.5, Gemini)
+* **Програмовані воркери (Qwen 2.5):** Запускаються автоматично через `persona_graph_memory.py` для auto-triage черги `async_review_queue`. Slash-команди не застосовуються.
+* **Дослідницькі промпти (Gemini):** Викликаються через готові промпт-файли у `docs/prompts/gemini-*`. Взаємодія здійснюється через прямий текст промпту із посиланням на номер Шаблону.
+
+
