@@ -101,11 +101,14 @@ sequenceDiagram
 
 | Компонент / Метод | Файл реалізації | Стан готовності |
 | :--- | :--- | :--- |
-| **Параметризований каскад пріоритетів `get_host_rules`** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L353) | ✅ 100% Реалізовано та параметризовано (?) |
-| **Журнал унікальних прогонів `rule_applications`** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L440) | ✅ 100% Реалізовано |
-| **Сувора автопромоція `auto_promote_rules(3)`** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L465) | ✅ 100% Реалізовано |
+| **Проєктна Конституція `.specify/constitution.md`** | [`.specify/constitution.md`](file:///data/data/com.termux/files/home/vydra-swiss-survey/.specify/constitution.md) | ✅ 100% Створено та привязано до коду (`commit c7bdf2d`, 12 серпня 2026) |
+| **Скрипт SDD-перевірки `bin/sdd_verify.sh`** | [`bin/sdd_verify.sh`](file:///data/data/com.termux/files/home/vydra-swiss-survey/bin/sdd_verify.sh) | ✅ 100% Реалізовано, перевіряє всі 14 specs (Exit 0) |
+| **Примусовий Git pre-commit хук** | [`.git/hooks/pre-commit`](file:///data/data/com.termux/files/home/vydra-swiss-survey/.git/hooks/pre-commit) | ✅ 100% Встановлено, блокує коміти при порушенні SDD |
+| **Параметризований каскад пріоритетів `get_host_rules`** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L480) | ✅ 100% Реалізовано та параметризовано |
+| **Журнал унікальних прогонів `rule_applications`** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L550) | ✅ 100% Реалізовано |
+| **Сувора автопромоція `auto_promote_rules(3)`** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L595) | ✅ 100% Реалізовано |
 | **Захист позиційних евристик `POSITIONAL_RE`** | [`astryx_survey_server.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/astryx_survey_server.py#L810) | ✅ 100% Реалізовано (HTTP 422) |
 | **Воркер Auto-Triage Qwen 2.5** | [`persona_graph_memory.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/persona_graph_memory.py#L1820) | ✅ 100% Реалізовано |
 | **REST API Async Queue (`/api/rules/async_queue`)** | [`rules_api.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/rules_api.py#L240) | ✅ 100% Реалізовано |
-| **Синхронізація Synapse Memory OS (`synapse_adapter.py`)** | [`synapse_adapter.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/synapse_adapter.py) | ✅ 100% Реалізовано ( non-blocking, <= 500ms timeout) |
+| **Синхронізація Synapse Memory OS (`synapse_adapter.py`)** | [`synapse_adapter.py`](file:///data/data/com.termux/files/home/vydra-swiss-survey/synapse_adapter.py) | ✅ 100% Реалізовано (non-blocking, <= 500ms timeout) |
 | **UI Бейдж підтверджень `confirmed_runs`** | [`web/src/screens/rules/RulesTable.tsx`](file:///data/data/com.termux/files/home/vydra-swiss-survey/web/src/screens/rules/RulesTable.tsx) | ✅ 100% Реалізовано |
