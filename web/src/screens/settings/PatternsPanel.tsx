@@ -110,11 +110,13 @@ export const PatternsPanel: React.FC = () => {
         {patterns && patterns.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
             {patterns.map((p) => {
-              const isBuiltin = p.is_builtin === 1;
+              const isBuiltin = ['tobacco', 'income_floor', 'industry_exclusion'].includes(p.key);
               return (
-                <Card key={p.id || p.key} padding={4}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600 }}>{p.key}</span>
+                <Card key={p.id || p.key} padding={4} className="impeccable-glass">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.key}</span>
+                    </div>
                     <Badge variant={isBuiltin ? 'info' : 'neutral'} label={isBuiltin ? 'вбудований' : 'користувацький'} />
                   </div>
                   <MetadataList columns={1} label={{ position: 'start' }}>
