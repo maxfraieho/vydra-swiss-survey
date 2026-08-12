@@ -1,12 +1,14 @@
 # DESIGN.md — Impeccable Design System & Visual Guidelines for Astryx UI
 
 > **Framework:** Impeccable Design System (pbakaus/impeccable)  
+> **Schema Version:** Impeccable 3.5.0  
 > **Target:** Astryx React Console (`web/src/`)  
 
 ---
 
-## 🎨 Color Palette & Design Tokens (Dark Mode Glassmorphism)
+## 🎨 Colors & Token Palette
 
+### Primary Surface Tokens (Dark Mode Glassmorphism)
 - **Background Base:** `hsl(222, 24%, 9%)` (`#0f131a`)
 - **Card Surface:** `rgba(22, 29, 41, 0.75)` with `backdrop-filter: blur(12px)`
 - **Border Subtlety:** `rgba(255, 255, 255, 0.08)`
@@ -23,3 +25,16 @@
 - **Code & Logs:** `JetBrains Mono`, `Fira Code`, `monospace`
 - **Border Radius:** `8px` (Cards), `6px` (Buttons), `20px` (Pills/Badges)
 - **Transitions:** `all 0.2s cubic-bezier(0.4, 0, 0.2, 1)`
+
+---
+
+## 🧩 Components Section & System Norms
+
+1. **Card & Container Surfacing:**
+   - Standardized via `@astryxdesign/core/Card` with `.impeccable-glass` utility class.
+2. **Interactive Controls & Touch Area:**
+   - All `Button`, `IconButton`, `Switch`, `TextInput` controls MUST maintain $\ge 44\text{px}$ touch target height.
+3. **Status Indicators:**
+   - State indicators MUST use `@astryxdesign/core/StatusDot` combined with `@astryxdesign/core/Badge`.
+4. **Code & Pattern Selectors:**
+   - Code snippets and selectors MUST render inside `@astryxdesign/core/CodeBlock`.

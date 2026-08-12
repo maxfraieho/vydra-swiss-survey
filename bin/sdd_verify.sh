@@ -32,6 +32,7 @@ REQUIRED_SPECS=(
     "specs/011-impeccable-design-integration/spec.md"
     "specs/012-astryx-framework-ui-audit/spec.md"
     "specs/013-impeccable-astryx-ui-overhaul/spec.md"
+    "specs/014-impeccable-official-ui-critique/spec.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
