@@ -23,6 +23,8 @@ REQUIRED_SPECS=(
     "specs/P5-self-healing-resilience.md"
     "specs/007-universal-deploy-suite/spec.md"
     "specs/008-fallback-browser-sources/spec.md"
+    "specs/009-sdd-research-command/spec.md"
+    ".claude/commands/sdd/research.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
