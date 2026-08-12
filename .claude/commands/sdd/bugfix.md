@@ -4,9 +4,9 @@ argument-hint: <опис проблеми або витяг з логу поми
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 
-Виконай Шаблон 2 ("🐛 Виправлення Багу / Проблема") з `docs/sdd-development-methodology.md` для: $ARGUMENTS
+Виконай Шаблон 2 ("🐛 Виправлення Бага") з `docs/for-agents/sdd-development-methodology.md` для задачі: $ARGUMENTS
 
-1. Прочитай `docs/sdd-development-methodology.md`, розділ "ШАБЛОН 2", і виконай його крок за кроком.
+1. Прочитай `docs/for-agents/sdd-development-methodology.md`, розділ "ШАБЛОН 2", і виконай його крок за кроком.
 2. Спочатку локалізуй першопричину в реальному коді — процитуй точний `файл:рядок` і сигнатуру, не вигадуй з пам'яті.
 3. Створи `tests/regression/test_<issue_name>.py`, що моделює баг, і підтверди RED-стан ДО будь-якої правки.
 4. Перевір зону ураження через `python3 scripts/check_gitnexus_impact.py <symbol>` перед внесенням фіксу.

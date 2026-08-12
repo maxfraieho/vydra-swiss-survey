@@ -4,9 +4,9 @@ argument-hint: <модуль або функція для рефакторинг
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 
-Виконай Шаблон 3 ("⚡ Оптимізація / Рефакторинг") з `docs/sdd-development-methodology.md` для: $ARGUMENTS
+Виконай Шаблон 3 ("♻️ Безпечний Рефакторинг") з `docs/for-agents/sdd-development-methodology.md` для задачі: $ARGUMENTS
 
-1. Прочитай `docs/sdd-development-methodology.md`, розділ "ШАБЛОН 3", і виконай його крок за кроком.
+1. Прочитай `docs/for-agents/sdd-development-methodology.md`, розділ "ШАБЛОН 3", і виконай його крок за кроком.
 2. Заборонено змінювати публічні сигнатури, якщо є викликачі в суміжних модулях (перевір через gitnexus, не припускай).
 3. Заміряй латентність (min/median/p95/max) на 20 послідовних викликах ДО зміни.
 4. Після рефакторингу — ті самі заміри ПІСЛЯ, у вигляді порівняльної таблиці.

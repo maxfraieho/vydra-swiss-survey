@@ -2,7 +2,7 @@
 
 > **Специфікація:** `specs/002-synapse-integration`  
 > **Статус:** Драфт (Фаза 1 - Очікує підтвердження)  
-> **Джерело правди:** `docs/synapse-integration-plan.md`
+> **Джерело правди:** `docs/for-user/synapse-integration-plan.md`
 
 ---
 

@@ -60,7 +60,7 @@
 ```text
 Ти — інженер з відлагодження Agy. Завдання: локалізувати та виправити інцидент/баг: [<ОПИС_ПРОБЛЕМИ_АБО_ПОМИЛКИ_З_ЛОГУ>].
 
-📍 СУВОРІ ПРАВИЛА ВІДЛАГОДЖЕННЯ (docs/debugging-playbook.md):
+📍 СУВОРІ ПРАВИЛА ВІДЛАГОДЖЕННЯ (docs/for-agents/debugging-playbook.md):
 1. Спочатку знайди першопричину в коді, цитуй точний `файл:рядок` і сигнатуру.
 2. Жодних вигаданих маскувань через порожні `try/except: pass` чи повернення dummy-значень.
 
@@ -222,10 +222,10 @@ description: Spec-Driven Development (SDD) methodology guide for specify-cli, pr
 
 ## 🛠️ 6. Розгортання /sdd:* Slash-Команд
 
-Для автоматизації та зручного виклику 5 ключових шаблонів SDD-розробки у проєкті розгорнуто систему slash-команд у `.claude/commands/sdd/` з документаційним описом у [`docs/prompts/README-sdd-commands.md`](file:///data/data/com.termux/files/home/vydra-swiss-survey/docs/prompts/README-sdd-commands.md).
+Для автоматизації та зручного виклику 5 ключових шаблонів SDD-розробки у проєкті розгорнуто систему slash-команд у `.claude/commands/sdd/` з документаційним описом у [`docs/for-agents/prompts/README-sdd-commands.md`](file:///data/data/com.termux/files/home/vydra-swiss-survey/docs/for-agents/prompts/README-sdd-commands.md).
 
 ### 1. Для Claude Code (`.claude/commands/sdd/`)
-Усі 5 команд розміщені в `.claude/commands/sdd/` і посилаються на Шаблони з `docs/sdd-development-methodology.md`:
+Усі 5 команд розміщені в `.claude/commands/sdd/` і посилаються на Шаблони з `docs/for-agents/sdd-development-methodology.md`:
 * **`/sdd:feature`** — Запускає Шаблон 1 ("🎨 Нова Фіча"): створює `specs/<NNN>-<slug>/spec.md`, виконує `check_gitnexus_impact.py`, створює RED->GREEN тести та реалізацію.
 * **`/sdd:bugfix`** — Запускає Шаблон 2 ("🐛 Виправлення Бага"): ізоляція багу, тест відтворення RED, рефакторинг та GREEN підтвердження.
 * **`/sdd:refactor`** — Запускає Шаблон 3 ("♻️ Безпечний Рефакторинг"): перевірка існуючого покриття, impact-аналіз залежностей через GitNexus, ізольовані зміни без регресії.

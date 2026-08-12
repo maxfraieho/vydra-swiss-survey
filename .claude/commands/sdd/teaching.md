@@ -4,9 +4,9 @@ argument-hint: <профіль: arno/annet> <host> — короткий опис
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 
-Виконай Шаблон 5 ("🎓 Навчання Агента та Формалізація Правил") з `docs/sdd-development-methodology.md` для: $ARGUMENTS
+Виконай Шаблон 5 ("🎓 Навчання Агента та Формалізація Правил") з `docs/for-agents/sdd-development-methodology.md` для задачі: $ARGUMENTS
 
-1. Прочитай `docs/sdd-development-methodology.md`, розділ "ШАБЛОН 5", і виконай його крок за кроком.
+1. Прочитай `docs/for-agents/sdd-development-methodology.md`, розділ "ШАБЛОН 5", і виконай його крок за кроком.
 2. Вибір оператора має 100% пріоритет над передбаченнями нейромережі.
 3. Нове правило записується виключно через `record_host_rule(..., status='shadow')` — ніколи одразу `active`.
 4. Промоція — лише через `auto_promote_rules(min_unique_runs=3)`, ніколи вручну.

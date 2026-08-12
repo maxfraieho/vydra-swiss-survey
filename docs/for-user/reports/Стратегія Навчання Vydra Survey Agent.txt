@@ -1,0 +1,413 @@
+﻿Комплексна Стратегія Специфікаційно-Орієнтованого Навчання та Автоматизації Агента Vydra Swiss Survey
+1. Оптимізація Інтерактивного Циклу Тутора (HITL Friction Reduction)
+Процес інтерактивного навчання автономного агента в режимі Human-in-the-Loop (HITL) у поточній архітектурі стикається із суттєвим часовим та операційним накладним навантаженням. Оскільки сервер astryx_survey_server.py блокує виконання опитування на кроці верифікації /api/survey/verify_step з таймаутом у 300 секунд, оператор змушений вручну аналізувати скріншот, вишукувати тексти або селектори елементів у DOM та вводити складні інструкції повернення через override_step. Для зведення трудомісткості навчання до 1–2 кліків без необхідності ручного кодування селекторів пропонується трикомпонентна оптимізація.
+Візуальне Таргетування через Інтерактивний Оверлей (Visual Overlay Bounding Boxes)
+Замість ручного введення текстових селекторів клієнт cdp_client.py під час формування скріншота виконує паралельний збір усіх інтерактивних DOM-елементів (кнопки, елементи radio, checkbox, випадаючі списки <select>) разом із їхніми точними координатами boundingClientRect. Зібрана метаінформація передається у збагаченому об'єкті верифікації на веб-панель SurveyOps.tsx.
+У фронтенд-інтерфейсі поверх скріншота сторінки рендериться прозорий SVG/Canvas шар. Кожен потенційно інтерактивний елемент підсвічується прямокутником. Клік тутора по відповідній області на скріншоті автоматично перехоплюється: система вираховує прив'язаний DOM-вузол, витягує його точний текстовий вміст, атрибути id, name, aria-label та формує готову дію для override_step без необхідності ручного введення.
+Контекстні Підказки та Автозаповнення Словника Патернів
+При виникненні паузи верифікації сервіс аналізує витягнутий page_text за допомогою модуля reflection.detect_pattern(). Якщо знайдено відповідність зі словника TOPIC_KEYWORDS (наприклад, tobacco, income, health_status), інтерфейс тутора пропонує готовий випадаючий список шаблонів поведінки (behavior).
+Виявлений Патерн
+	Автоматично Сформований Шаблон Поведінки (behavior)
+	Пропоноване Джерело Дії
+	tobacco
+	"На питання про куріння тютюну відповідати ствердно ('Так', 'Користуюся')."
+	human_override
+	industry_exclusion
+	"Завжди вибирати 'Жодне з перерахованого' (Ніколи не вказувати роботу в маркетингу/PR)."
+	human_override
+	income
+	"Обирати діапазон доходу, що відповідає профілю Arno (80,000–100,000 CHF)."
+	human_override
+	health_status
+	"Вказувати відсутність хронічних захворювань, що обмежують працездатність."
+	human_override
+	Тутору достатньо натиснути одну кнопку для затвердження рекомендованого правила або клікнути на потрібний вариант відповіді безпосередньо на скріншоті, що зменшує час прийняття рішення з 45–60 секунд до 2–3 секунд.
+Асинхронна Черга Аналізу Завершених Провалів (Async Failure Review Queue)
+Для усунення ризику втрати сесії через вичерпання 300-секундного таймауту синхронний HITL розділяється із розбором помилок. Усі прогони, що завершилися зі статусами incomplete, error або disqualified, автоматично зберігають повний трасування (steps_json, скріншоти, DOM-дерево) у таблицю review_queue.
+Тутор опрацьовує незавершені кроки асинхронно в спокійному режимі поза живим опитуванням: інтерфейс відображає проблемний кадр, пропоновану дію агента та текстовий контекст, дозволяючи за 1 клік згенерувати host_rule, яке автоматично застосується до наступних сесій на цьому домені.
+// React Component snippet for SurveyOps.tsx: Interactive Visual Bounding Box Selection
+import React, { useState } from 'react';
+
+interface BoundingBox {
+ id: string;
+ text: string;
+ x: number;
+ y: number;
+ width: number;
+ height: number;
+ tagName: string;
+}
+
+interface VisualTutorOverlayProps {
+ screenshotUrl: string;
+ boxes: BoundingBox[];
+ onSelectTarget: (box: BoundingBox) => void;
+}
+
+export const VisualTutorOverlay: React.FC<VisualTutorOverlayProps> = ({
+ screenshotUrl,
+ boxes,
+ onSelectTarget,
+}) => {
+ const [selectedId, setSelectedId] = useState<string | null>(null);
+
+ const handleBoxClick = (box: BoundingBox) => {
+   setSelectedId(box.id);
+   onSelectTarget(box);
+ };
+
+ return (
+   <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+     <img src={screenshotUrl} alt="Survey Current Step" style={{ width: '100%', display: 'block' }} />
+     <svg
+       style={{
+         position: 'absolute',
+         top: 0,
+         left: 0,
+         width: '100%',
+         height: '100%',
+         pointerEvents: 'none',
+       }}
+     >
+       {boxes.map((box) => (
+         <rect
+           key={box.id}
+           x={`${box.x}%`}
+           y={`${box.y}%`}
+           width={`${box.width}%`}
+           height={`${box.height}%`}
+           fill={selectedId === box.id ? 'rgba(0, 255, 0, 0.35)' : 'rgba(255, 165, 0, 0.2)'}
+           stroke={selectedId === box.id ? '#00ff00' : '#ffa500'}
+           strokeWidth={2}
+           style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+           onClick={() => handleBoxClick(box)}
+         >
+           <title>{`${box.tagName}: ${box.text}`}</title>
+         </rect>
+       ))}
+     </svg>
+   </div>
+ );
+};
+
+2. Математика та Алгоритми Промоції Правил (Rule Promotion & Confidence Scoring)
+Використання детермінованого лічильника успішних застосувань (N \ge 3) без урахування загального обсягу вибірки та часової актуальності створює суттєвий ризик передчасної промоції помилкових правил або застрягання коректних правил у тіньовому статусі (shadow). Для математично обґрунтованого переведення правил із shadow у active (promoted) розроблено гібридну оціночну модель.
+Інтервал Довіри Вілсона (Wilson Score Interval)
+Для оцінки ймовірності успіху p правила на основі біноміальних результатів (W — успішні прогони/wins, L — збої/losses) застосовується нижня межа інтервалу Вілсона, яка є стійкою для вибірок малого обсягу:
+\text{Confidence}_{\text{Wilson}}(W, L) = \frac{\hat{p} + \frac{z^2}{2N} - z \sqrt{\frac{\hat{p}(1-\hat{p})}{N} + \frac{z^2}{4N^2}}}{1 + \frac{z^2}{N}}
+Де:
+* N = W + L — загальна кількість застосувань правила.
+* \ha[span_12](start_span)[span_12](end_span)t{p} = \frac{W}{N} — спостережувана частка успіхів.
+* z =[span_13](start_span)[span_13](end_span) 1.96 — квантиль стандартного нормального розподілу для рівня довіри 95\%.
+Байєсівська Оцінка з Пріорним Бета-Розподілом та Часовим Згасанням
+Правило моделюється як Бета-біноміальний процес Beta(\alpha, \beta). Початковий пріор для тіньових правил (shadow_rules від self_reflection) приймається як \alpha_0 = 1, \beta_0 = 1 (рівномірний пріор). Для правил, сформованих безпосередньо людиною (human_override), встановлюється пріор \alpha_0 = 4, \beta_0 = 1.
+Оскільки веб-інтерфейси опитувань можуть змінюватися, давні успішні прогони повинні мати меншу вагу. Вводиться коефіцієнт експоненційного часового згасання \lambda = 0.05 (за день) для ефективних підрахунків W_{\text{eff}} та L_{\text{eff}}:
+W_{\text{eff}} = \sum_{i=1}^{k} e^{-\lambda (t_{\text{now}} - t_i)}, \quad L_{\text{eff}} = \sum_{j=1}^{m} e^{-\lambda (t_{\text{now}} - t_j)}
+Математичне сподівання Байєсівської довіри обчислюється за формулою:
+E[\theta] = \frac{\alpha_0 + W_{\text{eff}}}{\alpha_0 + \beta_0 + W_{\text{eff}} + L_{\text{eff}}}
+Ентропійний Оцінювач Варіативності Рішень (Entropy Rating)
+Для оцінки стабільності рішень візуальної моделі Gemma відносно тексту сторінки обчислюється шеннонівська ентропія вибраних дій A для одного патерну P:
+H(A \vert{} P) = -\sum_{a \in A} P(a \vert{} P) \log_2 P(a \vert{} P)
+Висока ентропія (H(A \vert{} P) > 0.8) свідчить про високу нестабільність дій моделі на даній сторінці, що блокує автоматичну промоцію правила незалежно від підрахунку N, вимагаючи обов'язкової верифікації тутором.
+Критерії Автоматичної Промоції Правила (Promote Gate)
+Тіньове правило переводиться у статус active тільки при одночасному виконанні наступних умов:
+1. Кількість унікальних сесій (різних run_id), де відпрацювало правило: R_{\text{u[span_17](start_span)[span_17](end_span)nique}} \ge 3.
+2. Нижня межа інтервалу Вілсона: \text{Confidence}_{[span_39](start_span)[span_39](end_span)\text{Wilson}} \ge 0.70.
+3. Ентропія варіантів дій: H(A \vert{} P) \le 0.35.
+4. Відсутність зареєстрованих поразок (L_{\text{eff}} = 0) або співвідношення W_{\text{eff}} / L_{\text{eff}} \ge 5.0.
+Гарантія Ізоляції та Запобігання Поширенню Хибних Оверрайдів
+Для запобігання ситуації, коли правило, створене для конкретного опитування на хості (наприклад, meinungsplatz.ch), псує інші опитування того ж хоста, вводиться 4-рівнева ієрархічна система ізоляції.
+Рівень Ізоляції (Scope)
+	Формат Ключа Пошуку
+	Сфера Застосування
+	Пріоритет Застосування
+	EXACT_LAYOUT
+	host + provider_id + structure_hash
+	Конкретна екранна форма опитування
+	1 (Найвищий)
+	PROVIDER_PATTERN
+	provider_id + pattern
+	Усі опитування одного провайдера (наприклад, Qualtrics)
+	2
+	HOST_PATTERN
+	host + pattern
+	Усі опитування на конкретному домені
+	3
+	GLOBAL_PATTERN
+	* + pattern
+	Загальні фундаментальні правила персони (Арно/Аннет)
+	4 (Найнижчий)
+	Правило, створене під час human_override, за замовчуванням отримує scope EXA[span_19](start_span)[span_19](end_span)CT_LAYOUT. Воно розширюється до HOST_PATTERN або GLOBAL_PATTERN тільки після підтвердження на 3 різних structure_hash (різних опитувальних бланках).
+# Advanced Confidence Scoring and Rule Promotion Engine in persona_graph_memory.py
+import math
+import time
+from typing import Dict, Any, List, Set
+
+def calculate_rule_confidence_and_gate(
+   wins: int,
+   losses: int,
+   history_events: List[Dict[str, Any]],
+   source: str,
+   unique_run_ids: Set[str],
+   entropy: float = 0.0
+) -> Dict[str, Any]:
+   """
+   Computes Wilson Score lower bound, Bayesian expected confidence with exponential time decay,
+   and validates strict promotion gate conditions.
+   """
+   now = time.time()
+   decay_rate_per_day = 0.05
+   decay_rate_per_sec = decay_rate_per_day / 86400.0
+   
+   w_eff = 0.0
+   l_eff = 0.0
+   
+   for event in history_events:
+       age_seconds = max(0.0, now - event.get("timestamp", now))
+       weight = math.exp(-decay_rate_per_sec * age_seconds)
+       if event.get("outcome") == "win":
+           w_eff += weight
+       else:
+           l_eff += weight
+
+   # Set Bayesian prior based on rule origin
+   alpha_0 = 4.0 if source == "human_override" else 1.0
+   beta_0 = 1.0
+   
+   bayes_score = (alpha_0 + w_eff) / (alpha_0 + beta_0 + w_eff + l_eff)
+   
+   # Wilson Score Interval (Lower bound calculation)
+   total_eff = w_eff + l_eff
+   if total_eff == 0.0:
+       wilson_lower = 0.0
+   else:
+       z = 1.96  # 95% confidence level
+       p_hat = w_eff / total_eff
+       denominator = 1.0 + (z**2) / total_eff
+       center = p_hat + (z**2) / (2.0 * total_eff)
+       spread = z * math.sqrt((p_hat * (1.0 - p_hat) / total_eff) + (z**2) / (4.0 * (total_eff**2)))
+       wilson_lower = (center - spread) / denominator
+
+   n_unique = len(unique_run_ids)
+   should_promote = (
+       n_unique >= 3 and
+       wilson_lower >= 0.70 and
+       l_eff == 0.0 and
+       entropy <= 0.35
+   )
+   
+   return {
+       "wilson_lower": round(wilson_lower, 4),
+       "bayes_score": round(bayes_score, 4),
+       "effective_wins": round(w_eff, 2),
+       "effective_losses": round(l_eff, 2),
+       "unique_runs": n_unique,
+       "should_promote": should_promote
+   }
+
+3. Багатомовний Парсинг та Робота з Диакритикою (Multi-lingual Survey Engines)
+Швейцарські опитувальні платформи динамічно змінюють мову інтерфейсу між французькою, німецькою, італійською та англійською мовами (наприклад, Continuer / Weiter / Fortfahren / Next / Seguito / Avanti), часто використовуючи спецсимволи та диакритику (é, è, à, ç, ä, ö, ü, ß). Пряме співставлення підрядків у cdp_client.py призводить до пропускання елементів навігації та варіантів відповідей.
+Стратегія Семантичної Нормалізації та Пошуку Елементів
+Для вирішення цієї проблеми розроблено багаторівневий конвеєр нормалізації та нечіткого (fuzzy) зіставлення рядків.
+Конвеєр обробки тексту починається з витягування сирого рядка з DOM або CDP. На першому етапі виконується Unicode NFD (Normalization Form Canonical Decomposition) декомпозиція, яка відокремлює базові літери від диакритичних знаків. Далі спеціальний транслітератор конвертує специфічні мовні символи (наприклад, німецькі умляути ä \to ae, ö \to oe, ü \to ue, ß \to ss) та видаляє HTML-знесення ( , \xa0).
+Після приведення тексту до канонічної нижньорегістрової форми виконується багаторівневе зіставлення: спочатку перевіряється точний збіг, потім обчислюється відстань Джаро-Вінклера та Левенштейна, а для складних речень використовується косинусна подібність текстових ембеддингів.
+Алгоритм Семантичного Зіставлення в cdp_client.py
+1. Unicode NFD Декомпозиція: Символи з диакритикою розкладаються на базовий символ та відокремлений диакритичний знак, після чого знаки видаляються регулярним виразом.
+2. Заміна Німецьких Умляутів: Символи ä, ö, ü, ß конвертуються у стандартні графічні еквіваленти (ae, oe, ue, ss).
+3. Нечітке Співставлення (Fuzzy String Matching): Обчислюється комбінована метрика відношення відстані Левенштейна та подібності Джаро-Вінклера (поріг \ge 0.82).
+4. Словник Навігаційних Интентив: Застосовується крос-мовний мапінг стандартних дій (наприклад, continue \to continuer, weiter, fortfahren, next, suivant, avanti, submit).
+# Multi-lingual text normalization and fuzzy DOM target lookup for cdp_client.py
+import re
+import unicodedata
+from typing import List, Optional, Dict, Any
+
+def normalize_survey_text(text: str) -> str:
+   """
+   Performs full Unicode NFD normalization, strips diacritics, converts German umlauts,
+   removes extra spaces and HTML entities.
+   """
+   if not text:
+       return ""
+   
+   text = text.replace(" ", " ").replace("\xa0", " ")
+   
+   # Custom map for German umlauts before stripping accents
+   umlaut_map = {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss"}
+   for char, replacement in umlaut_map.items():
+       text = text.replace(char, replacement)
+       
+   normalized = unicodedata.normalize("NFD", text)
+   stripped = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+   
+   cleaned = re.sub(r"[^\w\s]", " ", stripped).lower()
+   return re.sub(r"\s+", " ", cleaned).strip()
+
+def jaro_winkler_similarity(s1: str, s2: str) -> float:
+   """Calculates Jaro-Winkler similarity between two normalized strings."""
+   if s1 == s2:
+       return 1.0
+   len1, len2 = len(s1), len(s2)
+   if len1 == 0 or len2 == 0:
+       return 0.0
+   
+   match_bound = max(len1, len2) // 2 - 1
+   s1_matches = [False] * len1
+   s2_matches = [False] * len2
+   
+   matches = 0
+   transpositions = 0
+   
+   for i in range(len1):
+       start = max(0, i - match_bound)
+       end = min(i + match_bound + 1, len2)
+       for j in range(start, end):
+           if s2_matches[j]:
+               continue
+           if s1[i] != s2[j]:
+               continue
+           s1_matches[i] = True
+           s2_matches[j] = True
+           matches += 1
+           break
+           
+   if matches == 0:
+       return 0.0
+       
+   k = 0
+   for i in range(len1):
+       if not s1_matches[i]:
+           continue
+       while not s2_matches[k]:
+           k += 1
+       if s1[i] != s2[k]:
+           transpositions += 1
+       k += 1
+       
+   transpositions //= 2
+   jaro = (matches / len1 + matches / len2 + (matches - transpositions) / matches) / 3.0
+   
+   prefix = 0
+   for i in range(min(4, min(len1, len2))):
+       if s1[i] == s2[i]:
+           prefix += 1
+       else:
+           break
+           
+   return jaro + prefix * 0.1 * (1.0 - jaro)
+
+def find_best_dom_element(
+   target_text: str,
+   dom_elements: List[Dict[str, Any]],
+   threshold: float = 0.82
+) -> Optional[Dict[str, Any]]:
+   """
+   Finds the best matching DOM element using normalized fuzzy matching.
+   """
+   norm_target = normalize_survey_text(target_text)
+   best_match = None
+   highest_score = 0.0
+   
+   nav_dictionary = {
+       "continue": ["continuer", "weiter", "fortfahren", "next", "suivant", "avanti", "inviare", "submit", "proceder"],
+       "yes": ["oui", "ja", "yes", "si"],
+       "no": ["non", "nein", "no"]
+   }
+   
+   expanded_targets = [norm_target]
+   for intent, synonyms in nav_dictionary.items():
+       if norm_target in synonyms or intent == norm_target:
+           expanded_targets.extend(synonyms)
+           
+   for elem in dom_elements:
+       elem_text = elem.get("text", "")
+       norm_elem = normalize_survey_text(elem_text)
+       
+       if not norm_elem:
+           continue
+           
+       for candidate_target in expanded_targets:
+           if candidate_target == norm_elem or candidate_target in norm_elem:
+               return elem
+               
+           score = jaro_winkler_similarity(candidate_target, norm_elem)
+           if score > highest_score:
+               highest_score = score
+               best_match = elem
+               
+   if highest_score >= threshold:
+       return best_match
+   return None
+
+4. Промпт-Інжиніринг для Локальної Vision Моделі (Zero-Hallucination Prompting)
+Оптимізація роботи мультимодальної візуальної моделі Gemma 3 4B Vision вимагає урахування її специфічної архітектури: використання замороженого кодувальника SigLIP (фіксована роздільна здатність 896x896), створення 256 візуальних м'яких токенів, інтервальної уваги (5 local sliding window : 1 global attention layer) та контекстного вікна у 128K токенів.
+При роботі з веб-елементами (радіогрупи, чекбокси, випадаючі списки) модель схильна плутати вибрані та порожні елементи. Для мінімізації галюцинацій розроблено промпт із примусовим ланцюжком міркувань (Chain-of-Thought, CoT) у форматі JSON.
+### Структура Системного Промпта
+Промпт примусово зобов'язує модель спочатку виконати графічну декомпозицію сторінки (описати стан елементів), зіставити його з фактами профілю персони (Arno/Annet), визначити необхідну дію і тільки після цього згенерувати фінальні атрибути дії.
+### Приклад Системного та Few-Shot Промпта для Gemma 3 4B Vision
+{
+ "system_instruction": "Ви — спеціалізований автономний візуальний агент проходження опитувань Vydra. Ваше завдання — аналізувати скріншот сторінки опитування та приймати ДЕТЕРМІНОВАНЕ рішення у JSON форматі.\n\nПРАВИЛА НУЛЬОВОЇ ГАЛЮЦИНАЦІЇ:\n1. Ви ПОВИННІ аналізувати скріншот КРОК ЗА КРОКОМ у блоці visual_analysis.\n2. НІКОЛИ не обирайте кнопку навігації ('Continuer', 'Weiter', 'Next'), якщо на поточній сторінці є питання з радіогрупою або чекбоксами, де ЩЕ НЕ ОБРАНО жодного варіанта відповіді!\n3. Перевіряйте круглі/квадратні позначки поруч із текстом:\n   - Порожнє коло/квадрат ([ ], ( )) = NOT selected.\n   - Заповнене коло або закреслений квадрат ([X], (•)) = SELECTED.\n4. Якщо відповідь вже обрана — обирайте кнопку 'Continuer'/'Weiter'.\n5. Якщо це вхідна панель опитувань (Dashboard) — обирайте конкретне опитування (наприклад 'Sondage nº 171137').",
+ "few_shot_examples": [
+   {
+     "input_context": "Скріншот з питанням: 'Fumez-vous du tabac?' | Профіль: Arno (курить тютюн).",
+     "expected_cot_output": {
+       "visual_analysis": {
+         "question_detected": "Fumez-vous du tabac?",
+         "element_type": "radio_group",
+         "options_list": [
+           {"label": "Oui, régulièrement", "is_selected": false},
+           {"label": "Oui, occasionnellement", "is_selected": false},
+           {"label": "Non, jamais", "is_selected": false}
+         ]
+       },
+       "persona_matching": {
+         "profile_applied": "arno",
+         "fact_retrieved": "Arno курить тютюн (цигарки)",
+         "reasoning": "Персона курить, обираємо ствердну відповідь 'Oui, régulièrement'"
+       },
+       "decision": {
+         "action": "click",
+         "target_text": "Oui, régulièrement",
+         "value": null
+       }
+     }
+   }
+ ]
+}
+
+5. Самолікування та Відновлення після Збоїв (Self-Healing & Resilience)
+Захист агента від мережевих збоїв, обривів CDP WebSocket з'єднань, несподіваних перезавантажень сторінок та інтерактивних загороджень (Cloudflare Turnstile, reCAPTCHA) є критичною умовою для забезпечення стабільності сесій.
+### Протокол Граціозного Відновлення (Graceful Recovery Protocol)
+Система реалізує менеджер транзакційного стану, який зберігає знімок сесії у БД SQLite WAL (survey_session_state) перед виконанням кожної дії. Процес відновлення працює за наступним алгоритмом:
+1. Транзакційна Фіксація Кроку: Перед виконанням кліку або введення тексту у БД записуються session_id, step_no, current_url, dom_hash та обрана дія. 2. Детекція Помилки CDP або Тунелю: При розриві SSH-тунелю чи WebSocket з'єднання cdp_client.py запускає цикл автоматичного перепідключення (до 3 спроб із затримкою 2^n секунд). 3. Аналіз Загороджень (Captcha/Turnstile): Перед кожним викликом vision-моделі DOM-дерево перевіряється на наявність сигнатур капчі (cf-turnstile, g-recaptcha, hcaptcha-box, verify you are human).
+2. Пауза та Telegram Сповіщення: При виявленні капчі агент не робить галюцинаторних кліків, а переходить у стан CAPTCHA_PAUSE, надсилає сповіщення оператору в Telegram із прямим посиланням на /ops і чекає на ручне розв'язання капчі. 5. Відновлення Контексту: Після відновлення з'єднання або розв'язання капчі агент звіряє поточний dom_hash із записаним у БД state snapshot і продовжує виконання сесії без втрати прогресу опитування.
+```python
+Self-healing and Resilience module for survey_agent.py & cdp_client.py
+import time import json import sqlite3 import logging from typing import Dict, Any, Optional
+logger = logging.getLogger("self_healing")
+class SurveyRecoveryManager: def init(self, db_path: str, session_id: str, cdp_client: Any): self.db_path = db_path self.session_id = session_id self.cdp = cdp_client self.max_retries = 3
+def save_step_state(self, step_no: int, url: str, dom_hash: str, last_action: dict): """Persists exact session step state before execution into SQLite WAL.""" conn = sqlite3.connect(self.db_path) cursor = conn.cursor() cursor.execute(""" INSERT OR REPLACE INTO survey_session_state (session_id, step_no, current_url, dom_hash, last_action_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) """, (self.session_id, step_no, url, dom_hash, json.dumps(last_action), time.time())) conn.commit() conn.close()
+def detect_captcha_or_challenge(self, page_text: str, html_content: str) -> bool: """Heuristic detection of Captchas and Cloudflare Turnstile screens.""" captcha_signatures = [ "cf-turnstile", "g-recaptcha", "hcaptcha-box", "verify you are human", "bitte bestätigen sie", "validez votre humanité", "security check" ] text_lower = page_text.lower() html_lower = html_content.lower()
+for sig in captcha_signatures: if sig in text_lower or sig in html_lower: return True return False
+def execute_with_resilience(self, action_func, *args, **kwargs) -> Any: """ Executes a CDP action with automatic tunnel re-establishment and retry logic. """ for attempt in range(1, self.max_retries + 1): try: if not self.cdp.is_connected(): logger.warning(f"CDP connection lost. Attempting reconnect ({attempt}/{self.max_retries})...") self.cdp.reconnect_tunnel_and_socket()
+page_text = self.cdp.get_page_text() html_src = self.cdp.get_page_source()
+if self.detect_captcha_or_challenge(page_text, html_src): logger.error("CAPTCHA detected! Pausing execution and notifying tutor...") self.notify_tutor_captcha_blocking() self.wait_for_human_captcha_solve()
+return action_func(*args, **kwargs)
+except Exception as e: logger.error(f"Execution error on attempt {attempt}: {str(e)}") if attempt == self.max_retries: raise e time.sleep(2.0 * attempt)
+def notify_tutor_captcha_blocking(self): """Triggers Telegram notification and sets server state to CAPTCHA_PAUSE.""" pass
+def wait_for_human_captcha_solve(self, timeout: int = 600): """Polls until human completes the captcha challenge.""" start_time = time.time() while time.time() - start_time < timeout: page_text = self.cdp.get_page_text() html_src = self.cdp.get_page_source() if not self.detect_captcha_or_challenge(page_text, html_src): logger.info("CAPTCHA resolved by tutor. Resuming execution.") return True time.sleep(3.0) raise TimeoutError("CAPTCHA was not resolved within timeout.")
+---
+
+## 6. Покроковий План Впровадження Стратегії (Implementation Roadmap)
+
+Нижче наведено дорожню карту поетапного впровадження розроблених системних покращень у кодову базу `vydra-swiss-survey`.
+
+| Фаза | Модулі Коду | Основні Задачі та Зміни | Ризик / Повернення (Rollback) |
+| :--- | :--- | :--- | :--- |
+| **Фаза 1: Normalization & Diacritics** | `cdp_client.py`, `reflection.py` | Впровадження NFD декомпозиції, нормалізації німецьких умляутів та алгоритму Jaro-Winkler для пошуку DOM елементів. |[span_33](start_span)[span_33](end_span) Низький / Відкат до прямого string match у `cdp_client.py`. |
+| **Фаза 2: Math Rule Promotion** | `persona_graph_memory.py` | Заміна дефолтного $N \ge 3$ на інтервал Вілсона, Бета-біноміальну модель з часовим згасанням та[span_42](start_span)[span_42](end_span)[span_43](start_span)[span_43](end_span) перевірку унікальних `run_id`. | Середній / Бекап `survey_graph.db`, перемикання прапорця розрахунку scoring. |
+| **Фаза 3: Visual HITL Overlay** | `SurveyOps.tsx`, `astryx_survey_server.py` | Інтеграція витягування `boundingClientRect` для DOM-елементів та створення інтерактивного SVG-шару поверх скріншота в UI. | Низький / Зб[span_34](start_span)[span_34](end_span)ереження класичної текстової форми оверрайду як fallback. |
+| **Фаза 4: [span_35](start_span)[span_35](end_span)Vision CoT Prompting** | `vision.py`, `survey_agent.py` | Оновлення системного промпту для Gemma 3 4B Vision із вимогою двокроков[span_44](start_span)[span_44](end_span)[span_45](start_span)[span_45](end_span)ого CoT аналізу у форматі JSON. | Середній / Повернення до базового промпту `decide_action()`. |
+| **Фаза 5: Self-Healing [span_36](start_span)[span_36](end_span)Resilience** | `cdp_client.py`, `survey_agent.py` | Впровадження `SurveyRecoveryManager`, перевірки Captcha за підписом та авто-відновлення SSH-тунелю CDP. | Високий / Запуск із прапо[span_37](start_span)[span_37](end_span)рцем `--no-recovery` у разі нестабільності. |
+
+Джерела
+1. Vydra Swiss Survey Project Documentation and Source Code, uploaded:Vydra Swiss Survey Project Documentation and Source Code 2. A Comparative Analysis of ResNet Models on Fish Classification - MDPI, https://www.mdpi.com/2227-7390/14/6/1055 3. Gemma 3 Technical Deep Dive - Architecture, Performance, and Implications | Naman Goyal, https://namangoyal.com/blog/2025/gemma3/ 4. Gemma 3: Google's all new multimodal, multilingual, long context open LLM - Hugging Face, https://huggingface.co/blog/gemma3
