@@ -31,6 +31,7 @@ REQUIRED_SPECS=(
     ".claude/commands/sdd/verify.md"
     "specs/011-impeccable-design-integration/spec.md"
     "specs/012-astryx-framework-ui-audit/spec.md"
+    "specs/013-impeccable-astryx-ui-overhaul/spec.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
