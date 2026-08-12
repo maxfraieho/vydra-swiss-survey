@@ -21,6 +21,7 @@ REQUIRED_SPECS=(
     "specs/P3-rule-isolation-providers.md"
     "specs/P4-vision-cot-prompting.md"
     "specs/P5-self-healing-resilience.md"
+    "specs/007-universal-deploy-suite/spec.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
