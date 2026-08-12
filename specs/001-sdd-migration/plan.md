@@ -20,14 +20,17 @@
 
 ## 2. Модульна архітектура та межі специфікації
 
-Кодова база проєкту розділяється на 4 ключові специфікаційні домени:
+Кодова база проєкту розділяється на 7 специфікаційних доменів та 5 специфікацій вдосконалення:
 
 | Домен / Специфікація | Модулі / Файли | Основна відповідальність |
 | :--- | :--- | :--- |
 | **`specs/002-rules-api`** | `rules_api.py`, `rules_report.py` | REST API для управління правилами, генерація звітів конфліктів, розрахунок `confirmed_runs`. |
+| **`specs/002-synapse-integration`** | `synapse_adapter.py`, `persona_graph_memory.py` | Протокол інтеграції з пам'яттю Synapse, двосторонній зв'язок REST/JSON-RPC. |
 | **`specs/003-async-review-queue`** | `persona_graph_memory.py`, `survey_agent.py` | Авто-заповнення черги невдалих сесій, Qwen 2.5 auto-triage воркер, N≥3 автопромоція. |
 | **`specs/004-astryx-ui-console`** | `web/src/screens/ops/SurveyOps.tsx`, `RulesTable.tsx`, `PatternsPanel.tsx` | React 19 SPA у консолі Astryx, інтерфейс Async-HITL, санітаризація позиційних евристик. |
-| **`specs/005-cdp-vision-agent`** | `survey_agent.py`, `cdp_client.py`, `vision.py` | Автономний цикл виконання опитувань, Gemma 3 Vision, CDP socket lifecycle. |
+| **`specs/005-tutor-live-activity`** | `astryx_survey_server.py`, `survey_agent.py` | Live-телеметрія активності тутора навчання у реальному часі ("🎓 Активність Тутора Навчання"). |
+| **`specs/006-tutor-interactive-loop`** | `cdp_client.py`, `astryx_survey_server.py`, `survey_agent.py` | Інтерактивний 1-клік оверлей, підказки з `TOPIC_KEYWORDS`, швидка корекція тутора. |
+| **`specs/P1..P5-*.md`** | `cdp_client.py`, `vision.py`, `persona_graph_memory.py` | Специфікації вдосконалення (P1: NFD-діакритика, P2: Viewport Bounding Boxes, P3: 4-Level Scope & `structure_hash`, P4: Vision CoT, P5: Self-Healing & Telegram Push). |
 
 ---
 

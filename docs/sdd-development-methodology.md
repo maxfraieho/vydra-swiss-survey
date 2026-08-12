@@ -147,6 +147,14 @@
 - Перевір стан промоції через `auto_promote_rules()`.
 ```
 
+---
+
+### 📂 КОНВЕНЦІЯ СТРУКТУРИ SPEC-ФАЙЛІВ (`specs/`)
+
+В репозиторії `vydra-swiss-survey` застосовуються два стандартизованих формати специфікацій:
+1. **Feature Specs (`specs/<NNN-назва>/spec.md`):** Багатофайловий формат для нових великих модулів та доменів (`spec.md`, `plan.md`, `tasks.md`).
+2. **Phase Improvement Specs (`specs/P<N>-<назва>.md`):** Однофайловий легкий формат для фазових вдосконалень системи навчання агента (P1: NFD-діакритика, P2: Bounding Boxes у %, P3: 4-level scope & `structure_hash`, P4: Vision CoT, P5: Self-Healing & Telegram Push). Всі P-специфікації містять Given/When/Then критерії та таблицю ризиків.
+
 
 ---
 
