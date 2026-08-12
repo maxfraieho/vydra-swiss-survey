@@ -90,19 +90,23 @@ def load_credentials(site_host: str, profile_key: str) -> dict | None:
 
 
 def try_login(client: CDPClient, creds: dict, log) -> None:
-    """Deterministic login, not vision-driven — login forms are far more
-    standardized than open-ended survey questions, so guessing field
-    labels directly is both cheaper and more reliable than a vision call."""
-    log("Attempting login via known field labels...")
+    """Deterministic login respecting browser pre-filled/cached credentials."""
+    log("Checking login form and submitting cached/pre-filled credentials...")
+
+    # First check if submit button can be directly clicked (pre-filled credentials)
+    for label in LOGIN_FIELD_LABELS["submit"]:
+        if client.click_by_text(label):
+            time.sleep(2.0)
+            log(f"Submitted pre-filled login via submit button {label!r}.")
+            return
+
+    # If submit wasn't immediately clickable, try email/password fields
     email_found = False
     for label in LOGIN_FIELD_LABELS["email"]:
         if client.click_by_text(label):
             client.type_text(creds["email"])
             email_found = True
             break
-    if not email_found:
-        log("Could not find an email/username field by label — leaving login to the vision loop.")
-        return
 
     for label in LOGIN_FIELD_LABELS["password"]:
         if client.click_by_text(label):
