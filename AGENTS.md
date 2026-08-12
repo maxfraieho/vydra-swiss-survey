@@ -9,6 +9,8 @@ This project is indexed by GitNexus as **vydra-swiss-survey** (153 symbols, 418 
 
 - **MUST use Termux Local Build & Deploy (`termux-build-deploy`).** ALL deployments and builds MUST run 100% locally on Termux via `bash bin/build-deploy.sh`. Server process health is monitored locally by `bin/watchdog_astryx.sh`.
 - **MUST follow SDD Workflow (Spec First, Code Second).** For EVERY new feature, UI component, or API endpoint, the agent MUST first read `.agents/skills/sdd-workflow/SKILL.md` using `view_file` and create `specs/<feature>/spec.md`, `plan.md`, and `tasks.md` BEFORE modifying implementation code.
+- **MUST preserve all open Chrome tabs.** NEVER close active browser tabs on script completion or loop exit. `CDPClient.close()` tab auto-pruning is permanently disabled.
+- **MUST explicitly click submit button on pre-filled login forms.** When Chrome's password manager pre-fills login/password fields, the agent MUST immediately locate and click the submit button ("S'identifier" / "Connexion" / "Anmelden") and verify page transition via screenshot.
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.

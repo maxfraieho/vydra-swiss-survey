@@ -91,7 +91,7 @@ def test_cdp_client_multi_tab_cleanup():
         client.opened_target_ids.add("target_tab_2")
         client.opened_target_ids.add("target_tab_3")
 
-        client.close()
+        client.close(close_tabs=True)
 
         assert "target_tab_1" in closed_target_ids
         assert "target_tab_2" in closed_target_ids

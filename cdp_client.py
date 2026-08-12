@@ -574,24 +574,25 @@ class CDPClient:
         return []
 
 
-    def close(self) -> None:
+    def close(self, close_tabs: bool = False) -> None:
+        """Close WebSocket connection. Preserves Chrome tabs unless close_tabs=True is explicitly passed."""
         if self.ws is not None:
             try:
                 self.ws.close()
             except Exception:
                 pass
             self.ws = None
-        
-        # Close ALL Chrome tabs opened or attached during this session
-        targets_to_close = set(self.opened_target_ids)
-        if self.target_id:
-            targets_to_close.add(self.target_id)
 
-        for tid in targets_to_close:
-            try:
-                requests.get(f"{self.base}/json/close/{tid}", timeout=5)
-            except Exception:
-                pass
+        if close_tabs:
+            targets_to_close = set(self.opened_target_ids)
+            if self.target_id:
+                targets_to_close.add(self.target_id)
+            for tid in targets_to_close:
+                try:
+                    requests.get(f"{self.base}/json/close/{tid}", timeout=5)
+                except Exception:
+                    pass
+
         self.target_id = None
         self.opened_target_ids.clear()
 
