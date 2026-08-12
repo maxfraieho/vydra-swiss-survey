@@ -117,8 +117,7 @@ class CDPClient:
                     self.active_source = src
                     break
                 elif src["kind"] == "mcp_bridge":
-                    r = requests.get(f"http://{src['host']}:{src['port']}/json/version", timeout=3)
-                    r.raise_for_status()
+                    r = requests.get(f"http://{src['host']}:{src['port']}/", timeout=3)
                     self.base = f"http://{src['host']}:{src['port']}"
                     self.active_source = src
                     break
