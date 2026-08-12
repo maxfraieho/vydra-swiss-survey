@@ -20,6 +20,12 @@ if [ ! -d "$WEB_DIR" ]; then
     exit 1
 fi
 
+log "VERIFY: Running SDD specification check..."
+if ! bash "$REPO_DIR/bin/sdd_verify.sh"; then
+    log "BUILD FAILED: SDD verification failed"
+    exit 1
+fi
+
 log "BUILD START"
 cd "$WEB_DIR"
 

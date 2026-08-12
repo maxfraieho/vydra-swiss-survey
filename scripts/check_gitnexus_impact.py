@@ -34,9 +34,13 @@ def check_impact(symbol_name: str, repo: str = "vydra-swiss-survey"):
             print(f"✅ GitNexus Impact Response received for '{symbol_name}'")
             return data
     except Exception as err:
-        print(f"⚠️ GitNexus server offline or check skipped: {err}")
-        return None
+        print(f"❌ GitNexus server offline or impact check failed: {err}")
+        return {"status": "UNVERIFIED", "error": str(err)}
 
 if __name__ == "__main__":
     symbol = sys.argv[1] if len(sys.argv) > 1 else "_connect"
-    check_impact(symbol)
+    res = check_impact(symbol)
+    if not res or res.get("status") == "UNVERIFIED":
+        print(f"⚠️ GitNexus Impact Check UNVERIFIED for '{symbol}'")
+        sys.exit(1)
+    sys.exit(0)

@@ -6,7 +6,24 @@ echo "=== SDD Verification Check ==="
 
 MISSING=0
 
-for spec in ".specify/constitution.md" "specs/001-sdd-migration/plan.md" "specs/001-sdd-migration/tasks.md" "specs/002-rules-api/spec.md" "specs/003-async-review-queue/spec.md" "specs/004-astryx-ui-console/spec.md"; do
+REQUIRED_SPECS=(
+    ".specify/constitution.md"
+    "specs/001-sdd-migration/plan.md"
+    "specs/001-sdd-migration/tasks.md"
+    "specs/002-rules-api/spec.md"
+    "specs/002-synapse-integration/spec.md"
+    "specs/003-async-review-queue/spec.md"
+    "specs/004-astryx-ui-console/spec.md"
+    "specs/005-tutor-live-activity/spec.md"
+    "specs/006-tutor-interactive-loop/spec.md"
+    "specs/P1-diacritics-normalization.md"
+    "specs/P2-tutor-friction-reduction.md"
+    "specs/P3-rule-isolation-providers.md"
+    "specs/P4-vision-cot-prompting.md"
+    "specs/P5-self-healing-resilience.md"
+)
+
+for spec in "${REQUIRED_SPECS[@]}"; do
     if [ -f "$spec" ]; then
         echo "  ✅ $spec exists"
     else
