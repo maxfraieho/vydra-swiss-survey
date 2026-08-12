@@ -25,6 +25,10 @@ REQUIRED_SPECS=(
     "specs/008-fallback-browser-sources/spec.md"
     "specs/009-sdd-research-command/spec.md"
     ".claude/commands/sdd/research.md"
+    "specs/010-sdd-expanded-commands/spec.md"
+    ".claude/commands/sdd/clarify.md"
+    ".claude/commands/sdd/audit.md"
+    ".claude/commands/sdd/verify.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
