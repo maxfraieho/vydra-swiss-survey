@@ -143,13 +143,16 @@ export const BrowserSourcesPanel: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
             {sources.map((s) => {
               const result = testResults[s.id];
+              const priorityLabel = s.priority ? `P${s.priority}` : 'P1';
               return (
-                <Card key={s.id} padding={4}>
+                <Card key={s.id} padding={4} className="impeccable-glass">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{s.label}</span>
-                      {s.is_active === 1 && <Badge variant="success" label="Активне" />}
+                      <Badge className="impeccable-badge" variant={s.priority === 1 ? 'info' : 'neutral'} label={priorityLabel} />
+                      {s.is_active === 1 && <Badge className="impeccable-badge" variant="success" label="Активне" />}
                       <Badge
+                        className="impeccable-badge"
                         variant="neutral"
                         label={s.kind === 'mcp_bridge' ? 'MCP-міст' : 'Прямий CDP'}
                       />
@@ -157,6 +160,7 @@ export const BrowserSourcesPanel: React.FC = () => {
                     <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{s.id}</span>
                   </div>
                   <MetadataList columns={1} label={{ position: 'start' }}>
+                    <MetadataListItem label="Пріоритет">Приорітет #{s.priority || 1}</MetadataListItem>
                     <MetadataListItem label="Ключ">{s.key}</MetadataListItem>
                     <MetadataListItem label="Адреса">{s.host}:{s.port}</MetadataListItem>
                     {s.kind === 'mcp_bridge' && (
