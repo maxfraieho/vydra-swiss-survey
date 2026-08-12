@@ -127,9 +127,9 @@ def extract_text_and_url_from_payload(payload):
         text = payload
     elif isinstance(payload, dict):
         msg = payload.get("message") or payload.get("channel_post") or payload.get("edited_message") or payload.get("edited_channel_post") or payload
-        text = msg.get("text") or msg.get("caption") or payload.get("text") or ""
+        text = msg.get("text") or msg.get("caption") or payload.get("text") or payload.get("caption") or ""
         
-        entities = msg.get("entities") or msg.get("caption_entities") or payload.get("entities") or []
+        entities = msg.get("entities") or msg.get("caption_entities") or payload.get("entities") or payload.get("caption_entities") or []
         for ent in entities:
             if isinstance(ent, dict) and ent.get("type") == "text_link" and ent.get("url"):
                 extracted_url = ent["url"]
@@ -143,6 +143,9 @@ def extract_text_and_url_from_payload(payload):
             url_match = re.search(r'(https?://[^\s>"\']+)', text)
             if url_match:
                 extracted_url = url_match.group(1)
+
+    if extracted_url:
+        extracted_url = extracted_url.rstrip(").,]\"';!?:")
 
     return text, extracted_url
 
@@ -298,17 +301,17 @@ def telegram_listener_thread():
                 if data.get("ok"):
                     for update in data.get("result", []):
                         last_update_id = update["update_id"]
-                        msg = update.get("message") or update.get("channel_post") or {}
+                        msg = update.get("message") or update.get("channel_post") or update.get("edited_message") or update.get("edited_channel_post") or {}
                         chat = msg.get("chat", {})
                         if chat.get("id"):
                             persona_graph_memory.save_setting("telegram_chat_id", str(chat.get("id")))
-                        text = msg.get("text", "")
-                        if text:
+                        text, extracted_url = extract_text_and_url_from_payload(update)
+                        if text or extracted_url:
                             with STATE_LOCK:
                                 RECENT_TELEGRAM_PUSHES.append(update)
                                 if len(RECENT_TELEGRAM_PUSHES) > 50:
                                     RECENT_TELEGRAM_PUSHES.pop(0)
-                            push_task_from_text(text)
+                            push_task_from_text(text, force=True, override_url=extracted_url)
         except Exception:
             time.sleep(5)
 
