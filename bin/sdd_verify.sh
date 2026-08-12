@@ -29,6 +29,7 @@ REQUIRED_SPECS=(
     ".claude/commands/sdd/clarify.md"
     ".claude/commands/sdd/audit.md"
     ".claude/commands/sdd/verify.md"
+    "specs/011-impeccable-design-integration/spec.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
