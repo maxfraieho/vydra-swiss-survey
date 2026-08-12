@@ -42,6 +42,14 @@ def ensure_tunnel(ssh_host: str, remote_port: int, local_port: int, wait_seconds
     """Self-heal SSH tunnel from `local_port` to `ssh_host`:`remote_port`.
     Only used for kind='direct_cdp' browser_sources — mcp_bridge sources are
     LAN-reachable directly and never go through this."""
+    if ssh_host in ("127.0.0.1", "localhost"):
+        try:
+            r = requests.get(f"http://127.0.0.1:{remote_port}/json/version", timeout=1.0)
+            if r.ok:
+                return remote_port
+        except requests.RequestException:
+            pass
+
     try:
         r = requests.get(f"http://127.0.0.1:{local_port}/json/version", timeout=0.5)
         if r.ok:
@@ -101,8 +109,11 @@ class CDPClient:
         for src in sources:
             try:
                 if src["kind"] == "direct_cdp":
-                    ensure_tunnel(src["host"], src["port"], local_port)
-                    self.base = f"http://127.0.0.1:{local_port}"
+                    if src["host"] in ("127.0.0.1", "localhost"):
+                        self.base = f"http://127.0.0.1:{src['port']}"
+                    else:
+                        ensure_tunnel(src["host"], src["port"], local_port)
+                        self.base = f"http://127.0.0.1:{local_port}"
                     self.active_source = src
                     break
                 elif src["kind"] == "mcp_bridge":
@@ -236,24 +247,8 @@ class CDPClient:
 
 
     def _prune_stray_tabs(self) -> None:
-        """Closes leftover survey-domain tabs from crashed prior runs (a run
-        that got SIGKILLed/OOM-killed skips its `finally: client.close()`,
-        leaving its tab open) so tab count never grows unbounded. Keeps only
-        self.target_id — the tab this instance is currently using."""
-        try:
-            r = requests.get(f"{self.base}/json/list", timeout=5)
-            if not r.ok:
-                return
-            for t in r.json():
-                if t.get("type") != "page" or t.get("id") == self.target_id:
-                    continue
-                if any(d in t.get("url", "").lower() for d in _SURVEY_DOMAIN_HINTS):
-                    try:
-                        requests.get(f"{self.base}/json/close/{t['id']}", timeout=5)
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+        """Disabled tab auto-pruning to preserve all user open tabs."""
+        return
 
     def open_tab(self, url: str) -> None:
         try:
