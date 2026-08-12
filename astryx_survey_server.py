@@ -50,7 +50,7 @@ def global_auth_gate():
     return resp
 
 def get_telegram_bot_token() -> str:
-    default_token = "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok"
+    default_token = "8861125591:AAFUAdGZr_r3yq39msEBKaHorSmbJK4zT-s"
     env_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if env_token and ":" in env_token and len(env_token) > 20:
         return env_token
@@ -174,7 +174,7 @@ def fetch_telegram_api(optional_payload=None):
     token = get_telegram_bot_token()
     if token:
         try:
-            req_url = f"https://api.telegram.org/bot{token}/getUpdates?offset=-20"
+            req_url = f"https://api.telegram.org/bot{token}/getUpdates?limit=20"
             req = urllib.request.Request(req_url, headers={"User-Agent": "AstryxSurveyServer/1.0"})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
