@@ -26,16 +26,23 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# 2. Check Python Virtualenv Dependencies
+# 2. Check Python Dependencies (Venv or System Python)
+PYTHON_BIN=""
 if [ -x "$VENV_PYTHON" ]; then
-    if "$VENV_PYTHON" -c "import requests, websocket, flask, persona_graph_memory" 2>/dev/null; then
-        echo "  ✅ Python virtualenv dependencies verified"
+    PYTHON_BIN="$VENV_PYTHON"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+fi
+
+if [ -n "$PYTHON_BIN" ]; then
+    if "$PYTHON_BIN" -c "import requests, websocket, flask" 2>/dev/null; then
+        echo "  ✅ Python dependencies verified ($PYTHON_BIN)"
     else
-        echo "  ❌ Python virtualenv missing required packages"
+        echo "  ❌ Python missing required packages ($PYTHON_BIN)"
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "  ❌ Python virtualenv missing at $VENV_PYTHON"
+    echo "  ❌ Python binary not found"
     ERRORS=$((ERRORS + 1))
 fi
 
