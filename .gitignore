@@ -6,3 +6,6 @@ survey-agent.pid
 docs/reports/
 backups/
 scratch/
+.impeccable/live/
+.impeccable/cache/
+.impeccable/tmp/
