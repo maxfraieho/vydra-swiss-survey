@@ -298,7 +298,10 @@ def delete_browser_source(id: int):
 @settings_bp.route("/api/settings/browser-sources/<int:id>/activate", methods=["POST"])
 def activate_browser_source(id: int):
     try:
-        res = persona_graph_memory.set_active_browser_source(id)
+        body = request.get_json(silent=True) or {}
+        is_active = body.get("is_active", True)
+        priority = body.get("priority")
+        res = persona_graph_memory.set_active_browser_source(id, active=is_active, priority=priority)
         return jsonify(res), 200
     except LookupError as e:
         return jsonify({"error": str(e)}), 404

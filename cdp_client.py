@@ -81,42 +81,52 @@ _SURVEY_DOMAIN_HINTS = ("meinungsplatz", "bilendi", "survey", "gfk", "maximiles"
 
 class CDPClient:
     def __init__(self, local_port: int, cdp_target_key: str | None = None):
-        """Resolves its CDP target from `browser_sources` (Settings → Браузер)
-        instead of a hardcoded host. `cdp_target_key`, if given, overrides the
-        active row for this run only (does not change which row is active).
-        No fallback to any other browser on failure — fails loud instead, per
-        product requirement: an unreachable target means report the problem,
-        not improvise a substitute browser session."""
+        """Resolves CDP target from active `browser_sources` in priority order.
+        If the primary source fails/times out, it attempts fallback sources sequentially
+        before raising a unified CDPError."""
         if cdp_target_key:
             source = persona_graph_memory.get_browser_source_by_key(cdp_target_key)
-            if source is None:
-                raise CDPError(f"No browser_source with key={cdp_target_key!r} found "
-                                f"(Settings → Браузер)")
+            sources = [source] if source else []
+            if not sources:
+                raise CDPError(f"No browser_source with key={cdp_target_key!r} found (Settings → Браузер)")
         else:
-            source = persona_graph_memory.get_active_browser_source()
-            if source is None:
-                raise CDPError("No active browser_source configured — set one via Settings → Браузер")
+            sources = persona_graph_memory.get_active_browser_sources()
+            if not sources:
+                raise CDPError("No active browser_sources configured — set them via Settings → Браузер")
 
-        if source["kind"] == "direct_cdp":
-            ensure_tunnel(source["host"], source["port"], local_port)
-            self.base = f"http://127.0.0.1:{local_port}"
-        elif source["kind"] == "mcp_bridge":
+        self.base = None
+        self.active_source = None
+        errors = []
+
+        for src in sources:
             try:
-                r = requests.get(f"http://{source['host']}:{source['port']}/json/version", timeout=3)
-                r.raise_for_status()
+                if src["kind"] == "direct_cdp":
+                    ensure_tunnel(src["host"], src["port"], local_port)
+                    self.base = f"http://127.0.0.1:{local_port}"
+                    self.active_source = src
+                    break
+                elif src["kind"] == "mcp_bridge":
+                    r = requests.get(f"http://{src['host']}:{src['port']}/json/version", timeout=3)
+                    r.raise_for_status()
+                    self.base = f"http://{src['host']}:{src['port']}"
+                    self.active_source = src
+                    break
+                else:
+                    errors.append(f"Source '{src['label']}': Unknown kind {src['kind']!r}")
             except Exception as e:
-                raise CDPError(
-                    f"Active browser_source '{source['label']}' ({source['host']}:{source['port']}) "
-                    f"is unreachable: {e}. It may not have started yet or crashed — do not fall back "
-                    f"to a substitute browser. Wait/retry, or report this."
-                ) from e
-            self.base = f"http://{source['host']}:{source['port']}"
-        else:
-            raise CDPError(f"Unknown browser_source kind: {source['kind']!r}")
+                err_msg = f"Source '{src['label']}' ({src['host']}:{src['port']}) failed: {e}"
+                print(f"⚠️ Primary/fallback browser source unavailable: {err_msg}")
+                errors.append(err_msg)
+
+        if not self.base:
+            raise CDPError(
+                f"All configured active browser sources in fallback chain failed! Errors: {'; '.join(errors)}"
+            )
 
         self._ids = itertools.count(1)
         self.ws = None
         self.target_id = None
+        self.opened_target_ids: set[str] = set()
 
     def attach_or_open_tab(self, url: str) -> bool:
         """Attaches to an existing active tab matching the domain if present,
@@ -139,6 +149,7 @@ class CDPClient:
                     t = matched[-1]
                     ws_url = t["webSocketDebuggerUrl"]
                     self.target_id = t["id"]
+                    self.opened_target_ids.add(self.target_id)
                     self.ws = create_connection(ws_url, timeout=30)
                     self._send("Page.enable")
                     self._send("Runtime.enable")
@@ -186,6 +197,7 @@ class CDPClient:
                     ws_url = t.get("webSocketDebuggerUrl")
                     if ws_url:
                         self.target_id = t["id"]
+                        self.opened_target_ids.add(self.target_id)
                         self.ws = create_connection(ws_url, timeout=30)
                         self._send("Page.enable")
                         self._send("Runtime.enable")
@@ -254,6 +266,7 @@ class CDPClient:
         target = r.json()
         ws_url = target["webSocketDebuggerUrl"]
         self.target_id = target["id"]
+        self.opened_target_ids.add(self.target_id)
         self.ws = create_connection(ws_url, timeout=30)
         self._send("Page.enable")
         self._send("Runtime.enable")
@@ -573,17 +586,19 @@ class CDPClient:
             except Exception:
                 pass
             self.ws = None
-        # Actually close the Chrome tab, not just the debugger connection —
-        # leaving self.ws=None but the tab open leaks a tab per run and
-        # starves this 2-core host's CPU (each open tab keeps a live
-        # renderer process; a handful of stale tabs was enough to push
-        # host load average to 6+ and stall unrelated work).
-        if self.target_id is not None:
+        
+        # Close ALL Chrome tabs opened or attached during this session
+        targets_to_close = set(self.opened_target_ids)
+        if self.target_id:
+            targets_to_close.add(self.target_id)
+
+        for tid in targets_to_close:
             try:
-                requests.get(f"{self.base}/json/close/{self.target_id}", timeout=5)
+                requests.get(f"{self.base}/json/close/{tid}", timeout=5)
             except Exception:
                 pass
-            self.target_id = None
+        self.target_id = None
+        self.opened_target_ids.clear()
 
 
 def normalize_survey_text(text: str) -> str:

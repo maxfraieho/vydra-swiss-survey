@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS browser_sources (
     port        INTEGER NOT NULL,
     mcp_server  TEXT,
     note        TEXT,
+    priority    INTEGER NOT NULL DEFAULT 1,
     is_active   INTEGER NOT NULL DEFAULT 0,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
@@ -234,6 +235,10 @@ def _connect() -> sqlite3.Connection:
         pass
     try:
         conn.execute("ALTER TABLE host_rules ADD COLUMN structure_hash TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE browser_sources ADD COLUMN priority INTEGER NOT NULL DEFAULT 1")
     except sqlite3.OperationalError:
         pass
     return conn
@@ -1454,20 +1459,27 @@ def delete_browser_source(id: int) -> bool:
         conn.close()
 
 
-def set_active_browser_source(id: int) -> dict:
+def set_active_browser_source(id: int, active: bool = True, priority: int | None = None) -> dict:
     conn = _connect()
     conn.row_factory = sqlite3.Row
     try:
         now = _now()
-        conn.execute("UPDATE browser_sources SET is_active=0")
         existing = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
         if existing is None:
             conn.rollback()
             raise LookupError(f"browser_source id={id} not found")
-        conn.execute(
-            "UPDATE browser_sources SET is_active=1, updated_at=? WHERE id=?",
-            (now, id),
-        )
+
+        is_act_val = 1 if active else 0
+        if priority is not None:
+            conn.execute(
+                "UPDATE browser_sources SET is_active=?, priority=?, updated_at=? WHERE id=?",
+                (is_act_val, priority, now, id),
+            )
+        else:
+            conn.execute(
+                "UPDATE browser_sources SET is_active=?, updated_at=? WHERE id=?",
+                (is_act_val, now, id),
+            )
         conn.commit()
         row = conn.execute("SELECT * FROM browser_sources WHERE id=?", (id,)).fetchone()
         return dict(row)
@@ -1475,14 +1487,21 @@ def set_active_browser_source(id: int) -> dict:
         conn.close()
 
 
-def get_active_browser_source() -> Optional[dict]:
+def get_active_browser_sources() -> list[dict]:
     conn = _connect()
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute("SELECT * FROM browser_sources WHERE is_active=1 LIMIT 1").fetchone()
-        return dict(row) if row else None
+        rows = conn.execute(
+            "SELECT * FROM browser_sources WHERE is_active=1 ORDER BY priority ASC, id ASC"
+        ).fetchall()
+        return [dict(r) for r in rows]
     finally:
         conn.close()
+
+
+def get_active_browser_source() -> Optional[dict]:
+    sources = get_active_browser_sources()
+    return sources[0] if sources else None
 
 
 def get_browser_source(id: int) -> Optional[dict]:
