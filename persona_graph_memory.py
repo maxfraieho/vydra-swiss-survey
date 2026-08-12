@@ -721,12 +721,13 @@ def list_rules_raw(
             nonlocal query
             if val is None:
                 return
+            ignored = {"all", "undefined", "null", "*"}
             if isinstance(val, str):
-                vals = [v.strip() for v in val.split(",") if v.strip()] if "," in val else [val]
+                vals = [v.strip() for v in val.split(",") if v.strip() and v.strip().lower() not in ignored] if "," in val else ([val.strip()] if val.strip() and val.strip().lower() not in ignored else [])
             elif isinstance(val, (list, tuple, set)):
-                vals = [str(v) for v in val if v is not None]
+                vals = [str(v).strip() for v in val if v is not None and str(v).strip() and str(v).strip().lower() not in ignored]
             else:
-                vals = [str(val)]
+                vals = [str(val).strip()] if str(val).strip().lower() not in ignored else []
             if not vals:
                 return
             placeholders = ",".join("?" for _ in vals)

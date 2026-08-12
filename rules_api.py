@@ -58,11 +58,17 @@ def _get_list_param(param_name: str) -> list[str] | None:
     """Helper to extract list parameters from request query params (e.g. ?host[]=a&host[]=b or ?host=a,b)."""
     raw_vals = request.args.getlist(f"{param_name}[]") + request.args.getlist(param_name)
     result: list[str] = []
+    ignored = {"all", "undefined", "null", "*"}
     for v in raw_vals:
         if "," in v:
-            result.extend(item.strip() for item in v.split(",") if item.strip())
+            for item in v.split(","):
+                item_s = item.strip()
+                if item_s and item_s.lower() not in ignored:
+                    result.append(item_s)
         elif v.strip():
-            result.append(v.strip())
+            v_s = v.strip()
+            if v_s and v_s.lower() not in ignored:
+                result.append(v_s)
     return result if result else None
 
 

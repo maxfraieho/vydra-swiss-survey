@@ -84,8 +84,9 @@ export const RulesTable: React.FC = () => {
 
   const updateParam = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
-    if (value) {
-      newParams.set(key, value);
+    const valTrim = (value || '').trim().toLowerCase();
+    if (valTrim && valTrim !== 'all' && valTrim !== 'undefined' && valTrim !== 'null' && valTrim !== '*') {
+      newParams.set(key, value.trim());
     } else {
       newParams.delete(key);
     }
