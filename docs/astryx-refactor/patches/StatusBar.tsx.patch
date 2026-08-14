@@ -1,0 +1,48 @@
+Етап C3 + B: HITL-банер веде на /ops (зараз на "/" → редірект),
+статуси через SurveyStatusPill (людські підписи, без snake_case),
+inline HEX '#0f172a' → токен фону.
+
+--- a/web/src/shell/StatusBar.tsx
++++ b/web/src/shell/StatusBar.tsx
+@@
+-import { Badge, type BadgeVariant } from '@astryxdesign/core/Badge';
+ import { Banner } from '@astryxdesign/core/Banner';
+ import { Button } from '@astryxdesign/core/Button';
++import { SurveyStatusPill } from '../ui/primitives';
+@@
+-  const getBadgeVariant = (s: SurveyStatus['status']): BadgeVariant => {
+-    switch (s) {
+-      case 'waiting_verification':
+-        return 'error';
+-      ...
+-    }
+-  };
++  // мапінг стану -> варіант живе в ui/tokens.ts (єдина копія на весь застосунок)
+@@
+-    <div style={{ background: '#0f172a', borderBottom: '1px solid var(--color-border-emphasized)', padding: isNarrow ? '6px 12px' : '8px 24px' }}>
++    <div
++      style={{
++        background: 'var(--color-background-subtle)',
++        borderBottom: '1px solid var(--color-border-emphasized)',
++        padding: isNarrow ? '6px 12px' : '8px 24px',
++      }}
++    >
+@@
+-        <Badge
+-          variant={getBadgeVariant(status)}
+-          label={`${status}${profile ? ` (${profile})` : ''}`}
+-        />
++        <SurveyStatusPill status={status} suffix={profile} />
+@@
+-            <Button
+-              as={Link}
+-              href="/"
+-              label="До кроку у Режимі Навчання"
+-              variant="secondary"
+-            />
++            <Button
++              as={Link}
++              href="/ops#pending"
++              label="Перейти до верифікації"
++              variant="secondary"
++            />
