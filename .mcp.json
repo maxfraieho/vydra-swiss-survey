@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "gitnexus": {
+      "type": "http",
+      "url": "http://192.168.3.184:4747/api/mcp",
+      "headers": {
+        "Accept": "application/json, text/event-stream"
+      }
+    },
+    "ai-memory": {
+      "type": "http",
+      "url": "http://192.168.3.184:49374/mcp",
+      "headers": {
+        "Accept": "application/json, text/event-stream"
+      }
+    },
+    "drakon": {
+      "type": "http",
+      "url": "https://drakon-antigravity-worker.maxfraieho.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer drakon-mcp-2026"
+      }
+    },
+    "n8n": {
+      "type": "http",
+      "url": "https://n8n.exodus.pp.ua/mcp-server/http",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYjg1MjVmYy0wYjBhLTQzZDUtYmJmMS02ZjJkNjBiY2M3M2UiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6ImFmMzhjYzFlLTRlMTEtNGIxZS04NGEwLTZhMzY4OWFlMDI4NiIsImlhdCI6MTc3NjA3NDgyNX0.2sseKoimZzBd70byLWfxBQRD9M41bMFsa7hb6qG_tH8"
+      }
+    },
+    "notebooklm": {
+      "type": "http",
+      "url": "https://notebooklm.exodus.pp.ua/mcp"
+    },
+    "mempalace": {
+      "command": "/home/vokov/.local/share/pipx/venvs/mempalace/bin/python",
+      "args": [
+        "-m",
+        "mempalace.mcp_server"
+      ],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false",
+        "CHROMA_ANONYMIZED_TELEMETRY": "false",
+        "CHROMA_TELEMETRY": "false",
+        "PYTHONWARNINGS": "ignore",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}
