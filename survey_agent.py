@@ -14,8 +14,10 @@ they already match on "llama-mtmd-cli", which this script also invokes.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
