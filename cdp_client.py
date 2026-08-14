@@ -112,8 +112,18 @@ class CDPClient:
                     if src["host"] in ("127.0.0.1", "localhost"):
                         self.base = f"http://127.0.0.1:{src['port']}"
                     else:
-                        ensure_tunnel(src["host"], src["port"], local_port)
-                        self.base = f"http://127.0.0.1:{local_port}"
+                        # First try direct connection (e.g. on LAN or running directly on host)
+                        direct_ok = False
+                        try:
+                            r = requests.get(f"http://{src['host']}:{src['port']}/json/version", timeout=1.5)
+                            if r.status_code == 200:
+                                self.base = f"http://{src['host']}:{src['port']}"
+                                direct_ok = True
+                        except Exception:
+                            direct_ok = False
+                        if not direct_ok:
+                            ensure_tunnel(src["host"], src["port"], local_port)
+                            self.base = f"http://127.0.0.1:{local_port}"
                     self.active_source = src
                     break
                 elif src["kind"] == "mcp_bridge":
