@@ -952,9 +952,8 @@ export const SurveyOps: React.FC = () => {
         )}
       </Card>
 
-      {/* Conditional Survey Execution & Verification Workspace */}
-      {hasActiveSession ? (
-        <div style={{ display: 'grid', gridTemplateColumns: desktopFullWidth || isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
+      {/* Interactive Survey Execution & Desktop Browser Workspace */}
+      <div style={{ display: 'grid', gridTemplateColumns: desktopFullWidth || isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
           {/* Live Interactive Browser Viewer & CDP Relay */}
           <Card padding={4}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
@@ -1415,30 +1414,11 @@ export const SurveyOps: React.FC = () => {
               </div>
             ) : (
               <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-                Немає кроку, що очікує верифікації.
+                Немає кроку, що очікує верифікації. Ви можете взаємодіяти з браузером через панель зліва.
               </div>
             )}
           </Card>
         </div>
-      ) : (
-        <Card padding={4} style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--color-background-page)', border: '1px dashed var(--color-border)' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🟢</div>
-          <Heading level={2} style={{ fontSize: '15px', marginBottom: '6px' }}>
-            Система готова до запуску опитування
-          </Heading>
-          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', maxWidth: '460px', margin: '0 auto 16px' }}>
-            Немає активного опитування в процесі. Запустіть завдання з черги Telegram, відкрийте вкладку або скористайтесь формою ручного внесення вище.
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <button style={secondaryButtonStyle} onClick={handleFetchTelegram} disabled={busy === 'fetch_telegram'}>
-              📥 Підтягнути з Telegram
-            </button>
-            <button style={secondaryButtonStyle} onClick={openLiveBrowser}>
-              🌐 Відкрити CDP Браузер
-            </button>
-          </div>
-        </Card>
-      )}
 
       {/* A4: Panel "Правила, що діють на цей крок" */}
       {activeHost && (

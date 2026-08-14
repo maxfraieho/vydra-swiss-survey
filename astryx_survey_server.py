@@ -863,14 +863,23 @@ def index():
 
 @app.route("/api/survey/screenshot/latest")
 def latest_screenshot():
-    paths = [os.path.expanduser("~/latest_survey_step.png"), "/home/vokov/latest_survey_step.png"]
-    for shot_path in paths:
-        if os.path.exists(shot_path):
-            resp = send_file(shot_path, mimetype="image/png")
-            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            resp.headers["Pragma"] = "no-cache"
-            resp.headers["Expires"] = "0"
-            return resp
+    shot_path = "/home/vokov/latest_survey_step.png"
+    now_ts = time.time()
+    need_capture = not os.path.exists(shot_path) or (now_ts - os.path.getmtime(shot_path) > 2.0) or request.args.get("fresh") == "1"
+    if need_capture:
+        try:
+            client = get_cdp_client_for_relay()
+            if client and client.ws:
+                client.screenshot(shot_path)
+        except Exception:
+            pass
+
+    if os.path.exists(shot_path):
+        resp = send_file(shot_path, mimetype="image/png")
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
     return jsonify({"error": "No screenshot available"}), 444
 
 @app.route("/api/survey/status")
