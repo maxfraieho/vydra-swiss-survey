@@ -407,7 +407,12 @@ def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = No
 
     add_log(f"🚀 Ексклюзивний запуск Gemma 3 4B Survey Agent for {profile}...")
     try:
-        cmd = ["bash", os.path.expanduser("~/llm-switch.sh"), "survey", profile, url, "-f"]
+        llm_switch = os.path.expanduser("~/llm-switch.sh")
+        if os.path.exists(llm_switch):
+            cmd = ["bash", llm_switch, "survey", profile, url, "-f"]
+        else:
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "survey_agent.py")
+            cmd = [sys.executable, script_path, "--profile", profile, "--url", url, "--force"]
         if resume_tab_url:
             cmd += ["--resume-tab", resume_tab_url]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

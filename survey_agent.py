@@ -89,35 +89,109 @@ def load_credentials(site_host: str, profile_key: str) -> dict | None:
     return creds.get(site_host, {}).get(profile_key)
 
 
+def try_solve_altcha(client: CDPClient, log) -> bool:
+    try:
+        import base64, re, tempfile
+        from vision import get_vision_backend
+        has_altcha = client._send("Runtime.evaluate", {
+            "expression": "!!document.querySelector('altcha-widget, [challengeurl], input[id*=\"altcha\"]')",
+            "returnByValue": True
+        }).get("result", {}).get("value")
+        if not has_altcha:
+            return False
+        
+        log("Altcha protection detected on login form. Triggering verification...")
+        client._send("Runtime.evaluate", {
+            "expression": """(function() {
+                var cb = document.querySelector("input[id*='altcha'], altcha-widget, .altcha, button.altcha-btn");
+                if (cb) cb.click();
+            })()""",
+            "returnByValue": True
+        })
+        time.sleep(2.0)
+        
+        img_res = client._send("Runtime.evaluate", {
+            "expression": """(function() {
+                var img = document.querySelector("altcha-widget img, img[src*='data:image']");
+                return img ? img.src : null;
+            })()""",
+            "returnByValue": True
+        })
+        img_src = img_res.get("result", {}).get("value")
+        if img_src and "base64," in img_src:
+            b64_data = img_src.split("base64,")[1]
+            img_bytes = base64.b64decode(b64_data)
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_f:
+                tmp_f.write(img_bytes)
+                tmp_path = tmp_f.name
+            
+            try:
+                backend = get_vision_backend()
+                prompt = "Look at this captcha image. It contains exactly 5 letters or digits. Return ONLY a JSON object: {\"code\": \"XXXXX\"} where XXXXX is the 5-character string."
+                ocr_raw = backend.run_vision(tmp_path, prompt)
+                log(f"Altcha OCR result: {ocr_raw.strip()}")
+                m = re.search(r"\{\s*\"code\"\s*:\s*\"([A-Za-z0-9]{5})\"\s*\}", ocr_raw)
+                if not m:
+                    m = re.search(r"\"([A-Za-z0-9]{5})\"", ocr_raw)
+                code = m.group(1) if m else re.sub(r"[^A-Za-z0-9]", "", ocr_raw)[:5]
+                
+                client._send("Runtime.evaluate", {
+                    "expression": f"""(function() {{
+                        var inp = document.querySelector('.altcha-code-challenge-input');
+                        if (inp) {{
+                            inp.value = "{code}";
+                            inp.dispatchEvent(new Event('input', {{bubbles: true}}));
+                            inp.dispatchEvent(new Event('change', {{bubbles: true}}));
+                            var btn = document.querySelector('.altcha-code-challenge-verify');
+                            if (btn) btn.click();
+                        }}
+                    }})()""",
+                    "returnByValue": True
+                })
+                time.sleep(2.5)
+                log(f"Entered Altcha code '{code}' and submitted challenge verification.")
+                return True
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+    except Exception as e:
+        log(f"Altcha solver exception: {e}")
+    return False
+
+
 def try_login(client: CDPClient, creds: dict, log) -> None:
-    """Deterministic login respecting browser pre-filled/cached credentials."""
+    """Deterministic login respecting browser pre-filled/cached credentials and Altcha."""
     log("Checking login form and submitting cached/pre-filled credentials...")
 
-    # First check if submit button can be directly clicked (pre-filled credentials)
-    for label in LOGIN_FIELD_LABELS["submit"]:
-        if client.click_by_text(label):
-            time.sleep(2.0)
-            log(f"Submitted pre-filled login via submit button {label!r}.")
-            return
-
-    # If submit wasn't immediately clickable, try email/password fields
-    email_found = False
+    # Fill email if present
     for label in LOGIN_FIELD_LABELS["email"]:
         if client.click_by_text(label):
             client.type_text(creds["email"])
-            email_found = True
             break
 
+    # Fill password if present
     for label in LOGIN_FIELD_LABELS["password"]:
         if client.click_by_text(label):
             client.type_text(creds["password"])
             break
 
+    # Check and solve Altcha if present
+    try_solve_altcha(client, log)
+
+    # Submit login
     for label in LOGIN_FIELD_LABELS["submit"]:
         if client.click_by_text(label):
-            time.sleep(2.0)
-            log(f"Submitted login via label {label!r}.")
+            time.sleep(3.0)
+            log(f"Submitted login via submit button {label!r}.")
             return
+    sub = client.find_submit_button()
+    if sub:
+        client._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": sub["x"], "y": sub["y"]})
+        client._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
+        client._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
+        time.sleep(3.0)
+        log("Submitted login via find_submit_button.")
+        return
     log("Could not find a submit/login button by label — leaving to vision loop.")
 
 
