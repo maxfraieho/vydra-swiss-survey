@@ -351,13 +351,14 @@ def main() -> None:
         if is_active_survey:
             log(f"Attached to active tab on '{current_url}' — PRESERVING PAGE STATE (no re-navigation).")
         elif creds:
-            scheme = args.url.split("://", 1)[0]
-            login_url = f"{scheme}://{site_host}/login"
-            log(f"Navigating to dedicated login page '{login_url}' (current URL was '{current_url}')...")
-            client.navigate(login_url)
-            try_login(client, creds, log)
-            log(f"Navigating to survey URL '{args.url}'...")
+            log(f"Navigating to '{args.url}' for authentication and survey flow...")
             client.navigate(args.url)
+            time.sleep(2.0)
+            try_login(client, creds, log)
+            # If args.url is a deep survey path (not home page), ensure we are on it
+            if args.url.strip("/").count("/") > 2 and client.get_current_url() != args.url:
+                log(f"Navigating to deep survey target URL '{args.url}'...")
+                client.navigate(args.url)
         else:
             log(f"Navigating tab to site URL '{args.url}' (current URL was '{current_url}')...")
             client.navigate(args.url)
