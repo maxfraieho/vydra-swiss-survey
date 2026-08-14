@@ -539,6 +539,28 @@ class CDPClient:
                                                   "button": "left", "clickCount": 1})
         return True
 
+    def human_click(self, x: float, y: float, jitter: bool = True) -> None:
+        """Move cursor in natural steps and click mimicking a human user."""
+        import random
+        if jitter:
+            x = x + random.uniform(-3.0, 3.0)
+            y = y + random.uniform(-2.0, 2.0)
+        
+        steps = random.randint(3, 6)
+        start_x = x - random.uniform(20.0, 50.0)
+        start_y = y - random.uniform(15.0, 35.0)
+        for s in range(steps):
+            frac = (s + 1) / steps
+            cur_x = start_x + (x - start_x) * frac
+            cur_y = start_y + (y - start_y) * frac
+            self._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": cur_x, "y": cur_y})
+            time.sleep(random.uniform(0.02, 0.05))
+        
+        time.sleep(random.uniform(0.08, 0.2))
+        self._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": x, "y": y, "button": "left", "clickCount": 1})
+        time.sleep(random.uniform(0.06, 0.16))
+        self._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x, "y": y, "button": "left", "clickCount": 1})
+
     def type_text(self, text: str) -> None:
         import random
         self._send("Runtime.evaluate", {

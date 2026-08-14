@@ -160,39 +160,121 @@ def try_solve_altcha(client: CDPClient, log) -> bool:
 
 
 def try_login(client: CDPClient, creds: dict, log) -> None:
-    """Deterministic login respecting browser pre-filled/cached credentials and Altcha."""
-    log("Checking login form and submitting cached/pre-filled credentials...")
+    """Deterministic login respecting user-specified human-like header form flow."""
+    log("Executing human-mimicking login flow...")
 
-    # Fill email if present
-    for label in LOGIN_FIELD_LABELS["email"]:
-        if client.click_by_text(label):
-            client.type_text(creds["email"])
-            break
+    # 1. Click top-left logo to switch to standard 2-line authorization mode on home page
+    logo_res = client._send("Runtime.evaluate", {
+        "expression": """(function() {
+            var logo = document.querySelector("a.navbar-brand, .logo a, header a, a[href='/'], a[href='https://meinungsplatz.ch/']");
+            if (logo) {
+                var r = logo.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+                }
+            }
+            return null;
+        })()""",
+        "returnByValue": True
+    }).get("result", {}).get("value")
 
-    # Fill password if present
-    for label in LOGIN_FIELD_LABELS["password"]:
-        if client.click_by_text(label):
-            client.type_text(creds["password"])
-            break
+    if logo_res:
+        log("Clicking top-left logo to activate standard two-line authorization mode...")
+        client.human_click(logo_res["x"], logo_res["y"])
+        time.sleep(2.5)
 
-    # Check and solve Altcha if present
+    # 2. Click the top-right header button 'S'identifier' to open the 2-line header login form
+    header_btn_res = client._send("Runtime.evaluate", {
+        "expression": """(function() {
+            var btn = Array.from(document.querySelectorAll("header button, .header button, button")).find(b => {
+                var t = (b.innerText || "").trim().toLowerCase();
+                return (t === "s'identifier" || t === "anmelden" || t === "connexion") && b.type !== "submit";
+            });
+            if (btn) {
+                var r = btn.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+                }
+            }
+            return null;
+        })()""",
+        "returnByValue": True
+    }).get("result", {}).get("value")
+
+    if header_btn_res:
+        log("Clicking top-right header 'S\'identifier' button with human mouse motion...")
+        client.human_click(header_btn_res["x"], header_btn_res["y"])
+        time.sleep(1.5)
+
+    # 3. Focus and fill username and password with human delays
+    u_res = client._send("Runtime.evaluate", {
+        "expression": """(function() {
+            var u = document.querySelector("input#_username, input[name='_username'], input[type='email']");
+            if (u) {
+                var r = u.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) return {x: r.x + 30, y: r.y + r.height / 2};
+            }
+            return null;
+        })()""",
+        "returnByValue": True
+    }).get("result", {}).get("value")
+
+    if u_res:
+        client.human_click(u_res["x"], u_res["y"])
+        time.sleep(0.3)
+        client.type_text(creds["email"])
+        time.sleep(0.4)
+
+    p_res = client._send("Runtime.evaluate", {
+        "expression": """(function() {
+            var p = document.querySelector("input#_password, input[name='_password'], input[type='password']");
+            if (p) {
+                var r = p.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) return {x: r.x + 30, y: r.y + r.height / 2};
+            }
+            return null;
+        })()""",
+        "returnByValue": True
+    }).get("result", {}).get("value")
+
+    if p_res:
+        client.human_click(p_res["x"], p_res["y"])
+        time.sleep(0.3)
+        client.type_text(creds["password"])
+        time.sleep(0.5)
+
+    # 4. Check if Altcha is present
     try_solve_altcha(client, log)
 
-    # Submit login
+    # 5. Click authorization submit button mimicking a human
+    submit_res = client._send("Runtime.evaluate", {
+        "expression": """(function() {
+            var sub = document.querySelector("button#_submit, button[type='submit'], input[type='submit']");
+            if (sub) {
+                var r = sub.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+                }
+            }
+            return null;
+        })()""",
+        "returnByValue": True
+    }).get("result", {}).get("value")
+
+    if submit_res:
+        log(f"Clicking authorization submit button with human motion at ({submit_res['x']:.1f}, {submit_res['y']:.1f})...")
+        client.human_click(submit_res["x"], submit_res["y"])
+        time.sleep(4.0)
+        log("Human authorization click dispatched and verified.")
+        return
+
+    # Fallback to text label search
     for label in LOGIN_FIELD_LABELS["submit"]:
         if client.click_by_text(label):
             time.sleep(3.0)
             log(f"Submitted login via submit button {label!r}.")
             return
-    sub = client.find_submit_button()
-    if sub:
-        client._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": sub["x"], "y": sub["y"]})
-        client._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
-        client._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
-        time.sleep(3.0)
-        log("Submitted login via find_submit_button.")
-        return
-    log("Could not find a submit/login button by label — leaving to vision loop.")
+    log("Could not find submit/login button — leaving to vision loop.")
 
 
 def main() -> None:
