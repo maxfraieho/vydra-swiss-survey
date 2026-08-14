@@ -177,6 +177,15 @@ export const SurveyOps: React.FC = () => {
   const [busy, setBusy] = useState<string | null>(null);
   const [resumeProfile, setResumeProfile] = useState<'arno' | 'annet'>('arno');
   const [resumeUrl, setResumeUrl] = useState<string>('');
+  
+  // Manual Entry / Email Link Form State
+  const [manualProfile, setManualProfile] = useState<'arno' | 'annet'>('arno');
+  const [manualUrl, setManualUrl] = useState<string>('');
+  const [manualReward, setManualReward] = useState<string>('1.0 CHF');
+  const [manualDuration, setManualDuration] = useState<string>('10 min');
+  const [manualRawText, setManualRawText] = useState<string>('');
+  const [showRawParser, setShowRawParser] = useState<boolean>(false);
+
   const [overrideAction, setOverrideAction] = useState<'click' | 'type' | 'scroll'>('click');
   const [overrideTarget, setOverrideTarget] = useState('');
   const [overrideValue, setOverrideValue] = useState('');
@@ -260,6 +269,74 @@ export const SurveyOps: React.FC = () => {
     } finally {
       setBusy(null);
     }
+  };
+
+  const handleResetState = () => {
+    runAction('reset_state', async () => {
+      await apiFetch('/api/survey/reset_state', { method: 'POST' });
+      toast({ body: 'Стан опитування та застарілі кроки успішно очищено' });
+    });
+  };
+
+  const handleParseRawText = (raw: string) => {
+    setManualRawText(raw);
+    if (!raw.trim()) return;
+
+    // Detect persona
+    if (/олен|annet|olena/i.test(raw)) {
+      setManualProfile('annet');
+    } else if (/арсен|arno|arsen/i.test(raw)) {
+      setManualProfile('arno');
+    }
+
+    // Extract reward
+    const rewardMatch = raw.match(/([\d.,]+\s*(?:CHF|Fr\.|франк))/i);
+    if (rewardMatch) {
+      setManualReward(rewardMatch[1].trim());
+    }
+
+    // Extract duration
+    const durationMatch = raw.match(/([\d.,]+\s*(?:min|хв|хвилин|Minuten))/i);
+    if (durationMatch) {
+      setManualDuration(durationMatch[1].trim());
+    }
+
+    // Extract URL (from markdown link or direct URL)
+    const mdUrlMatch = raw.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/i);
+    const directUrlMatch = raw.match(/(https?:\/\/[^\s>"']+)/i);
+    const foundUrl = mdUrlMatch ? mdUrlMatch[1] : (directUrlMatch ? directUrlMatch[1] : null);
+    if (foundUrl) {
+      setManualUrl(foundUrl.trim());
+      toast({ body: 'Посилання та параметри успішно розпізнано з тексту листа' });
+    }
+  };
+
+  const handleManualTrigger = (startImmediately: boolean) => {
+    if (!manualUrl.trim()) {
+      toast({ body: 'Введіть або вставте URL опитування', type: 'error' });
+      return;
+    }
+
+    runAction('manual_trigger', async () => {
+      const res = await apiFetch<any>('/api/survey/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: manualProfile,
+          url: manualUrl.trim(),
+          reward: manualReward.trim() || '1.0 CHF',
+          duration: manualDuration.trim() || '10 min',
+        }),
+      });
+
+      if (startImmediately) {
+        await apiFetch('/api/survey/authorize', { method: 'POST' });
+        toast({ body: `Опитування для ${formatPersonaName(manualProfile)} запущено негайно!` });
+      } else {
+        toast({ body: `Опитування для ${formatPersonaName(manualProfile)} додано в чергу!` });
+      }
+      setManualRawText('');
+    });
   };
 
   const handleTrainingModeToggle = (enabled: boolean) => {
@@ -350,87 +427,101 @@ export const SurveyOps: React.FC = () => {
 
   const color = statusColor(status?.status || 'idle');
   const screenshotSrc = `${getApiBase()}/api/survey/screenshot/latest?t=${screenshotTs}`;
+  const hasActiveSession = Boolean(status?.active_task_id) || status?.status === 'running' || status?.status === 'starting' || status?.status === 'waiting_verification' || Boolean(status?.pending_decision);
 
   return (
     <VStack gap={5}>
       {/* Header with Status & Host Playbook Mode */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <Heading level={1} style={{ fontSize: '18px' }}>
-          🎓 Режим Навчання — HITL Опитування
-        </Heading>
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 700,
-            padding: '4px 10px',
-            borderRadius: '999px',
-            textTransform: 'uppercase',
-            background: color.bg,
-            color: color.fg,
-          }}
-        >
-          {status?.status || 'idle'}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <Heading level={1} style={{ fontSize: '18px' }}>
+            🎓 Режим Навчання — HITL Опитування
+          </Heading>
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 700,
+              padding: '4px 10px',
+              borderRadius: '999px',
+              textTransform: 'uppercase',
+              background: color.bg,
+              color: color.fg,
+            }}
+          >
+            {status?.status || 'idle'}
+          </span>
 
-        {/* Host & Playbook Mode Badges */}
-        {activeHost && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <Link
-              to={`/gate/${encodeURIComponent(activeHost)}`}
-              style={{
-                fontSize: '12px',
-                fontWeight: 600,
-                padding: '4px 10px',
-                borderRadius: '999px',
-                background: 'var(--color-background-muted)',
-                color: 'var(--color-accent)',
-                textDecoration: 'none',
-              }}
-              title="Перейти до гейта хоста"
-            >
-              🌐 {activeHost}
-            </Link>
-            {gateData && (
-              <span
+          {/* Host & Playbook Mode Badges */}
+          {activeHost && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <Link
+                to={`/gate/${encodeURIComponent(activeHost)}`}
                 style={{
                   fontSize: '12px',
-                  fontWeight: 700,
+                  fontWeight: 600,
                   padding: '4px 10px',
                   borderRadius: '999px',
-                  textTransform: 'uppercase',
-                  background:
-                    gateData.playbook_mode === 'active'
-                      ? 'rgba(16, 185, 129, 0.15)'
-                      : gateData.playbook_mode === 'shadow'
-                      ? 'rgba(245, 158, 11, 0.15)'
-                      : 'rgba(107, 114, 128, 0.15)',
-                  color:
-                    gateData.playbook_mode === 'active'
-                      ? 'var(--color-text-green)'
-                      : gateData.playbook_mode === 'shadow'
-                      ? 'var(--color-text-yellow)'
-                      : '#9ca3af',
-                  border: `1px solid ${
-                    gateData.playbook_mode === 'active'
-                      ? '#059669'
-                      : gateData.playbook_mode === 'shadow'
-                      ? '#d97706'
-                      : '#4b5563'
-                  }`,
+                  background: 'var(--color-background-muted)',
+                  color: 'var(--color-accent)',
+                  textDecoration: 'none',
                 }}
-                title={`Режим гейта для ${activeHost}`}
+                title="Перейти до гейта хоста"
               >
-                GATE: {gateData.playbook_mode.toUpperCase()}
-              </span>
-            )}
-          </div>
-        )}
+                🌐 {activeHost}
+              </Link>
+              {gateData && (
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    textTransform: 'uppercase',
+                    background:
+                      gateData.playbook_mode === 'active'
+                        ? 'rgba(16, 185, 129, 0.15)'
+                        : gateData.playbook_mode === 'shadow'
+                        ? 'rgba(245, 158, 11, 0.15)'
+                        : 'rgba(107, 114, 128, 0.15)',
+                    color:
+                      gateData.playbook_mode === 'active'
+                        ? 'var(--color-text-green)'
+                        : gateData.playbook_mode === 'shadow'
+                        ? 'var(--color-text-yellow)'
+                        : '#9ca3af',
+                    border: `1px solid ${
+                      gateData.playbook_mode === 'active'
+                        ? '#059669'
+                        : gateData.playbook_mode === 'shadow'
+                        ? '#d97706'
+                        : '#4b5563'
+                    }`,
+                  }}
+                  title={`Режим гейта для ${activeHost}`}
+                >
+                  GATE: {gateData.playbook_mode.toUpperCase()}
+                </span>
+              )}
+            </div>
+          )}
 
-        {statusError && (
-          <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>
-            Помилка опитування статусу: {statusError.message}
-          </span>
-        )}
+          {statusError && (
+            <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>
+              Помилка опитування статусу: {statusError.message}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            style={secondaryButtonStyle}
+            onClick={handleResetState}
+            disabled={busy === 'reset_state'}
+            title="Повністю очистити залишки попереднього опитування та скріншоти"
+          >
+            🧹 Скинути стан
+          </button>
+        </div>
       </div>
 
       {/* Training mode toggle */}
@@ -537,10 +628,123 @@ export const SurveyOps: React.FC = () => {
         </Card>
       )}
 
+      {/* Manual Entry / Email Link Card */}
+      <Card padding={4} style={{ border: '1px solid var(--color-border-emphasized)', background: 'var(--color-background-elevated)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <Heading level={2} style={sectionTitleStyle}>➕ Запуск опитування вручну / з листа</Heading>
+          <button
+            style={secondaryButtonStyle}
+            onClick={() => setShowRawParser(!showRawParser)}
+          >
+            {showRawParser ? '🔼 Приховати парсер тексту' : '📋 Вставити текст листа'}
+          </button>
+        </div>
+
+        {showRawParser && (
+          <div style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
+              Вставте повний текст повідомлення або листа — параметри (персона, сума CHF, час, посилання) розпізнаються автоматично:
+            </div>
+            <textarea
+              rows={3}
+              placeholder="Вставте сюди текст листа (наприклад: 'Нове опитування для Арсена на 1.50 CHF, 12 min... Посилання: https://meinungsplatz.ch/...')"
+              value={manualRawText}
+              onChange={(e) => handleParseRawText(e.target.value)}
+              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }}
+            />
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '140px 1fr 100px 90px', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px' }}>Персона:</div>
+            <select
+              value={manualProfile}
+              onChange={(e) => setManualProfile(e.target.value as 'arno' | 'annet')}
+              style={{
+                background: 'var(--color-background-page)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                color: 'var(--color-text-primary)',
+                fontSize: '13px',
+                width: '100%',
+              }}
+            >
+              <option value="arno">{formatPersonaName('arno')}</option>
+              <option value="annet">{formatPersonaName('annet')}</option>
+            </select>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px' }}>URL опитування:</div>
+            <input
+              type="text"
+              placeholder="https://meinungsplatz.ch/survey/..."
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px' }}>Винагорода:</div>
+            <input
+              type="text"
+              placeholder="1.0 CHF"
+              value={manualReward}
+              onChange={(e) => setManualReward(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px' }}>Час:</div>
+            <input
+              type="text"
+              placeholder="10 min"
+              value={manualDuration}
+              onChange={(e) => setManualDuration(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            style={buttonStyle}
+            onClick={() => handleManualTrigger(true)}
+            disabled={busy === 'manual_trigger' || !manualUrl.trim()}
+          >
+            ⚡ Запустити негайно
+          </button>
+          <button
+            style={secondaryButtonStyle}
+            onClick={() => handleManualTrigger(false)}
+            disabled={busy === 'manual_trigger' || !manualUrl.trim()}
+          >
+            📥 Додати в чергу
+          </button>
+          {(manualUrl || manualRawText) && (
+            <button
+              style={secondaryButtonStyle}
+              onClick={() => {
+                setManualUrl('');
+                setManualRawText('');
+                setManualReward('1.0 CHF');
+                setManualDuration('10 min');
+              }}
+            >
+              🧹 Очистити форму
+            </button>
+          )}
+        </div>
+      </Card>
+
       {/* Queue from Telegram */}
       <Card padding={4}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <Heading level={2} style={sectionTitleStyle}>Черга опитувань з Telegram</Heading>
+          <Heading level={2} style={sectionTitleStyle}>Черга опитувань ({status?.pending_tasks?.length || 0})</Heading>
           <button
             style={secondaryButtonStyle}
             onClick={handleFetchTelegram}
@@ -552,7 +756,7 @@ export const SurveyOps: React.FC = () => {
 
         {(!status?.pending_tasks || status.pending_tasks.length === 0) && (
           <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', padding: '12px 0' }}>
-            Черга порожня.
+            Черга порожня. Нові завдання з'являться автоматично при надходженні в Telegram або при ручному додаванні.
           </div>
         )}
 
@@ -701,240 +905,261 @@ export const SurveyOps: React.FC = () => {
         )}
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
-        {/* Live screenshot & Question text */}
-        <Card padding={4}>
-          <Heading level={2} style={sectionTitleStyle}>Живий скріншот &amp; Текст кроку</Heading>
-          <div
-            style={{
-              position: 'relative',
-              background: 'var(--color-background-page)',
-              border: '1px solid var(--color-border-emphasized)',
-              borderRadius: '8px',
-              minHeight: '280px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src={screenshotSrc}
-              onLoad={() => setScreenshotOk(true)}
-              onError={() => setScreenshotOk(false)}
-              style={{
-                maxWidth: '100%',
-                display: screenshotOk ? 'block' : 'none',
-              }}
-              alt="Живий скріншот опитування"
-            />
-            {!screenshotOk && (
-              <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-                Скріншот очікує першого кроку
-              </span>
-            )}
-          </div>
-
-          {/* A2: pending_page_text next to / below screenshot */}
-          {status?.pending_page_text && (
+      {/* Conditional Survey Execution & Verification Workspace */}
+      {hasActiveSession ? (
+        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
+          {/* Live screenshot & Question text */}
+          <Card padding={4}>
+            <Heading level={2} style={sectionTitleStyle}>Живий скріншот &amp; Текст кроку</Heading>
             <div
               style={{
-                marginTop: '12px',
-                padding: '10px 14px',
+                position: 'relative',
                 background: 'var(--color-background-page)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '6px',
-                fontSize: '13px',
-                color: 'var(--color-text-primary)',
-                lineHeight: '1.4',
+                border: '1px solid var(--color-border-emphasized)',
+                borderRadius: '8px',
+                minHeight: '280px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
               }}
             >
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-tertiary)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                📄 Текст питання / сторінки (pending_page_text)
-              </div>
-              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {status.pending_page_text}
-              </div>
+              <img
+                src={screenshotSrc}
+                onLoad={() => setScreenshotOk(true)}
+                onError={() => setScreenshotOk(false)}
+                style={{
+                  maxWidth: '100%',
+                  display: screenshotOk ? 'block' : 'none',
+                }}
+                alt="Живий скріншот опитування"
+              />
+              {!screenshotOk && (
+                <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
+                  Скріншот очікує першого кроку
+                </span>
+              )}
             </div>
-          )}
-        </Card>
 
-        {/* Human training panel */}
-        <Card padding={4}>
-          <Heading level={2} style={sectionTitleStyle}>Панель навчання людини</Heading>
-
-          {status?.pending_decision || status?.pending_pattern || overrideTarget ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Pattern Badge */}
-              {status?.pending_pattern && (
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    background: 'rgba(99, 102, 241, 0.15)',
-                    border: '1px solid #6366f1',
-                    color: '#818cf8',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    width: 'fit-content',
-                  }}
-                  title="Розпізнаний патерн сторінки зі словника"
-                >
-                  🎯 Патерн: {status.pending_pattern}
+            {/* A2: pending_page_text next to / below screenshot */}
+            {status?.pending_page_text && (
+              <div
+                style={{
+                  marginTop: '12px',
+                  padding: '10px 14px',
+                  background: 'var(--color-background-page)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: 'var(--color-text-primary)',
+                  lineHeight: '1.4',
+                }}
+              >
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-tertiary)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  📄 Текст питання / сторінки (pending_page_text)
                 </div>
-              )}
-
-              {/* A7: Verification deadline timer */}
-              {status?.pending_decision && (
-                <div style={{ padding: '8px 12px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '6px' }}>
-                  <div style={{ color: '#c084fc', fontSize: '13px', fontWeight: 700, fontFamily: 'monospace' }}>
-                    ⏱️ Дедлайн верифікації: {formatCountdown(verifCountdown)}
-                  </div>
-                  <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', marginTop: '2px' }}>
-                    Якщо не виконати коригування до кінця відліку, агент продовжить із власним рішенням.
-                  </div>
+                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {status.pending_page_text}
                 </div>
-              )}
+              </div>
+            )}
+          </Card>
 
-              {status?.pending_decision && (
-                <>
-                  <div style={{ color: '#c084fc', fontSize: '13px' }}>
-                    Крок {status.pending_step}: <strong>{status.pending_decision.action?.toUpperCase()}</strong>
-                  </div>
-                  {status.pending_decision.target_text && (
-                    <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
-                      Ціль: {status.pending_decision.target_text}
-                    </div>
-                  )}
-                  {status.pending_decision.value && (
-                    <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
-                      Значення: {status.pending_decision.value}
-                    </div>
-                  )}
+          {/* Human training panel */}
+          <Card padding={4}>
+            <Heading level={2} style={sectionTitleStyle}>Панель навчання людини</Heading>
 
-                  <button style={buttonStyle} onClick={handleApproveStep} disabled={busy === 'approve_step'}>
-                    ✅ Затвердити рішення Gemma
-                  </button>
-                </>
-              )}
-
-              <div style={{ height: '1px', background: 'var(--color-background-muted)', margin: '4px 0' }} />
-
-              {/* A5: Expanded Override Form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  🛠️ Власне рішення людини (Override):
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select
-                    value={overrideAction}
-                    onChange={(e) => setOverrideAction(e.target.value as 'click' | 'type' | 'scroll')}
+            {status?.pending_decision || status?.pending_pattern || overrideTarget ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Pattern Badge */}
+                {status?.pending_pattern && (
+                  <div
                     style={{
-                      background: 'var(--color-background-page)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      padding: '8px 10px',
-                      color: 'var(--color-text-primary)',
-                      fontSize: '13px',
-                      width: '130px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      background: 'rgba(99, 102, 241, 0.15)',
+                      border: '1px solid #6366f1',
+                      color: '#818cf8',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      width: 'fit-content',
                     }}
+                    title="Розпізнаний патерн сторінки зі словника"
                   >
-                    <option value="click">click (клік)</option>
-                    <option value="type">type (ввід)</option>
-                    <option value="scroll">scroll (прокрутка)</option>
-                  </select>
-
-                  <input
-                    type="text"
-                    placeholder="Точна назва кнопки/пункту або селектор"
-                    value={overrideTarget}
-                    onChange={(e) => setOverrideTarget(e.target.value)}
-                    style={inputStyle}
-                  />
-                </div>
-
-                {overrideAction === 'type' && (
-                  <input
-                    type="text"
-                    placeholder="Текст для введення (override_value)"
-                    value={overrideValue}
-                    onChange={(e) => setOverrideValue(e.target.value)}
-                    style={inputStyle}
-                  />
+                    🎯 Патерн: {status.pending_pattern}
+                  </div>
                 )}
 
-                <textarea
-                  placeholder="Пояснення правила (поведінка агента)"
-                  value={overrideExplanation}
-                  onChange={(e) => setOverrideExplanation(e.target.value)}
-                  rows={2}
-                  style={{ ...inputStyle, resize: 'vertical' }}
-                />
-              </div>
+                {/* A7: Verification deadline timer */}
+                {status?.pending_decision && (
+                  <div style={{ padding: '8px 12px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '6px' }}>
+                    <div style={{ color: '#c084fc', fontSize: '13px', fontWeight: 700, fontFamily: 'monospace' }}>
+                      ⏱️ Дедлайн верифікації: {formatCountdown(verifCountdown)}
+                    </div>
+                    <div style={{ color: 'var(--color-text-tertiary)', fontSize: '11px', marginTop: '2px' }}>
+                      Якщо не виконати коригування до кінця відліку, агент продовжить із власним рішенням.
+                    </div>
+                  </div>
+                )}
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  style={secondaryButtonStyle}
-                  onClick={handleOverrideStep}
-                  disabled={busy === 'override_step' || (!overrideTarget.trim() && overrideAction !== 'scroll')}
-                >
-                  🎓 Навчити Агента (сигнал)
-                </button>
+                {status?.pending_decision && (
+                  <>
+                    <div style={{ color: '#c084fc', fontSize: '13px' }}>
+                      Крок {status.pending_step}: <strong>{status.pending_decision.action?.toUpperCase()}</strong>
+                    </div>
+                    {status.pending_decision.target_text && (
+                      <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
+                        Ціль: {status.pending_decision.target_text}
+                      </div>
+                    )}
+                    {status.pending_decision.value && (
+                      <div style={{ color: '#e2e8f0', fontSize: '13px' }}>
+                        Значення: {status.pending_decision.value}
+                      </div>
+                    )}
 
-                {/* Bridge to Rule Creation */}
-                <button
-                  type="button"
-                  style={{
-                    ...buttonStyle,
-                    background: 'var(--color-accent)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                  onClick={() => setRuleComposerOpen(true)}
-                >
-                  📝 Оформити як правило
-                </button>
-              </div>
+                    <button style={buttonStyle} onClick={handleApproveStep} disabled={busy === 'approve_step'}>
+                      ✅ Затвердити рішення Gemma
+                    </button>
+                  </>
+                )}
 
-              {activeHost && (
-                <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                <div style={{ height: '1px', background: 'var(--color-background-muted)', margin: '4px 0' }} />
+
+                {/* A5: Expanded Override Form */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                    🛠️ Власне рішення людини (Override):
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      value={overrideAction}
+                      onChange={(e) => setOverrideAction(e.target.value as 'click' | 'type' | 'scroll')}
+                      style={{
+                        background: 'var(--color-background-page)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '8px',
+                        padding: '8px 10px',
+                        color: 'var(--color-text-primary)',
+                        fontSize: '13px',
+                        width: '130px',
+                      }}
+                    >
+                      <option value="click">click (клік)</option>
+                      <option value="type">type (ввід)</option>
+                      <option value="scroll">scroll (прокрутка)</option>
+                    </select>
+
+                    <input
+                      type="text"
+                      placeholder="Точна назва кнопки/пункту або селектор"
+                      value={overrideTarget}
+                      onChange={(e) => setOverrideTarget(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  {overrideAction === 'type' && (
+                    <input
+                      type="text"
+                      placeholder="Текст для введення (override_value)"
+                      value={overrideValue}
+                      onChange={(e) => setOverrideValue(e.target.value)}
+                      style={inputStyle}
+                    />
+                  )}
+
+                  <textarea
+                    placeholder="Пояснення правила (поведінка агента)"
+                    value={overrideExplanation}
+                    onChange={(e) => setOverrideExplanation(e.target.value)}
+                    rows={2}
+                    style={{ ...inputStyle, resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    style={secondaryButtonStyle}
+                    onClick={handleOverrideStep}
+                    disabled={busy === 'override_step' || (!overrideTarget.trim() && overrideAction !== 'scroll')}
+                  >
+                    🎓 Навчити Агента (сигнал)
+                  </button>
+
+                  {/* Bridge to Rule Creation */}
                   <button
                     type="button"
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--color-accent)',
-                      textDecoration: 'underline',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      padding: 0,
+                      ...buttonStyle,
+                      background: 'var(--color-accent)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}
-                    onClick={() => {
-                      const query = new URLSearchParams({
-                        host: activeHost,
-                        persona: status?.profile || '*',
-                        pattern: status?.pending_pattern || '',
-                        q: overrideTarget || status?.pending_decision?.target_text || '',
-                      });
-                      navigate(`/rules?${query.toString()}`);
-                    }}
+                    onClick={() => setRuleComposerOpen(true)}
                   >
-                    Відкрити в базі правил (/rules) ↗
+                    📝 Оформити як правило
                   </button>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-              Немає кроку, що очікує верифікації.
-            </div>
-          )}
+
+                {activeHost && (
+                  <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-accent)',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        padding: 0,
+                      }}
+                      onClick={() => {
+                        const query = new URLSearchParams({
+                          host: activeHost,
+                          persona: status?.profile || '*',
+                          pattern: status?.pending_pattern || '',
+                          q: overrideTarget || status?.pending_decision?.target_text || '',
+                        });
+                        navigate(`/rules?${query.toString()}`);
+                      }}
+                    >
+                      Відкрити в базі правил (/rules) ↗
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
+                Немає кроку, що очікує верифікації.
+              </div>
+            )}
+          </Card>
+        </div>
+      ) : (
+        <Card padding={4} style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--color-background-page)', border: '1px dashed var(--color-border)' }}>
+          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🟢</div>
+          <Heading level={2} style={{ fontSize: '15px', marginBottom: '6px' }}>
+            Система готова до запуску опитування
+          </Heading>
+          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', maxWidth: '460px', margin: '0 auto 16px' }}>
+            Немає активного опитування в процесі. Запустіть завдання з черги Telegram, відкрийте вкладку або скористайтесь формою ручного внесення вище.
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button style={secondaryButtonStyle} onClick={handleFetchTelegram} disabled={busy === 'fetch_telegram'}>
+              📥 Підтягнути з Telegram
+            </button>
+            <button style={secondaryButtonStyle} onClick={openLiveBrowser}>
+              🌐 Відкрити CDP Браузер
+            </button>
+          </div>
         </Card>
-      </div>
+      )}
 
       {/* A4: Panel "Правила, що діють на цей крок" */}
       {activeHost && (

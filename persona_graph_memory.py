@@ -199,6 +199,21 @@ CREATE TABLE IF NOT EXISTS async_review_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_async_queue_status ON async_review_queue(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_async_queue_triage ON async_review_queue(triage_category);
+
+CREATE TABLE IF NOT EXISTS pending_tasks (
+    id                  TEXT PRIMARY KEY,
+    profile             TEXT NOT NULL,
+    profile_name        TEXT NOT NULL,
+    url                 TEXT NOT NULL,
+    reward              TEXT,
+    duration            TEXT,
+    created_at          TEXT NOT NULL,
+    created_timestamp   REAL NOT NULL,
+    wait_expires_at     TEXT,
+    status              TEXT NOT NULL DEFAULT 'waiting_auth',
+    updated_at          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pending_tasks_status ON pending_tasks(status, created_timestamp);
 """
 
 # Phase U3 (plan-ui-astryx-addendum.md): valid host_rules.status values for the
@@ -2008,12 +2023,103 @@ def auto_triage_pending_queue(limit: int = 10) -> int:
                 "UPDATE async_review_queue SET triage_category = ?, triage_notes = ? WHERE id = ?",
                 (category, explanation, row["id"])
             )
-            processed += 1
-        
-        conn.commit()
-        return processed
+            conn.commit()
+            return processed
     finally:
         conn.close()
+
+
+def add_pending_task(task: dict) -> None:
+    """Store or update a pending task in SQLite."""
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO pending_tasks (
+                id, profile, profile_name, url, reward, duration, created_at, created_timestamp, wait_expires_at, status, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                profile=excluded.profile,
+                profile_name=excluded.profile_name,
+                url=excluded.url,
+                reward=excluded.reward,
+                duration=excluded.duration,
+                created_at=excluded.created_at,
+                created_timestamp=excluded.created_timestamp,
+                wait_expires_at=excluded.wait_expires_at,
+                status=excluded.status,
+                updated_at=excluded.updated_at
+            """,
+            (
+                task["id"],
+                task.get("profile", "arno"),
+                task.get("profile_name", ""),
+                task.get("url", ""),
+                task.get("reward", "1.0 CHF"),
+                task.get("duration", "10 min"),
+                task.get("created_at", _now()),
+                float(task.get("created_timestamp", time.time())),
+                task.get("wait_expires_at", ""),
+                task.get("status", "waiting_auth"),
+                _now(),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_pending_tasks(status: Optional[str] = None) -> list[dict]:
+    """Retrieve all pending tasks ordered by creation time ascending."""
+    conn = _connect()
+    conn.row_factory = sqlite3.Row
+    try:
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM pending_tasks WHERE status = ? ORDER BY created_timestamp ASC",
+                (status,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM pending_tasks ORDER BY created_timestamp ASC"
+            ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def delete_pending_task(task_id: str) -> bool:
+    """Remove a pending task by ID. Returns True if row existed."""
+    conn = _connect()
+    try:
+        cur = conn.execute("DELETE FROM pending_tasks WHERE id = ?", (task_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def update_pending_task_status(task_id: str, status: str) -> None:
+    """Update task status in SQLite."""
+    conn = _connect()
+    try:
+        conn.execute("UPDATE pending_tasks SET status = ?, updated_at = ? WHERE id = ?", (status, _now(), task_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def clear_pending_tasks() -> None:
+    """Clear all pending tasks from SQLite."""
+    conn = _connect()
+    try:
+        conn.execute("DELETE FROM pending_tasks")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+save_setting = set_setting
 
 
 if __name__ == "__main__":

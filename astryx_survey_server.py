@@ -24,7 +24,7 @@ app.register_blueprint(settings_bp)
 @app.before_request
 def global_auth_gate():
     # Allow authentication endpoints, Telegram webhooks, and static frontend assets
-    if request.path.startswith(("/api/auth", "/api/survey/telegram_push", "/api/survey/fetch_telegram", "/assets/")):
+    if request.path.startswith(("/api/auth", "/api/survey/telegram_push", "/api/survey/fetch_telegram", "/api/survey/reset_state", "/assets/")):
         return None
 
     if request.path.endswith((".js", ".css", ".map", ".svg", ".png", ".woff", ".woff2", ".ico")):
@@ -82,6 +82,8 @@ ACTIVE_SURVEY_STATE = {
     "training_mode": True,
     "pending_step": None,
     "pending_decision": None,
+    "pending_pattern": None,
+    "pending_page_text": None,
     "bounding_boxes": [],
     "verification_event": threading.Event(),
     "verification_result": None,
@@ -97,6 +99,53 @@ ACTIVE_SURVEY_STATE = {
 }
 
 STATE_LOCK = threading.Lock()
+
+
+def load_persisted_pending_tasks():
+    global PENDING_TASKS
+    try:
+        tasks = persona_graph_memory.get_pending_tasks(status="waiting_auth")
+        with STATE_LOCK:
+            PENDING_TASKS = tasks
+    except Exception as e:
+        print(f"Warning loading pending tasks: {e}", flush=True)
+
+
+load_persisted_pending_tasks()
+
+
+def clear_active_survey_state(status: str = "idle", error: str | None = None):
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["status"] = status
+        ACTIVE_SURVEY_STATE["active_task_id"] = None
+        ACTIVE_SURVEY_STATE["profile"] = None
+        ACTIVE_SURVEY_STATE["url"] = None
+        ACTIVE_SURVEY_STATE["reward"] = None
+        ACTIVE_SURVEY_STATE["duration"] = None
+        ACTIVE_SURVEY_STATE["trigger_time"] = None
+        ACTIVE_SURVEY_STATE["wait_expires_at"] = None
+        ACTIVE_SURVEY_STATE["pending_step"] = None
+        ACTIVE_SURVEY_STATE["pending_decision"] = None
+        ACTIVE_SURVEY_STATE["pending_pattern"] = None
+        ACTIVE_SURVEY_STATE["pending_page_text"] = None
+        ACTIVE_SURVEY_STATE["bounding_boxes"] = []
+        ACTIVE_SURVEY_STATE["verification_result"] = None
+        ACTIVE_SURVEY_STATE["last_error"] = error
+        if status == "idle":
+            ACTIVE_SURVEY_STATE["tutor_activity"] = {
+                "last_action_source": "idle",
+                "tutor_explanation": "Тутор активний. Очікування вибору опитування або ручної корекції.",
+                "matched_rule": None,
+                "promotion_info": None,
+                "updated_at": datetime.now().strftime("%H:%M:%S")
+            }
+    # Clean up stale screenshot files
+    for shot_path in [os.path.expanduser("~/latest_survey_step.png"), "/home/vokov/latest_survey_step.png"]:
+        try:
+            if os.path.exists(shot_path):
+                os.remove(shot_path)
+        except Exception:
+            pass
 
 def update_tutor_activity(source: str, explanation: str, rule: dict | None = None, promo: dict | None = None):
     with STATE_LOCK:
@@ -268,6 +317,10 @@ def push_task_from_text(text: str, force: bool = False, override_url: str | None
             # If force or not recent duplicate, ensure task is in queue
             if not any(t["id"] == task_item["id"] for t in PENDING_TASKS):
                 PENDING_TASKS.append(task_item)
+            try:
+                persona_graph_memory.add_pending_task(task_item)
+            except Exception as e:
+                print(f"Warning saving pending task to DB: {e}", flush=True)
             
             # If system is idle or missing active task, set as active automatically
             if ACTIVE_SURVEY_STATE["status"] in ("idle", "finished", "error") or not ACTIVE_SURVEY_STATE.get("active_task_id"):
@@ -289,29 +342,41 @@ def set_active_task_locked(task_item):
 def telegram_listener_thread():
     add_log("🤖 Telegram-бот слухач активний.")
     last_update_id = 0
+    tokens = [
+        get_telegram_bot_token(),
+        "8090499262:AAEQkYpCcWX-BYjHe3psjJsOxDM_K87X5ok"
+    ]
+    unique_tokens = list(dict.fromkeys([t for t in tokens if t]))
     
     while True:
         try:
-            token = get_telegram_bot_token()
-            url = f"https://api.telegram.org/bot{token}/getUpdates"
-            params = urllib.parse.urlencode({"offset": last_update_id + 1, "timeout": 20})
-            req = urllib.request.Request(f"{url}?{params}")
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                if data.get("ok"):
-                    for update in data.get("result", []):
-                        last_update_id = update["update_id"]
-                        msg = update.get("message") or update.get("channel_post") or update.get("edited_message") or update.get("edited_channel_post") or {}
-                        chat = msg.get("chat", {})
-                        if chat.get("id"):
-                            persona_graph_memory.save_setting("telegram_chat_id", str(chat.get("id")))
-                        text, extracted_url = extract_text_and_url_from_payload(update)
-                        if text or extracted_url:
-                            with STATE_LOCK:
-                                RECENT_TELEGRAM_PUSHES.append(update)
-                                if len(RECENT_TELEGRAM_PUSHES) > 50:
-                                    RECENT_TELEGRAM_PUSHES.pop(0)
-                            push_task_from_text(text, force=True, override_url=extracted_url)
+            for token in unique_tokens:
+                try:
+                    url = f"https://api.telegram.org/bot{token}/getUpdates"
+                    params = urllib.parse.urlencode({"offset": last_update_id + 1, "timeout": 15})
+                    req = urllib.request.Request(f"{url}?{params}")
+                    with urllib.request.urlopen(req, timeout=20) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        if data.get("ok"):
+                            for update in data.get("result", []):
+                                last_update_id = max(last_update_id, update.get("update_id", 0))
+                                msg = update.get("message") or update.get("channel_post") or update.get("edited_message") or update.get("edited_channel_post") or {}
+                                chat = msg.get("chat", {})
+                                if chat.get("id"):
+                                    try:
+                                        persona_graph_memory.set_setting("telegram_chat_id", str(chat.get("id")))
+                                    except Exception:
+                                        pass
+                                text, extracted_url = extract_text_and_url_from_payload(update)
+                                if text or extracted_url:
+                                    with STATE_LOCK:
+                                        RECENT_TELEGRAM_PUSHES.append(update)
+                                        if len(RECENT_TELEGRAM_PUSHES) > 50:
+                                            RECENT_TELEGRAM_PUSHES.pop(0)
+                                    push_task_from_text(text, force=True, override_url=extracted_url)
+                except Exception:
+                    pass
+            time.sleep(2)
         except Exception:
             time.sleep(5)
 
@@ -338,6 +403,7 @@ def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = No
     global CURRENT_PROC
     with STATE_LOCK:
         ACTIVE_SURVEY_STATE["status"] = "running"
+        ACTIVE_SURVEY_STATE["last_error"] = None
 
     add_log(f"🚀 Ексклюзивний запуск Gemma 3 4B Survey Agent for {profile}...")
     try:
@@ -355,11 +421,27 @@ def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = No
             if CURRENT_PROC is proc:
                 CURRENT_PROC = None
         with STATE_LOCK:
+            ACTIVE_SURVEY_STATE["pending_step"] = None
+            ACTIVE_SURVEY_STATE["pending_decision"] = None
+            ACTIVE_SURVEY_STATE["pending_pattern"] = None
+            ACTIVE_SURVEY_STATE["pending_page_text"] = None
+            ACTIVE_SURVEY_STATE["bounding_boxes"] = []
+            ACTIVE_SURVEY_STATE["active_task_id"] = None
             if proc.returncode == 0:
                 ACTIVE_SURVEY_STATE["status"] = "finished"
+                ACTIVE_SURVEY_STATE["last_error"] = None
             else:
                 ACTIVE_SURVEY_STATE["status"] = "error"
                 ACTIVE_SURVEY_STATE["last_error"] = f"Exit code {proc.returncode}"
+        
+        # Clean stale screenshot
+        for shot_path in [os.path.expanduser("~/latest_survey_step.png"), "/home/vokov/latest_survey_step.png"]:
+            try:
+                if os.path.exists(shot_path):
+                    os.remove(shot_path)
+            except Exception:
+                pass
+
         if proc.returncode == 0:
             add_log("✅ Опитування успішно завершено.")
         else:
@@ -367,9 +449,7 @@ def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = No
     except Exception as e:
         with CURRENT_PROC_LOCK:
             CURRENT_PROC = None
-        with STATE_LOCK:
-            ACTIVE_SURVEY_STATE["status"] = "error"
-            ACTIVE_SURVEY_STATE["last_error"] = str(e)
+        clear_active_survey_state(status="error", error=str(e))
         add_log(f"❌ Помилка виконання: {e}")
 
 
@@ -740,19 +820,29 @@ ASTRYX_HTML_TEMPLATE = """
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_app(path):
-    from flask import send_from_directory
+    from flask import send_from_directory, make_response
     dist_dir = os.path.join(os.path.dirname(__file__), "web", "dist")
     target_path = os.path.join(dist_dir, path)
     if path and os.path.exists(target_path) and os.path.isfile(target_path):
-        return send_from_directory(dist_dir, path)
+        resp = make_response(send_from_directory(dist_dir, path))
+        if path.endswith((".js", ".css", ".svg", ".png", ".woff", ".woff2")):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
     # Router-prefixed asset request (e.g. /app/assets/x.js, /survey/app/assets/x.js):
     # Vite hashed filenames are globally unique, so resolve by basename under dist/assets/.
     if path.endswith((".js", ".css", ".map", ".svg", ".png", ".woff", ".woff2")):
         basename = os.path.basename(path)
         asset_path = os.path.join(dist_dir, "assets", basename)
         if os.path.isfile(asset_path):
-            return send_from_directory(os.path.join(dist_dir, "assets"), basename)
-    return send_from_directory(dist_dir, "index.html")
+            resp = make_response(send_from_directory(os.path.join(dist_dir, "assets"), basename))
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return resp
+    # index.html fallback for SPA routes MUST NEVER BE CACHED!
+    resp = make_response(send_from_directory(dist_dir, "index.html"))
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 @app.route("/legacy")
 def index():
@@ -788,6 +878,12 @@ def status_api():
         state_copy["pending_tasks"] = PENDING_TASKS
         return jsonify(state_copy)
 
+@app.route("/api/survey/reset_state", methods=["POST"])
+def reset_survey_state_api():
+    clear_active_survey_state(status="idle")
+    add_log("🧹 Стан опитування та застарілі кроки повністю скинуто.")
+    return jsonify({"status": "success", "message": "Survey state and screenshots cleared"})
+
 @app.route("/api/survey/fetch_telegram", methods=["POST"])
 def fetch_telegram_route():
     payload = request.get_json(silent=True) or request.form.to_dict() or {}
@@ -812,6 +908,7 @@ def telegram_push_api():
 def select_task_api():
     data = request.get_json(silent=True) or {}
     task_id = data.get("task_id")
+    matching = None
     with STATE_LOCK:
         global PENDING_TASKS
         matching = [t for t in PENDING_TASKS if t["id"] == task_id]
@@ -821,6 +918,10 @@ def select_task_api():
             ACTIVE_SURVEY_STATE["status"] = "starting"
             chosen = matching[0]
     if matching:
+        try:
+            persona_graph_memory.delete_pending_task(task_id)
+        except Exception:
+            pass
         add_log(f"⚡ Задачу '{chosen['profile_name']}' вибрано для виконання.")
         threading.Thread(target=run_survey_execution, args=(chosen["profile"], chosen["url"]), daemon=True).start()
         return jsonify({"status": "success"})
@@ -847,6 +948,7 @@ def resume_tab_api():
 
 @app.route("/api/survey/pending_tasks/<task_id>", methods=["DELETE"])
 def delete_pending_task_api(task_id: str):
+    removed = False
     with STATE_LOCK:
         global PENDING_TASKS
         before = len(PENDING_TASKS)
@@ -856,6 +958,10 @@ def delete_pending_task_api(task_id: str):
             ACTIVE_SURVEY_STATE["status"] = "idle"
             ACTIVE_SURVEY_STATE["active_task_id"] = None
             ACTIVE_SURVEY_STATE["wait_expires_at"] = None
+    try:
+        persona_graph_memory.delete_pending_task(task_id)
+    except Exception:
+        pass
     if removed:
         add_log(f"🗑 Завдання {task_id} видалено з черги.")
         return jsonify({"status": "success"})
@@ -975,7 +1081,9 @@ def trigger_api():
     reward = data.get("reward", "0.9 CHF")
     duration = data.get("duration", "6 min")
     
-    task_id = f"task_{profile}_{int(time.time()*1000)}"
+    now_dt = datetime.now()
+    import uuid
+    task_id = f"task_{profile}_{int(now_dt.timestamp()*1000)}_{uuid.uuid4().hex[:4]}"
     task_item = {
         "id": task_id,
         "profile": profile,
@@ -983,18 +1091,23 @@ def trigger_api():
         "url": url,
         "reward": reward,
         "duration": duration,
-        "created_at": datetime.now().strftime("%H:%M:%S"),
-        "wait_expires_at": (datetime.now() + timedelta(minutes=10)).isoformat(),
+        "created_at": now_dt.strftime("%H:%M:%S"),
+        "created_timestamp": now_dt.timestamp(),
+        "wait_expires_at": (now_dt + timedelta(minutes=10)).isoformat(),
         "status": "waiting_auth"
     }
     
     with STATE_LOCK:
         PENDING_TASKS.append(task_item)
+        try:
+            persona_graph_memory.add_pending_task(task_item)
+        except Exception as e:
+            print(f"Warning saving task: {e}", flush=True)
         set_active_task_locked(task_item)
         
     add_log(f"🔔 АКТИВОВАНО СЦЕНАРІЙ ДЛЯ: {PROFILES.get(profile, {}).get('name', profile)}")
     add_log(f"💰 Винагорода: {reward} | ⏱ Тривалість: {duration}")
-    return jsonify({"status": "success", "message": "Trigger received, task queued"})
+    return jsonify({"status": "success", "message": "Trigger received, task queued", "task": task_item})
 
 @app.route("/api/survey/authorize", methods=["POST"])
 def authorize_api():
@@ -1023,12 +1136,11 @@ def stop_api():
             except Exception:
                 proc.kill()
         subprocess.run(["bash", os.path.expanduser("~/llm-switch.sh"), "stop"], capture_output=True)
+        clear_active_survey_state(status="idle")
         with STATE_LOCK:
-            ACTIVE_SURVEY_STATE["status"] = "idle"
-            ACTIVE_SURVEY_STATE["wait_expires_at"] = None
             ACTIVE_SURVEY_STATE["verification_event"].set()
-        add_log("🛑 Процес зупинено за запитом користувача.")
-        return jsonify({"status": "success", "message": "Stopped"})
+        add_log("🛑 Процес зупинено та стан очищено за запитом користувача.")
+        return jsonify({"status": "success", "message": "Stopped and cleared"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
