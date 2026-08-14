@@ -573,11 +573,24 @@ class CDPClient:
             self._send("Input.insertText", {"text": char})
             time.sleep(random.uniform(0.04, 0.12))
 
-    def scroll(self, dy: int = 400) -> None:
+    def scroll(self, dx: int = 0, dy: int = 400) -> None:
         self._send("Input.dispatchMouseEvent", {
             "type": "mouseWheel", "x": 400, "y": 400,
-            "deltaX": 0, "deltaY": dy,
+            "deltaX": dx, "deltaY": dy,
         })
+
+    def dispatch_key(self, key_text: str) -> None:
+        key_map = {
+            "Enter": {"windowsVirtualKeyCode": 13, "code": "Enter", "key": "Enter", "text": "\r"},
+            "Tab": {"windowsVirtualKeyCode": 9, "code": "Tab", "key": "Tab"},
+            "Escape": {"windowsVirtualKeyCode": 27, "code": "Escape", "key": "Escape"},
+            "Backspace": {"windowsVirtualKeyCode": 8, "code": "Backspace", "key": "Backspace"},
+            "Space": {"windowsVirtualKeyCode": 32, "code": "Space", "key": " ", "text": " "},
+        }
+        info = key_map.get(key_text, {"key": key_text, "text": key_text})
+        self._send("Input.dispatchKeyEvent", {"type": "rawKeyDown", **info})
+        time.sleep(0.05)
+        self._send("Input.dispatchKeyEvent", {"type": "keyUp", **info})
 
     def get_interactive_bounding_boxes(self) -> list[dict]:
         try:

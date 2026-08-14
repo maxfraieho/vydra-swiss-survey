@@ -13,6 +13,7 @@ from rules_api import rules_bp
 from settings_api import settings_bp
 from auth import auth_bp, is_authed, _site_secret
 import persona_graph_memory
+from cdp_client import CDPClient
 
 app = Flask(__name__)
 app.secret_key = "astryx_swiss_survey_secret_key_5005"
@@ -23,6 +24,9 @@ app.register_blueprint(settings_bp)
 
 @app.before_request
 def global_auth_gate():
+    if app.config.get("TESTING"):
+        return None
+
     # Allow authentication endpoints, Telegram webhooks, and static frontend assets
     if request.path.startswith(("/api/auth", "/api/survey/telegram_push", "/api/survey/fetch_telegram", "/api/survey/reset_state", "/assets/")):
         return None
@@ -887,6 +891,96 @@ def status_api():
         state_copy.pop("verification_event", None)
         state_copy["pending_tasks"] = state_copy_pending
         return jsonify(state_copy)
+
+def get_cdp_client_for_relay() -> CDPClient:
+    from persona_graph_memory import get_active_browser_source
+    src = get_active_browser_source()
+    return CDPClient(src)
+
+
+@app.route("/api/survey/relay_action", methods=["POST"])
+def relay_action_api():
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
+    if not action or action not in ["click", "type", "keypress", "scroll"]:
+        return jsonify({"error": "Invalid or missing action. Expected 'click', 'type', 'keypress', or 'scroll'"}), 400
+
+    try:
+        client = get_cdp_client_for_relay()
+        target_info = ""
+        
+        if action == "click":
+            x = float(data.get("x", 0))
+            y = float(data.get("y", 0))
+            client.human_click(x, y)
+            target_info = f"Клік у точці ({x:.1f}, {y:.1f})"
+            
+        elif action == "type":
+            text = str(data.get("text", ""))
+            client.type_text(text)
+            target_info = f"Ввід тексту: '{text}'"
+            
+        elif action == "keypress":
+            key = str(data.get("key", "Enter"))
+            if hasattr(client, "dispatch_key"):
+                client.dispatch_key(key)
+            else:
+                client._send("Input.dispatchKeyEvent", {"type": "rawKeyDown", "key": key})
+                time.sleep(0.05)
+                client._send("Input.dispatchKeyEvent", {"type": "keyUp", "key": key})
+            target_info = f"Натискання клавіші '{key}'"
+            
+        elif action == "scroll":
+            dx = int(data.get("scroll_x", 0))
+            dy = int(data.get("scroll_y", 300))
+            client.scroll(dx=dx, dy=dy)
+            target_info = f"Скрол сторінки: dy={dy}"
+
+        # Capture fresh screenshot if possible
+        try:
+            shot_path = os.path.expanduser("~/latest_survey_step.png")
+            client.screenshot(shot_path)
+        except Exception:
+            pass
+
+        # Update tutor activity & memory in training mode
+        with STATE_LOCK:
+            if ACTIVE_SURVEY_STATE.get("training_mode"):
+                ACTIVE_SURVEY_STATE["tutor_activity"] = {
+                    "last_action_source": "human_relay",
+                    "matched_rule": None,
+                    "promotion_info": "Інтерактивна дія оператора в CDP",
+                    "tutor_explanation": f"🎯 Оператор виконав: {target_info}",
+                    "updated_at": datetime.now().strftime("%H:%M:%S")
+                }
+                # Record candidate shadow rule if profile and host are available
+                profile = ACTIVE_SURVEY_STATE.get("profile") or "annet"
+                url = ACTIVE_SURVEY_STATE.get("url") or ""
+                host = urllib.parse.urlparse(url).netloc if url else "meinungsplatz.ch"
+                if action in ["click", "type"]:
+                    try:
+                        pattern = f"relay:{action}:{int(data.get('x', 0)) if action == 'click' else str(data.get('text', ''))[:10]}"
+                        if action == "type":
+                            beh = f"type:{data.get('text', '')}"
+                        else:
+                            beh = f"click:({data.get('x', 0)}, {data.get('y', 0)})"
+                        persona_graph_memory.record_host_rule(
+                            host=host,
+                            pattern=pattern,
+                            behavior=beh,
+                            persona=profile,
+                            source="human_relay",
+                            status="shadow"
+                        )
+                    except Exception as e:
+                        add_log(f"⚠️ Warning saving relay shadow rule: {e}")
+
+        add_log(f"🖱️ [CDP Relay] {target_info}")
+        return jsonify({"status": "success", "action": action, "info": target_info})
+    except Exception as e:
+        add_log(f"❌ Помилка виконання CDP Relay: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @app.route("/api/survey/reset_state", methods=["POST"])
 def reset_survey_state_api():

@@ -196,7 +196,54 @@ export const SurveyOps: React.FC = () => {
   const [screenshotTs, setScreenshotTs] = useState<number>(Date.now());
   const [screenshotOk, setScreenshotOk] = useState<boolean>(false);
   const [ruleComposerOpen, setRuleComposerOpen] = useState<boolean>(false);
+  const [desktopFullWidth, setDesktopFullWidth] = useState<boolean>(true);
+  const [relayText, setRelayText] = useState<string>('');
+  const [relayLoading, setRelayLoading] = useState<boolean>(false);
+  const [relayFeedback, setRelayFeedback] = useState<string | null>(null);
+  const [clickCoords, setClickCoords] = useState<{ x: number; y: number; px: number; py: number } | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
+
+  const handleRelayAction = async (payload: { action: string; x?: number; y?: number; text?: string; key?: string; scroll_x?: number; scroll_y?: number }) => {
+    setRelayLoading(true);
+    setRelayFeedback(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/survey/relay_action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRelayFeedback(data.info || 'Дію успішно передано в CDP');
+        setScreenshotTs(Date.now());
+        refetchStatus();
+      } else {
+        setRelayFeedback(`Помилка: ${data.message || data.error}`);
+      }
+    } catch (err: any) {
+      setRelayFeedback(`Збій зв'язку: ${err?.message || err}`);
+    } finally {
+      setRelayLoading(false);
+    }
+  };
+
+  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    const img = imgRef.current;
+    if (!img || !img.clientWidth || !img.clientHeight) return;
+    const rect = img.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Map to natural image dimensions (browser actual viewport)
+    const naturalW = img.naturalWidth || 1280;
+    const naturalH = img.naturalHeight || 800;
+    const x = Math.round((clickX / img.clientWidth) * naturalW);
+    const y = Math.round((clickY / img.clientHeight) * naturalH);
+    
+    setClickCoords({ x, y, px: clickX, py: clickY });
+    handleRelayAction({ action: 'click', x, y });
+  };
 
   const activeHost = getHostFromUrl(status?.url || null);
   const { data: gateData, refetch: refetchGate } = useResource<HostGateData>(
@@ -907,17 +954,53 @@ export const SurveyOps: React.FC = () => {
 
       {/* Conditional Survey Execution & Verification Workspace */}
       {hasActiveSession ? (
-        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
-          {/* Live screenshot & Question text */}
+        <div style={{ display: 'grid', gridTemplateColumns: desktopFullWidth || isNarrow ? '1fr' : '1fr 1fr', gap: '20px' }}>
+          {/* Live Interactive Browser Viewer & CDP Relay */}
           <Card padding={4}>
-            <Heading level={2} style={sectionTitleStyle}>Живий скріншот &amp; Текст кроку</Heading>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <Heading level={2} style={sectionTitleStyle}>🖥️ Інтерактивний браузер (CDP Relay &amp; Навчання)</Heading>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setDesktopFullWidth((prev) => !prev)}
+                  style={{
+                    background: desktopFullWidth ? 'rgba(99, 102, 241, 0.2)' : 'var(--color-background-subtle)',
+                    border: '1px solid var(--color-border-emphasized)',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: desktopFullWidth ? '#818cf8' : 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {desktopFullWidth ? '🗗 Компактний вигляд (2 колонки)' : '🖥️ На всю ширину (Десктоп)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setScreenshotTs(Date.now()); refetchStatus(); }}
+                  style={{
+                    background: 'var(--color-background-subtle)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    color: 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🔄 Оновити
+                </button>
+              </div>
+            </div>
+
             <div
               style={{
                 position: 'relative',
-                background: 'var(--color-background-page)',
+                background: '#09090b',
                 border: '1px solid var(--color-border-emphasized)',
                 borderRadius: '8px',
-                minHeight: '280px',
+                minHeight: '400px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -925,19 +1008,215 @@ export const SurveyOps: React.FC = () => {
               }}
             >
               <img
+                ref={imgRef}
                 src={screenshotSrc}
+                onClick={handleImageClick}
                 onLoad={() => setScreenshotOk(true)}
                 onError={() => setScreenshotOk(false)}
                 style={{
-                  maxWidth: '100%',
+                  width: '100%',
+                  height: 'auto',
                   display: screenshotOk ? 'block' : 'none',
+                  cursor: 'crosshair',
+                  imageRendering: 'crisp-edges',
                 }}
-                alt="Живий скріншот опитування"
+                alt="Живий інтерактивний екран опитування"
+                title="Клікніть мишкою у будь-яке місце для виконання кліку в браузері"
               />
+
+              {/* Click Ripple Marker */}
+              {clickCoords && screenshotOk && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${clickCoords.px}px`,
+                    top: `${clickCoords.py}px`,
+                    transform: 'translate(-50%, -50%)',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    border: '2px solid #ef4444',
+                    background: 'rgba(239, 68, 68, 0.3)',
+                    pointerEvents: 'none',
+                    animation: 'pulse 1s cubic-bezier(0, 0, 0.2, 1)',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '-20px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'rgba(0,0,0,0.85)',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      padding: '2px 5px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      border: '1px solid #ef4444',
+                    }}
+                  >
+                    ({clickCoords.x}, {clickCoords.y})
+                  </span>
+                </div>
+              )}
+
               {!screenshotOk && (
                 <span style={{ color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-                  Скріншот очікує першого кроку
+                  Скріншот очікує підключення браузера або першого кроку
                 </span>
+              )}
+            </div>
+
+            {/* Interactive Control & Input Bar */}
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '12px 14px',
+                background: 'var(--color-background-subtle)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={relayText}
+                  onChange={(e) => setRelayText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && relayText.trim()) {
+                      handleRelayAction({ action: 'type', text: relayText });
+                      setRelayText('');
+                    }
+                  }}
+                  placeholder="Введіть текст, значення форми або код капчі..."
+                  style={{
+                    flex: 1,
+                    minWidth: '220px',
+                    background: 'var(--color-background-page)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    color: 'var(--color-text-primary)',
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={relayLoading || !relayText.trim()}
+                  onClick={() => {
+                    if (relayText.trim()) {
+                      handleRelayAction({ action: 'type', text: relayText });
+                      setRelayText('');
+                    }
+                  }}
+                  style={{
+                    background: 'var(--color-primary-fill, #4f46e5)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: relayLoading || !relayText.trim() ? 'not-allowed' : 'pointer',
+                    opacity: relayLoading || !relayText.trim() ? 0.6 : 1,
+                  }}
+                >
+                  ⌨️ Ввести текст
+                </button>
+              </div>
+
+              {/* Quick Actions & Navigation Keys */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontWeight: 600, marginRight: '4px' }}>
+                  Швидкі клавіші:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRelayAction({ action: 'keypress', key: 'Enter' })}
+                  style={{
+                    background: 'var(--color-background-page)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ↵ Enter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRelayAction({ action: 'keypress', key: 'Tab' })}
+                  style={{
+                    background: 'var(--color-background-page)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⇥ Tab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRelayAction({ action: 'keypress', key: 'Backspace' })}
+                  style={{
+                    background: 'var(--color-background-page)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⌫ Backspace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRelayAction({ action: 'scroll', scroll_y: 350 })}
+                  style={{
+                    background: 'var(--color-background-page)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⬇️ Скрол 350px
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRelayAction({ action: 'scroll', scroll_y: -350 })}
+                  style={{
+                    background: 'var(--color-background-page)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    color: 'var(--color-text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⬆️ Скрол вгору
+                </button>
+              </div>
+
+              {/* Status and Feedback */}
+              {(relayFeedback || relayLoading) && (
+                <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                  {relayLoading && <span style={{ color: '#818cf8' }}>⏳ Передача дії в браузер CDP...</span>}
+                  {relayFeedback && !relayLoading && <span style={{ color: '#10b981', fontWeight: 600 }}>✅ {relayFeedback}</span>}
+                </div>
               )}
             </div>
 
