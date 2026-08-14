@@ -1013,16 +1013,18 @@ def approve_step_api():
 @app.route("/api/survey/override_step", methods=["POST"])
 def override_step_api():
     data = request.get_json(silent=True) or {}
-    target = data.get("override_target", "")
+    target = data.get("override_target") or data.get("target_text") or data.get("target") or ""
+    action = data.get("override_action") or data.get("action") or "click"
+    val = data.get("override_value") or data.get("value") or ""
     explanation = data.get("explanation", "")
     profile = ACTIVE_SURVEY_STATE.get("profile") or "arno"
     
     with STATE_LOCK:
         ACTIVE_SURVEY_STATE["verification_result"] = {
             "approved": False,
-            "override_action": data.get("override_action", "click"),
+            "override_action": action,
             "override_target": target,
-            "override_value": data.get("override_value", "")
+            "override_value": val
         }
         ACTIVE_SURVEY_STATE["verification_event"].set()
 
