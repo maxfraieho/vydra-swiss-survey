@@ -1,0 +1,14 @@
+Етап B1: inline-стиль на <body> перебиває фон теми з light-dark() і робить
+zero-flash перемикання теми фізично неможливим.
+
+--- a/web/index.html
++++ b/web/index.html
+@@
+-  <body style="margin: 0; background: #020617;">
++  <body>
+
+Якщо після цього з'явиться біла смуга навколо контенту — це `margin: 0`,
+який мав давати `@astryxdesign/core/reset.css`. Перевірити, що reset.css
+імпортується у main.tsx і що @layer reset стоїть першим у styles/layers.css
+(зараз стоїть). Другий HEX у файлі (theme-color / meta) замінити на
+значення з токена фону теми.
