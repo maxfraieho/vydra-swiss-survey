@@ -13,6 +13,7 @@ from rules_api import rules_bp
 from settings_api import settings_bp
 from auth import auth_bp, is_authed, _site_secret
 import persona_graph_memory
+import requests
 from cdp_client import CDPClient
 
 app = Flask(__name__)
@@ -895,7 +896,32 @@ def status_api():
 def get_cdp_client_for_relay() -> CDPClient:
     from persona_graph_memory import get_active_browser_source
     src = get_active_browser_source()
-    return CDPClient(src)
+    target_key = src["key"] if src else None
+    client = CDPClient(local_port=9226, cdp_target_key=target_key)
+    if client.ws is None:
+        active_url = ACTIVE_SURVEY_STATE.get("url")
+        if active_url:
+            client.attach_or_open_tab(active_url)
+        else:
+            try:
+                r = requests.get(f"{client.base}/json/list", timeout=3)
+                if r.ok:
+                    pages = [t for t in r.json() if t.get("type") == "page"]
+                    if pages:
+                        survey_pages = [t for t in pages if any(h in t.get("url", "").lower() for h in ("meinungsplatz", "bilendi", "survey", "gfk", "opinion", "maximiles"))]
+                        tab = survey_pages[-1] if survey_pages else pages[0]
+                        ws_url = tab.get("webSocketDebuggerUrl")
+                        if ws_url:
+                            client.target_id = tab.get("id")
+                            client.opened_target_ids.add(client.target_id)
+                            from websocket import create_connection
+                            client.ws = create_connection(ws_url, timeout=15)
+                            client._send("Page.enable")
+                            client._send("Runtime.enable")
+                            client._send("DOM.enable")
+            except Exception:
+                pass
+    return client
 
 
 @app.route("/api/survey/relay_action", methods=["POST"])
