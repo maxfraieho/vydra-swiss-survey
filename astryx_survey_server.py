@@ -866,6 +866,11 @@ def latest_screenshot():
 @app.route("/api/survey/status")
 def status_api():
     with STATE_LOCK:
+        try:
+            db_tasks = persona_graph_memory.get_pending_tasks(status="waiting_auth")
+            state_copy_pending = db_tasks
+        except Exception:
+            state_copy_pending = PENDING_TASKS
         state_copy = dict(ACTIVE_SURVEY_STATE)
         if state_copy["wait_expires_at"]:
             rem = int((state_copy["wait_expires_at"] - datetime.now()).total_seconds())
@@ -875,7 +880,7 @@ def status_api():
         state_copy.pop("wait_expires_at", None)
         state_copy.pop("trigger_time", None)
         state_copy.pop("verification_event", None)
-        state_copy["pending_tasks"] = PENDING_TASKS
+        state_copy["pending_tasks"] = state_copy_pending
         return jsonify(state_copy)
 
 @app.route("/api/survey/reset_state", methods=["POST"])
