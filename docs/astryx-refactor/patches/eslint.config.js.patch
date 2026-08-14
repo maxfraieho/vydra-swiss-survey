@@ -1,0 +1,32 @@
+Етап A3: огорожа, щоб борг не повернувся. Додати в web/eslint.config.js
+до блоку з файлами '**/*.{ts,tsx}'.
+
+--- a/web/eslint.config.js
++++ b/web/eslint.config.js
+@@
+     rules: {
++      // Кольори і типографіка — лише через Astryx-пропи або var(--color-*).
++      'no-restricted-syntax': [
++        'error',
++        {
++          selector:
++            "JSXAttribute[name.name='style'] Property[key.name=/^(background|backgroundColor|color|borderColor|fontSize|fontWeight|fontFamily)$/]",
++          message:
++            'Колір/типографіка в inline-стилі заборонені. Використай Astryx-пропи або примітив з src/ui/primitives.tsx.',
++        },
++        {
++          selector: 'Literal[value=/^#[0-9a-fA-F]{3,8}$/]',
++          message: 'HEX-колір у TSX заборонений — візьми токен var(--color-*) з src/ui/tokens.ts.',
++        },
++      ],
+     },
++  },
++  {
++    // Генерована тема та єдиний дозволений шар геометрії.
++    files: ['src/theme/**', 'src/ui/primitives.tsx'],
++    rules: { 'no-restricted-syntax': 'off' },
+   },
+
+Перевірка після додавання:
+  cd web && npx eslint src --max-warnings=0   # покаже поточні ~65 HEX + inline-кольори
+Правило вмикати ОДРАЗУ, а виправляти файлами (етап B) — інакше сенсу немає.
