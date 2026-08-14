@@ -189,7 +189,8 @@ def main() -> None:
         else:
             is_existing = client.attach_or_open_tab(args.url)
         current_url = client.get_current_url()
-        is_active_survey = is_existing and any(k in current_url.lower() for k in SURVEY_PROVIDER_KEYWORDS) and "ipinfo" not in current_url.lower()
+        is_auth_failure = any(k in current_url.lower() for k in ("auth_fail", "auth_error", "fail", "error", "closed"))
+        is_active_survey = is_existing and any(k in current_url.lower() for k in SURVEY_PROVIDER_KEYWORDS) and "ipinfo" not in current_url.lower() and not is_auth_failure
 
         if is_active_survey:
             log(f"Attached to active tab on '{current_url}' — PRESERVING PAGE STATE (no re-navigation).")
