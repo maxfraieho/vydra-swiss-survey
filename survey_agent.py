@@ -368,6 +368,9 @@ def main() -> None:
         trace_steps: list[dict] = []
         stop_reason = None
         for step in range(1, args.max_steps + 1):
+            # Check and solve any Altcha challenge before proceeding
+            try_solve_altcha(client, log)
+
             captchas = client.detect_captcha_signatures()
             if captchas:
                 log(f"CAPTCHA detected: {captchas}")
@@ -412,17 +415,18 @@ def main() -> None:
             ptxt = client.page_text()
             extra_keywords = {}
             try:
-                import persona_graph_memory
-                db_patterns = persona_graph_memory.list_patterns()
-                for pat in db_patterns:
-                    if pat.get("is_builtin") == 0:
-                        kws = pat.get("keywords", [])
+                from persona_graph_memory import get_persona_graph
+                kg = get_persona_graph(args.profile)
+                patterns_list = kg.get("learned_patterns", [])
+                for pat in patterns_list:
+                    if pat.get("pattern_type") == "survey_topic":
+                        kws = pat.get("context_rules", [])
                         if isinstance(kws, str):
                             try:
                                 kws = json.loads(kws)
                             except Exception:
                                 kws = []
-                        extra_keywords[pat["key"]] = kws if isinstance(kws, list) else []
+                        extra_keywords[pat["pattern"]] = kws if isinstance(kws, list) else []
             except Exception:
                 pass
             topic = reflection.detect_pattern(ptxt, extra_keywords=extra_keywords)
@@ -488,14 +492,38 @@ def main() -> None:
                 break
 
             step_failed = False
-            if action == "click":
+
+            # Check if user passed a captcha code in override target (e.g. "57343")
+            code_match = re.search(r"\b\d{4,6}\b", target) or re.search(r"\b[A-Za-z0-9]{5}\b", target)
+            if code_match and any(w in target.lower() for w in ("капч", "captcha", "цифр", "введи")):
+                captcha_val = code_match.group(0)
+                log(f"Detected user captcha override '{captcha_val}' — submitting to Altcha input...")
+                client._send("Runtime.evaluate", {
+                    "expression": f"""(function() {{
+                        var inp = document.querySelector('.altcha-code-challenge-input, input[name=\"altcha_code\"]');
+                        if (inp) {{
+                            inp.value = "{captcha_val}";
+                            inp.dispatchEvent(new Event('input', {{bubbles: true}}));
+                            inp.dispatchEvent(new Event('change', {{bubbles: true}}));
+                            var btn = document.querySelector('.altcha-code-challenge-verify');
+                            if (btn) btn.click();
+                        }}
+                    }})()""",
+                    "returnByValue": True
+                })
+                time.sleep(2.0)
+                sub = client.find_submit_button()
+                if sub:
+                    client.human_click(sub["x"], sub["y"])
+                    time.sleep(3.0)
+
+            elif action == "click":
                 if not client.click_by_text(target):
                     log(f"Could not find exact element matching target_text={target!r} — attempting submit button fallback.")
                     sub = client.find_submit_button()
                     if sub:
-                        client._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": sub["x"], "y": sub["y"]})
-                        client._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
-                        client._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
+                        client.human_click(sub["x"], sub["y"])
+                        time.sleep(2.5)
                     else:
                         log(f"Target not found and no submit button available — skipping click for step {step}.")
                         step_failed = True
