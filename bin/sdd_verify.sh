@@ -35,6 +35,9 @@ REQUIRED_SPECS=(
     "specs/014-impeccable-official-ui-critique/spec.md"
     "specs/015-rules-db-synapse-restore-bugfix/spec.md"
     "specs/016-telegram-task-fetch-bugfix/spec.md"
+    "specs/018-interactive-screencast-tutor-relay/spec.md"
+    "specs/018-interactive-screencast-tutor-relay/plan.md"
+    "specs/018-interactive-screencast-tutor-relay/tasks.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
