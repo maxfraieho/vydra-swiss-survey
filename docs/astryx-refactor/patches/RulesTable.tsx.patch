@@ -1,0 +1,59 @@
+Етап B3 + C4: RulesTable.tsx (618 рядків, 45 inline, 6 HEX) →
+MasterDetail + DataList + deep-link /rules/:ruleId.
+Вивести окремо: RulesFilters.tsx (≤120), RuleRow не потрібен (колонки DataList).
+
+--- a/web/src/screens/rules/RulesTable.tsx
++++ b/web/src/screens/rules/RulesTable.tsx
+@@
+-import { useState } from 'react';
++import { useNavigate, useParams } from 'react-router';
++import { MasterDetail, DataList, PageHeader, RuleStatusPill, LoadingState, ErrorState }
++  from '../../ui/primitives';
++import { RulesFilters } from './RulesFilters';
+@@
+-  const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
+-  const isNarrow = useIsNarrow();
++  // Деталь правила живе в URL: посилання можна переслати в Telegram.
++  const { ruleId } = useParams<{ ruleId?: string }>();
++  const navigate = useNavigate();
++  const selectedRuleId = ruleId ? Number(ruleId) : null;
+@@
+-      <div style={{ display: 'grid', gridTemplateColumns: (selectedRuleId || composing) ? '1fr 420px' : '1fr', gap: 16 }}>
+-        <div style={{ overflowX: 'auto' }}>
+-          <table style={{ width: '100%', fontSize: '13px' }}>
+-            ... 7 колонок, <tr onClick>, inline-стилі у кожній клітинці ...
+-          </table>
+-        </div>
+-        {selectedRuleId && <RuleDetail ruleId={selectedRuleId} ... />}
+-      </div>
++      <MasterDetail
++        detailTitle={selectedRule ? `Правило #${selectedRule.id}` : 'Правило'}
++        detailSubtitle={selectedRule?.host}
++        onCloseDetail={() => navigate('/rules')}
++        detail={
++          selectedRuleId ? <RuleDetail ruleId={selectedRuleId} onChanged={refetch} /> : null
++        }
++        list={
++          <DataList
++            rows={rules}
++            rowKey={(r) => String(r.id)}
++            selectedKey={ruleId ?? null}
++            onRowClick={(r) => navigate(`/rules/${r.id}`)}
++            emptyTitle="Правил ще немає"
++            emptyDescription="Правила з'являються після прогонів або створюються вручну."
++            columns={[
++              { key: 'pattern', header: 'Патерн', render: (r) => r.pattern },
++              { key: 'host', header: 'Хост', render: (r) => r.host },
++              { key: 'persona', header: 'Персона', render: (r) => r.persona },
++              { key: 'status', header: 'Статус', render: (r) => <RuleStatusPill status={r.status} /> },
++              { key: 'conf', header: 'Впевненість', render: (r) => `${Math.round(r.confidence * 100)}%` },
++              { key: 'wl', header: 'W/L', render: (r) => `${r.wins}/${r.losses}`, compact: false },
++              { key: 'src', header: 'Джерело', render: (r) => r.source, compact: false },
++            ]}
++          />
++        }
++      />
+
+Фільтри (хост / персона / статус / пошук) переносяться у <PageHeader actions={<RulesFilters …/>}>.
+`composing` (RuleComposer) відкривати як Dialog, а не третю колонку — інакше
+на 390px знову з'явиться горизонтальний скрол.
