@@ -371,7 +371,7 @@ def main() -> None:
                               rules_used=applied_rule_ids)
 
             if applied_rule_ids:
-                bump_rule_outcome(applied_rule_ids, outcome)
+                bump_rule_outcome(applied_rule_ids, outcome, run_id=run_id)
 
             if outcome in ("disqualified", "incomplete", "error"):
                 lessons = reflection.reflect({
