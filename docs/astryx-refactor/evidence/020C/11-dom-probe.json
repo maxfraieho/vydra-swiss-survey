@@ -1,0 +1,56 @@
+{
+  "baseUrl": "https://survey.exodus.pp.ua",
+  "timestamp": "2026-08-15T07:21:01.596Z",
+  "navCount": 5,
+  "navHrefs": [
+    "/ops",
+    "/traces",
+    "/rules",
+    "/report",
+    "/settings"
+  ],
+  "fullscreenDiff": true,
+  "hasFullscreenAttr": true,
+  "horizontalScrollOn390px": {
+    "/ops": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflow": 0,
+      "pass": true
+    },
+    "/traces": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflow": 0,
+      "pass": true
+    },
+    "/rules": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflow": 0,
+      "pass": true
+    },
+    "/report": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflow": 0,
+      "pass": true
+    },
+    "/settings": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflow": 0,
+      "pass": true
+    }
+  },
+  "gateRedirectOk": true,
+  "finalGateUrl": "/settings?tab=hosts",
+  "pageErrors": [],
+  "screenshots": {
+    "30-ops-inline.png": "f493b3e718b413e765178d654dc2691112dff759b191d3a3edbf441894457dc5",
+    "31-ops-focus.png": "947343b0209e96332e119b319619eeaa5bdf0eab484020e4d2edc3eebb16da66",
+    "32-ops-fullscreen.png": "e6f2a435d293b5c11d79e4c999d649b11f641d480da47bd31b770fc635f0a29c",
+    "33-ops-390.png": "2636e0afbdd441088a37737440759826ecad1e98f7def187405cf045e78c4b69"
+  },
+  "status": "PASS"
+}
