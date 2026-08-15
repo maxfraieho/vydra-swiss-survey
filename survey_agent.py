@@ -16,10 +16,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 
 from cdp_client import CDPClient
 from vision import GemmaVision, VisionError
@@ -46,6 +48,14 @@ MAX_CONSECUTIVE_VISION_FAILURES = 3
 # pause cannot hold a browser session open forever.
 PAUSE_POLL_SECONDS = 2.0
 PAUSE_MAX_SECONDS = 1800
+
+# 023A/F14: real answers typed during a run become durable facts. Anything that
+# looks like a credential or a one-time code is never persisted.
+FACT_SKIP_LABEL_MARKERS = ("passwor", "passwort", "mot de passe", "kennwort",
+                            "captcha", "code", "otp", "cvv", "iban", "carte",
+                            "kreditkart", "credit card")
+FACT_MAX_PER_RUN = 20
+FACT_MAX_VALUE_LEN = 200
 
 PROFILES = {
     "arno": {"persona_file": "опитування.txt", "label": "Арно Дюбуа (Гланд, 25р.)"},
@@ -139,6 +149,46 @@ def try_login(client: CDPClient, creds: dict, log) -> None:
             log(f"Submitted login via label {label!r}.")
             return
     log("Could not find a submit/login button by label — leaving to vision loop.")
+
+
+def _fact_topic_key(label: str) -> str:
+    """Stable per-question topic key for the fact graph (023A/F14)."""
+    key = unicodedata.normalize("NFKC", label).strip().lower()
+    key = re.sub(r"[^0-9a-z\u0400-\u04ff]+", "_", key).strip("_")
+    return key[:48]
+
+
+def extract_learned_facts(trace_steps: list[dict], creds: dict | None = None) -> dict[str, str]:
+    """Real answers given during this run, as ``{topic: value}`` (023A/F14).
+
+    Only ``type`` actions are used: their ``target_text`` is the question/field
+    label and their ``value`` is the answer the persona actually gave, which is
+    exactly what the "РАНІШЕ ЗАФІКСОВАНІ РЕАЛЬНІ ВІДПОВІДІ" prompt section is
+    for. Click targets are option labels without a stable topic, so they are
+    left out rather than polluting the graph.
+
+    Credentials and one-time codes are filtered twice: by field label and by
+    matching the values in ``credentials.json``, so a login password can never
+    end up inside a persona prompt.
+    """
+    secrets = {str(v) for v in (creds or {}).values() if v}
+    facts: dict[str, str] = {}
+    for st in trace_steps:
+        if st.get("a") != "type":
+            continue
+        label = str(st.get("tg") or "").strip()
+        value = str(st.get("v") or "").strip()
+        if not label or not value or value in secrets:
+            continue
+        if any(m in label.lower() for m in FACT_SKIP_LABEL_MARKERS):
+            continue
+        topic = _fact_topic_key(label)
+        if not topic:
+            continue
+        facts[topic] = value[:FACT_MAX_VALUE_LEN]
+        if len(facts) >= FACT_MAX_PER_RUN:
+            break
+    return facts
 
 
 def close_run_trace_on_setup_failure(run_id: str, err: BaseException,
@@ -491,7 +541,18 @@ def main() -> None:
         try:
             from persona_graph_memory import record_survey_outcome
             status_str = "completed" if completed else ("dry_run" if args.dry_run else "incomplete")
-            record_survey_outcome(args.profile, args.url, status_str)
+            # 023A/F14: this was the ONLY production call site of
+            # record_survey_outcome and it never passed learned_facts, so the
+            # `if learned_facts:` branch that calls record_fact() was dead in
+            # production — only the seed script and the CLI ever wrote facts.
+            # The persona's "previously recorded real answers" section could
+            # therefore never grow beyond what was seeded by hand.
+            learned = extract_learned_facts(trace_steps, creds)
+            record_survey_outcome(args.profile, args.url, status_str,
+                                   learned_facts=learned)
+            if learned:
+                log(f"Recorded {len(learned)} learned fact(s) for {args.profile}: "
+                    f"{sorted(learned)}")
         except Exception as e:
             log(f"Warning: Failed to record survey outcome: {e}")
 
