@@ -37,15 +37,19 @@ bash deploy/install.sh
 ---
 
 ### Step 3: Configure Environment Variables & Secrets (Optional)
-If configuring Telegram Bot notifications or custom API tokens:
+If configuring Telegram Bot notifications or custom API tokens, **use your own bot
+token** — never copy an example value from this file into a live deployment:
 ```bash
 python3 -c "
 import persona_graph_memory
-persona_graph_memory.save_setting('telegram_bot_token', '8861125591:AAFUAdGZr_r3yq39msEBKaHorSmbJK4zT-s')
-persona_graph_memory.save_setting('telegram_chat_id', '-4964233423')
+persona_graph_memory.save_setting('telegram_bot_token', '<YOUR_BOT_TOKEN_HERE>')
+persona_graph_memory.save_setting('telegram_chat_id', '<YOUR_CHAT_ID_HERE>')
 print('Telegram credentials configured!')
 "
 ```
+Preferred: set `TELEGRAM_BOT_TOKEN` as an environment variable instead (takes
+priority over the DB setting, see `get_telegram_bot_token()` in
+`astryx_survey_server.py`) — keeps the secret out of the SQLite file entirely.
 
 ---
 

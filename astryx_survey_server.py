@@ -50,14 +50,13 @@ def global_auth_gate():
     return resp
 
 def get_telegram_bot_token() -> str:
-    default_token = "8861125591:AAFUAdGZr_r3yq39msEBKaHorSmbJK4zT-s"
     env_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if env_token and ":" in env_token and len(env_token) > 20:
         return env_token
     db_token = persona_graph_memory.get_setting("telegram_bot_token")
     if db_token and ":" in db_token and len(db_token) > 20:
         return db_token
-    return default_token
+    return ""
 
 TELEGRAM_BOT_TOKEN = get_telegram_bot_token()
 
