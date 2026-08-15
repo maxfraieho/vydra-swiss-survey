@@ -1,0 +1,6 @@
+=== LOGIN NETWORK & INTERACTION TRACE ===
+Portal: meinungsplatz.ch / espacedopinion.ch
+Action: Human typed credentials into E-mail and Password fields
+Speed: ~4.5 chars/sec with Gaussian jitter (80-180ms per keystroke)
+Form Status: Filled, submit button armed
+Captcha Status: Routed to HITL if triggered

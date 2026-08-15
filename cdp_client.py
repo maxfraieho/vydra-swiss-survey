@@ -65,7 +65,7 @@ def ensure_tunnel(ssh_host: str, remote_port: int, local_port: int, wait_seconds
 
     subprocess.Popen(
         ["sshpass", "-p", SSH_PASS, "ssh", "-o", "StrictHostKeyChecking=no",
-         "-L", f"{local_port}:127.0.0.1:{remote_port}",
+         "-L", f"{local_port}:localhost:{remote_port}",
          f"{SSH_USER}@{ssh_host}", "-N"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )

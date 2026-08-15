@@ -1,0 +1,7 @@
+{
+  "typing": { "cps_mean": 4.2, "cps_jitter": 1.6, "mistake_rate": 0.03, "backspace_delay_ms": [120, 340] },
+  "pause": { "before_field_ms": [400, 1800], "after_field_ms": [250, 900], "read_page_ms": [1200, 4000] },
+  "mouse": { "path": "bezier", "overshoot_px": [2, 14], "settle_ms": [60, 180] },
+  "scroll": { "steps": [3, 9], "step_px": [80, 260], "step_delay_ms": [90, 400] },
+  "idle": { "micro_pause_prob": 0.18, "micro_pause_ms": [700, 2600] }
+}

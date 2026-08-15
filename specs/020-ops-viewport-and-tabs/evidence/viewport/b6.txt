@@ -1,0 +1,4 @@
+=== VIEWPORT HOTKEYS VERIFICATION ===
+- 'F' / 'f': Toggles Fullscreen Viewport Mode (Enter/Exit) -> Verified in useViewportMode.ts
+- 'Escape': Exits Fullscreen/Focus Mode back to Inline -> Verified in useViewportMode.ts
+- URL synchronization: history.replaceState(?view=fullscreen|focus|inline) -> Verified

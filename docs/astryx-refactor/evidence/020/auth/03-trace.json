@@ -1,0 +1,19 @@
+{
+  "run_id": "comet_run_1786772461",
+  "portal": "meinungsplatz.ch",
+  "persona": "arno",
+  "status": "session_active",
+  "reason_code": "form_interaction",
+  "agent_intent": {
+    "action": "click",
+    "target": "S'identifier",
+    "confidence": 0.85,
+    "reason_code": "submit_action",
+    "bbox": {
+      "x": 0.78,
+      "y": 0.06,
+      "w": 0.08,
+      "h": 0.05
+    }
+  }
+}

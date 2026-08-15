@@ -1,0 +1,12 @@
+=== LIVE SESSION HYGIENE TRACE ===
+Timestamp: 2026-08-15T05:40:49.019270Z
+Host: 192.168.3.30:9226 (Laptop Comet Browser)
+Page URL: https://meinungsplatz.ch/
+Page Title: Meinungsplatz - S'inscrire maintenant
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+navigator.webdriver: False (PASS: undefined/false)
+Language / Languages: uk-UA / ['uk-UA', 'uk', 'en-US', 'en']
+Timezone: Europe/Simferopol
+Platform: Win32
+DevicePixelRatio: 1.25
+Exit IP Route: Swiss Residential Proxy
