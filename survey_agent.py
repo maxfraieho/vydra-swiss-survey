@@ -212,6 +212,17 @@ def main() -> None:
         trace_steps: list[dict] = []
         stop_reason = None
         for step in range(1, args.max_steps + 1):
+            # 023A/F6: current_url was assigned exactly once, before the loop, so
+            # every consumer below (the captcha Telegram notification, verify_step,
+            # the step-1 blockage warning) reported the START page for the whole
+            # run. The page navigates on nearly every step, so re-read it here.
+            # get_current_url() returns "" on a CDP error - keep the last known
+            # good URL in that case rather than blanking it.
+            stepped_url = client.get_current_url()
+            if stepped_url and stepped_url != current_url:
+                log(f"URL changed: {current_url!r} -> {stepped_url!r}")
+                current_url = stepped_url
+
             captchas = client.detect_captcha_signatures()
             if captchas:
                 log(f"CAPTCHA detected: {captchas}")
