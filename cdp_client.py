@@ -197,6 +197,9 @@ class CDPClient:
         self._send("Runtime.enable")
         self._send("DOM.enable")
         self._send("Page.bringToFront")
+        self._inject_stealth_anti_bot_overrides()
+        return True
+
     def check_and_attach_new_tab(self) -> str | None:
         """Checks if a new page tab was opened by a click action and switches target_id to it.
         Returns the new URL if switched, or None if no new tab was detected."""
@@ -224,6 +227,18 @@ class CDPClient:
         return None
 
     def _inject_stealth_anti_bot_overrides(self) -> None:
+        # 1. Native CDP Emulation Overrides (Timezone & Locale)
+        try:
+            self._send("Emulation.setTimezoneOverride", {"timezoneId": "Europe/Zurich"})
+        except Exception:
+            pass
+
+        try:
+            self._send("Emulation.setLocaleOverride", {"locale": "de-CH"})
+        except Exception:
+            pass
+
+        # 2. JS Prototype & Navigator Overrides
         stealth_js = r"""
         (function() {
             try {
@@ -237,7 +252,19 @@ class CDPClient:
                 Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
             } catch(e) {}
             try {
-                Object.defineProperty(navigator, 'languages', {get: () => ['de-CH', 'de', 'fr-CH', 'en-US']});
+                Object.defineProperty(navigator, 'language', {get: () => 'de-CH'});
+                Object.defineProperty(navigator, 'languages', {get: () => ['de-CH', 'de', 'fr-CH', 'it-CH', 'en-US']});
+            } catch(e) {}
+            try {
+                var origResolved = Intl.DateTimeFormat.prototype.resolvedOptions;
+                Intl.DateTimeFormat.prototype.resolvedOptions = function() {
+                    var opts = origResolved.call(this);
+                    opts.timeZone = 'Europe/Zurich';
+                    if (!opts.locale || opts.locale === 'en-US') {
+                        opts.locale = 'de-CH';
+                    }
+                    return opts;
+                };
             } catch(e) {}
         })()
         """
@@ -247,6 +274,20 @@ class CDPClient:
         except Exception:
             pass
 
+
+    def set_device_metrics_override(self, width: int, height: int, mobile: bool = False, device_scale_factor: float = 1.0) -> None:
+        try:
+            if width <= 0 or height <= 0:
+                self._send("Emulation.clearDeviceMetricsOverride")
+            else:
+                self._send("Emulation.setDeviceMetricsOverride", {
+                    "width": int(width),
+                    "height": int(height),
+                    "deviceScaleFactor": float(device_scale_factor),
+                    "mobile": bool(mobile),
+                })
+        except Exception:
+            pass
 
     def _prune_stray_tabs(self) -> None:
         """Disabled tab auto-pruning to preserve all user open tabs."""
@@ -269,6 +310,7 @@ class CDPClient:
         self._send("Runtime.enable")
         self._send("DOM.enable")
         self._send("Page.bringToFront")
+        self._inject_stealth_anti_bot_overrides()
 
     def get_current_url(self) -> str:
         try:
@@ -496,10 +538,14 @@ class CDPClient:
         return json.loads(value)
 
     def click_by_text(self, text: str) -> bool:
-        import random
+        try:
+            import human_behavior
+            return human_behavior.human_click_by_text(self, text)
+        except Exception:
+            pass
+
         el = self.find_element(text)
         if el is None:
-            # Fallback for common survey continuation/next buttons across French/German/English
             target_lower = text.strip().lower()
             synonyms = ["continuer", "suivant", "next", "weiter", "fortfahren", "envoyer", "valider", "submit", "ок"]
             if target_lower in synonyms:
@@ -512,37 +558,31 @@ class CDPClient:
                     el = self.find_submit_button()
         if el is None:
             return False
-        
-        # Human reading/thinking delay before click
-        time.sleep(random.uniform(0.4, 1.1))
 
-        # Add Gaussian coordinate offset jitter (+-10% of element size)
-        x = el["x"] + random.uniform(-4.0, 4.0)
-        y = el["y"] + random.uniform(-3.0, 3.0)
-
-        # Humanized mouse movement: hover before press
+        x = el["x"]
+        y = el["y"]
         self._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
-        time.sleep(random.uniform(0.08, 0.22))
-
-        # Mouse press hold delay
         self._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": x, "y": y,
                                                   "button": "left", "clickCount": 1})
-        time.sleep(random.uniform(0.05, 0.15))
         self._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x, "y": y,
                                                   "button": "left", "clickCount": 1})
         return True
 
     def type_text(self, text: str) -> None:
-        import random
+        try:
+            import human_behavior
+            human_behavior.human_type(self, text)
+            return
+        except Exception:
+            pass
+
         self._send("Runtime.evaluate", {
             "expression": "(function(){var e=document.activeElement;"
                           "if(e&&typeof e.select==='function'){e.select();}})()"
         })
-        time.sleep(random.uniform(0.2, 0.4))
-        # Char-by-char typing with natural human inter-keystroke delays
         for char in text:
             self._send("Input.insertText", {"text": char})
-            time.sleep(random.uniform(0.04, 0.12))
+            time.sleep(0.05)
 
     def scroll(self, dy: int = 400) -> None:
         self._send("Input.dispatchMouseEvent", {
@@ -562,9 +602,45 @@ class CDPClient:
 
     def detect_captcha_signatures(self) -> list[str]:
         js = r"""(function() {
-            var html = document.documentElement ? document.documentElement.innerHTML.toLowerCase() : '';
-            var sigs = ['cf-turnstile', 'g-recaptcha', 'hcaptcha', 'geetest'];
-            return JSON.stringify(sigs.filter(function(s) { return html.indexOf(s) !== -1; }));
+            var detected = [];
+            var doc = document;
+            var html = doc.documentElement ? doc.documentElement.innerHTML.toLowerCase() : '';
+            var title = doc.title ? doc.title.toLowerCase() : '';
+
+            // 1. Cloudflare Challenges & Turnstile
+            if (html.indexOf('cf-turnstile') !== -1 || html.indexOf('cf-challenge') !== -1 ||
+                html.indexOf('challenges.cloudflare.com') !== -1 || html.indexOf('cf-chl-') !== -1 ||
+                title.indexOf('just a moment...') !== -1 || html.indexOf('checking your browser') !== -1 ||
+                doc.querySelector('.cf-turnstile, #cf-turnstile, iframe[src*="cloudflare"], div[id*="cf-chl"]') !== null) {
+                detected.push('cloudflare_turnstile');
+            }
+
+            // 2. hCaptcha
+            if (html.indexOf('hcaptcha') !== -1 || html.indexOf('h-captcha') !== -1 ||
+                html.indexOf('assets.hcaptcha.com') !== -1 ||
+                doc.querySelector('iframe[src*="hcaptcha.com"], div.h-captcha, div[data-sitekey][class*="hcaptcha"]') !== null) {
+                detected.push('hcaptcha');
+            }
+
+            // 3. Google reCAPTCHA
+            if (html.indexOf('g-recaptcha') !== -1 || html.indexOf('recaptcha/api.js') !== -1 ||
+                html.indexOf('google.com/recaptcha') !== -1 ||
+                doc.querySelector('iframe[src*="google.com/recaptcha"], div.g-recaptcha, #g-recaptcha-response') !== null) {
+                detected.push('recaptcha');
+            }
+
+            // 4. Geetest / Arkose / Datadome / PerimeterX
+            if (html.indexOf('geetest') !== -1 || doc.querySelector('.geetest_holder, .geetest_box') !== null) {
+                detected.push('geetest');
+            }
+            if (html.indexOf('arkoselabs') !== -1 || html.indexOf('funcaptcha') !== -1 || doc.querySelector('iframe[src*="arkoselabs"]') !== null) {
+                detected.push('arkoselabs');
+            }
+            if (html.indexOf('datadome') !== -1 || html.indexOf('perimeterx') !== -1 || html.indexOf('px-captcha') !== -1) {
+                detected.push('bot_shield');
+            }
+
+            return JSON.stringify(detected);
         })()"""
         try:
             res = self._send("Runtime.evaluate", {"expression": js, "returnByValue": True})
