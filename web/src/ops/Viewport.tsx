@@ -5,10 +5,11 @@ import { useViewportMode } from './useViewportMode';
 import { useViewportZoom } from './useViewportZoom';
 import { useTutorRelay } from './useTutorRelay';
 import { ViewportToolbar } from './ViewportToolbar';
+import { ViewportCorrectionForm } from './ViewportCorrectionForm';
 import { DesktopEmulationToggle } from './DesktopEmulationToggle';
 import { SurveyStatusPill } from '../ui/primitives';
 import type { SurveyStatus } from '../ui/tokens';
-import type { TargetBBox, NormalizedPoint } from '../types/agent';
+import type { HumanCorrection, TargetBBox, NormalizedPoint } from '../types/agent';
 
 export interface ViewportProps {
   screenshotSrc: string;
@@ -20,7 +21,7 @@ export interface ViewportProps {
   isPointPickerMode?: boolean;
   onPointPicked?: (p: NormalizedPoint) => void;
   onApprove?: () => void;
-  onCorrect?: () => void;
+  onCorrect?: (correction: HumanCorrection) => void;
   onPause?: () => void;
   onRefresh?: () => void;
 }
@@ -41,11 +42,10 @@ export const Viewport: React.FC<ViewportProps> = ({
 }) => {
   const { mode, setMode, containerRef, toggleFullscreen } = useViewportMode();
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [isCorrecting, setIsCorrecting] = useState(false);
 
   const {
     zoomPercent,
-    scale,
-    transformOrigin,
     canvasRef,
     zoomIn,
     zoomOut,
@@ -84,56 +84,35 @@ export const Viewport: React.FC<ViewportProps> = ({
         <div className="flex-between mb-sm flex-wrap gap-xs">
           <div className="flex-row gap-sm items-center flex-wrap">
             <SurveyStatusPill status={status} />
-            {url && (
-              <span className="text-xs text-secondary truncate max-w-sm">
-                {url}
-              </span>
-            )}
+            {url && <span className="text-xs text-secondary truncate max-w-sm">{url}</span>}
             {stepIndex != null && (
               <span className="text-xs text-tertiary">
-                Крок {stepIndex}{stepTotal ? `/${stepTotal}` : ''}
+                Крок {stepIndex}{stepTotal ? ` / ${stepTotal}` : ''}
               </span>
             )}
           </div>
 
           <div className="flex-row gap-xs items-center flex-wrap">
             <DesktopEmulationToggle />
-
             <div className="flex-row gap-xs items-center border-subtle rounded-md px-sm py-xs">
-              <Button variant="secondary" size="sm" onClick={zoomOut} disabled={zoomPercent <= 25}>
-                −
-              </Button>
-              <span className="text-xs text-bold min-w-0" data-testid="viewport-zoom-label">
-                🔍 {zoomPercent}%
-              </span>
-              <Button variant="secondary" size="sm" onClick={zoomIn} disabled={zoomPercent >= 400}>
-                +
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => fitToWidth()}>
-                Fit
-              </Button>
+              <Button variant="secondary" size="sm" onClick={zoomOut} disabled={zoomPercent <= 25}>−</Button>
+              <span className="text-xs text-bold min-w-0" data-testid="viewport-zoom-label">🔍 {zoomPercent}%</span>
+              <Button variant="secondary" size="sm" onClick={zoomIn} disabled={zoomPercent >= 400}>+</Button>
+              <Button variant="secondary" size="sm" onClick={() => fitToWidth()}>Fit</Button>
               {zoomPercent !== 100 && (
-                <Button variant="secondary" size="sm" onClick={resetZoom}>
-                  100%
-                </Button>
+                <Button variant="secondary" size="sm" onClick={resetZoom}>100%</Button>
               )}
             </div>
 
-            <Button variant="secondary" size="sm" onClick={onRefresh}>
-              🔄
-            </Button>
+            <Button variant="secondary" size="sm" onClick={onRefresh}>🔄</Button>
             <Button variant="primary" size="sm" onClick={toggleFullscreen}>
               {mode === 'fullscreen' ? '✕' : '⛶'}
             </Button>
             {mode === 'inline' && (
-              <Button variant="secondary" size="sm" onClick={() => setMode('focus')}>
-                Фокус
-              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setMode('focus')}>Фокус</Button>
             )}
             {isExpanded && (
-              <Button variant="secondary" size="sm" onClick={() => setMode('inline')}>
-                Вихід
-              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setMode('inline')}>Вихід</Button>
             )}
           </div>
         </div>
@@ -144,14 +123,14 @@ export const Viewport: React.FC<ViewportProps> = ({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className={`relative bg-subtle border-emphasized rounded-lg overflow-auto flex-center ${
+          className={`relative bg-subtle border-emphasized rounded-lg overflow-auto ${
             isExpanded ? 'viewport-canvas-expanded' : 'viewport-canvas-inline'
-          }`}
+          } ${zoomPercent <= 100 ? 'flex-center' : 'block'}`}
         >
           <div
-            className="relative"
+            className="relative m-auto"
             data-testid="viewport-canvas-inner"
-            style={{ transform: `scale(${scale})`, transformOrigin }}
+            style={{ width: `${zoomPercent}%`, minWidth: `${zoomPercent}%` }}
           >
             <img
               ref={imgRef}
@@ -210,28 +189,32 @@ export const Viewport: React.FC<ViewportProps> = ({
 
         {/* 1-Tap Action Bar in Focus / Fullscreen Mode */}
         {isExpanded && (
-          <div className="flex-between gap-md mt-md py-xs border-top">
-            <div className="flex-row gap-sm">
-              {onApprove && (
-                <Button variant="primary" size="md" onClick={onApprove}>
-                  ✓ Підтвердити
-                </Button>
-              )}
-              {onCorrect && (
-                <Button variant="secondary" size="md" onClick={onCorrect}>
-                  ✎ Виправити
-                </Button>
-              )}
-              {onPause && (
-                <Button variant="secondary" size="md" onClick={onPause}>
-                  ⏸ Пауза
-                </Button>
-              )}
+          <div className="flex-col gap-sm mt-md py-xs border-top">
+            <div className="flex-between gap-md">
+              <div className="flex-row gap-sm">
+                {onApprove && (
+                  <Button variant="primary" size="md" onClick={onApprove}>✓ Підтвердити</Button>
+                )}
+                {onCorrect && (
+                  <Button variant="secondary" size="md" onClick={() => setIsCorrecting((prev) => !prev)}>
+                    ✎ Виправити
+                  </Button>
+                )}
+                {onPause && (
+                  <Button variant="secondary" size="md" onClick={onPause}>⏸ Пауза</Button>
+                )}
+              </div>
+              {relayFeedback && <span className="text-xs text-green">{relayFeedback}</span>}
             </div>
-            {relayFeedback && (
-              <span className="text-xs text-green">
-                {relayFeedback}
-              </span>
+
+            {isCorrecting && (
+              <ViewportCorrectionForm
+                onSubmit={(corr) => {
+                  onCorrect?.(corr);
+                  setIsCorrecting(false);
+                }}
+                onCancel={() => setIsCorrecting(false)}
+              />
             )}
           </div>
         )}
