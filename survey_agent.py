@@ -141,6 +141,31 @@ def try_login(client: CDPClient, creds: dict, log) -> None:
     log("Could not find a submit/login button by label — leaving to vision loop.")
 
 
+def close_run_trace_on_setup_failure(run_id: str, err: BaseException,
+                                      applied_rule_ids: list[int], log) -> None:
+    """023A/F13: finalize the run_traces row that start_run_trace() already
+    opened, when the run dies before the main try/except can do it.
+
+    Without this a CDPError from CDPClient.__init__ (all configured
+    browser_sources in the fallback chain failed) propagated straight out of
+    main(); record_run_trace() was never reached and the row stayed open
+    forever with outcome=NULL, invisible to triage and to auto_promote_rules.
+    """
+    if not run_id:
+        return
+    try:
+        from persona_graph_memory import record_run_trace
+        record_run_trace(
+            run_id,
+            outcome="error",
+            outcome_reason=f"setup_failed: {type(err).__name__}: {err}"[:500],
+            final_text="", steps=[], rules_used=applied_rule_ids,
+        )
+        log(f"Run trace {run_id} closed with outcome=error (setup failure).")
+    except Exception as e:
+        log(f"Warning: Failed to close run trace after setup failure: {e}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Vydra mode 3: Swiss survey agent (Gemma vision)")
     ap.add_argument("--profile", required=True, choices=sorted(PROFILES))
@@ -189,16 +214,26 @@ def main() -> None:
         )
         sys.exit(409)
 
-    persona, applied_rule_ids = load_persona(args.profile, args.url)
-    site_host = args.url.split("//", 1)[-1].split("/", 1)[0].replace("www.", "")
-    creds = load_credentials(site_host, args.profile)
+    # 023A/F13: everything from here to the main try/ was outside any handler,
+    # so a failure (most commonly CDPError when every browser_source in the
+    # fallback chain is down) escaped main() and left the run_traces row that
+    # start_run_trace() opened above eternally open, with outcome=NULL.
+    applied_rule_ids: list[int] = []
+    try:
+        persona, applied_rule_ids = load_persona(args.profile, args.url)
+        site_host = args.url.split("//", 1)[-1].split("/", 1)[0].replace("www.", "")
+        creds = load_credentials(site_host, args.profile)
 
-    log(f"Resolving browser source (--cdp-target={args.cdp_target or 'active'})")
-    client = CDPClient(args.local_port, cdp_target_key=args.cdp_target)
-    log(f"CDP target resolved: {client.base}")
-    vision = GemmaVision(use_gpu=args.gpu)
-    screenshot_dir = tempfile.mkdtemp(prefix="survey-agent-")
-    log(f"Screenshots for this run: {screenshot_dir}")
+        log(f"Resolving browser source (--cdp-target={args.cdp_target or 'active'})")
+        client = CDPClient(args.local_port, cdp_target_key=args.cdp_target)
+        log(f"CDP target resolved: {client.base}")
+        vision = GemmaVision(use_gpu=args.gpu)
+        screenshot_dir = tempfile.mkdtemp(prefix="survey-agent-")
+        log(f"Screenshots for this run: {screenshot_dir}")
+    except Exception as setup_err:
+        log(f"❌ Run setup failed: {type(setup_err).__name__}: {setup_err}")
+        close_run_trace_on_setup_failure(run_id, setup_err, applied_rule_ids, log)
+        raise
 
     try:
         log(f"Connecting to {args.url} as {PROFILES[args.profile]['label']}")
