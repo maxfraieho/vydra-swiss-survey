@@ -1,16 +1,27 @@
-=== deploy_verify.log — claude-audit-020C-021B run 2026-08-15T08:47:37Z ===
+=== deploy_verify.log — FINAL run after Telegram Queue + Resume-in-tab + connector-dedup fix 2026-08-15T10:07:52Z ===
+
+--- bin/ui_verify.sh ---
+=== UI Invariant Verification Check ===
+Checking INV-1 (0 HEX literals in .tsx)... ✅ PASS (0 HEX found)
+Checking INV-2 (style={{ occurrences <= 40)... ✅ PASS (0 style={{ found, target <= 40)
+Checking INV-3 (Max 250 lines per .tsx file in screens/ and ops/)... ✅ PASS (All files <= 250 lines)
+Checking INV-7 (0 fontSize < 12px in .tsx)... ✅ PASS (0 sub-12px font sizes found)
+Checking INV-8 (Agent contract schema and TypeScript definitions)... ✅ PASS (Contract schema & types present)
+========================================
+🎉 ALL UI INVARIANTS PASS
+EXIT=0
 
 --- bin/deploy_verify.sh https://survey.exodus.pp.ua ---
 === Astryx 020 Deploy Verification Gate ===
 Target Base URL: https://survey.exodus.pp.ua
-Fetching bundle: https://survey.exodus.pp.ua/assets/index-DalGzCm2.js
+Fetching bundle: https://survey.exodus.pp.ua/assets/index-BGSakkDO.js
 bundle:view=fullscreen=1
 bundle:reason_code=1
 Checking CDP connection...
 Running DOM Probe via CDP...
 {
   "baseUrl": "https://survey.exodus.pp.ua",
-  "timestamp": "2026-08-15T08:47:40.717Z",
+  "timestamp": "2026-08-15T10:07:57.037Z",
   "navCount": 5,
   "navHrefs": [
     "/ops",
@@ -47,6 +58,8 @@ Running DOM Probe via CDP...
       "pass": true
     },
     "/settings": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
       "overflow": 0,
       "pass": true
     }
@@ -55,10 +68,10 @@ Running DOM Probe via CDP...
   "finalGateUrl": "/settings?tab=hosts",
   "pageErrors": [],
   "screenshots": {
-    "30-ops-inline.png": "6fcf1eede857e88ee0852dec8cd429eaac60008fbd94e03ff39d07906e0bff9f",
+    "30-ops-inline.png": "33c2034b884964fe79fb100f2f8298efa3970665f00d5e19cfd04ece8f0e9944",
     "31-ops-focus.png": "a04aea388e875917ce1121f2fe551bc76f9cb27afaa81f77a216ae5a795af53a",
     "32-ops-fullscreen.png": "d0e67ce0f14458c3b0083fe09030c7f58b350688cc1613425caf6c64f22ff8d8",
-    "33-ops-390.png": "98b8a9bcd9c30645890489c1765d0d8472e0a9ca8654b1f3d17b37ef596bcd01"
+    "33-ops-390.png": "87877f93d044441588a7c6daefd2fee98403b32f608ca4c166905bfa665a0b27"
   },
   "status": "PASS"
 }
@@ -66,28 +79,15 @@ DOM Probe: PASS
 🎉 DEPLOY VERIFICATION PASS
 EXIT=0
 
---- bin/ui_verify.sh ---
-=== UI Invariant Verification Check ===
-Checking INV-1 (0 HEX literals in .tsx)... ✅ PASS (0 HEX found)
-Checking INV-2 (style={{ occurrences <= 40)... ✅ PASS (0 style={{ found, target <= 40)
-Checking INV-3 (Max 250 lines per .tsx file in screens/ and ops/)... ✅ PASS (All files <= 250 lines)
-Checking INV-7 (0 fontSize < 12px in .tsx)... ✅ PASS (0 sub-12px font sizes found)
-Checking INV-8 (Agent contract schema and TypeScript definitions)... ✅ PASS (Contract schema & types present)
-========================================
-🎉 ALL UI INVARIANTS PASS
-EXIT=0
-
 --- bin/ops_verify.sh https://survey.exodus.pp.ua ---
 === Astryx 021B Ops Verification Gate ===
 Target Base URL: https://survey.exodus.pp.ua
-Bundle: https://survey.exodus.pp.ua/assets/index-DalGzCm2.js
-bundle:telegram-queue=0
-FAIL: telegram-queue відсутній у задеплоєному бандлі — Telegram Queue / Resume-in-tab UI не задеплоєно
-bundle:resume-attach=0
-FAIL: resume-attach відсутній у задеплоєному бандлі — Telegram Queue / Resume-in-tab UI не задеплоєно
+Bundle: https://survey.exodus.pp.ua/assets/index-BGSakkDO.js
+bundle:telegram-queue=1
+bundle:resume-attach=1
 
 Checking console/API auth gating (no cookie => must be blocked)...
 GET https://survey.exodus.pp.ua/api/survey/status (no auth) -> 401
 GET https://survey.exodus.pp.ua/ (no auth) title -> <title>Вхід</title>
-❌ OPS VERIFICATION FAILED
-EXIT=1
+🎉 OPS VERIFICATION PASS
+EXIT=0

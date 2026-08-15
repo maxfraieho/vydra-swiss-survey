@@ -1,0 +1,40 @@
+CRITICAL — auth bypass через дублювання cloudflared-конекторів (виявлено ПІД ЧАС ops_verify.sh
+прогону після деплою Telegram Queue + Resume-in-tab, побічний ефект фіксу Гейту 0)
+=====================================
+
+Причина: auth.py::is_authed() містить (pre-existing, не з цієї сесії):
+    if req.remote_addr in ("127.0.0.1", "::1"):
+        return True
+("Auto-authorize local loopback requests from Termux")
+
+Після Гейту 0 обидва cloudflared-конектори (dev-184 + OrangePi, той самий tunnel ID
+7c2d896d-2c77-4486-af56-ef30969ca942) коректно вказували на порт 5005, АЛЕ по-різному:
+  - dev-184: service: http://localhost:5005       -> Flask бачить remote_addr=127.0.0.1 -> BYPASS
+  - OrangePi: service: http://192.168.3.184:5005   -> Flask бачить реальний LAN IP -> auth працює
+
+Cloudflare едж балансує між обома конекторами одного tunnel ID по запиту -> ~50% зовнішніх
+запитів до survey.exodus.pp.ua проходили auth ПОВНІСТЮ БЕЗ cookie (публічний обхід консолі).
+
+Виявлено: bin/ops_verify.sh після деплою 021B — /api/survey/status без cookie -> 200 (мало 401),
+/ без cookie -> title консолі замість "Вхід" (x3 живі перевірки, cf-cache-status=DYNAMIC,
+підтверджено НЕ кешем прямим origin-тестом на 127.0.0.1:5005 теж 200).
+
+FIX (підтверджено Q, варіант 2 — розірвати дублювання):
+  /home/vokov/.cloudflared/config.yml (dev-184): service http://localhost:5005
+    -> http://192.168.3.184:5005 (той самий LAN IP, що вже на OrangePi)
+  Обидва конектори тепер ідентичні для survey.exodus.pp.ua -> жоден не тригерить
+  loopback-bypass, незалежно від того, який з двох відповість.
+
+Побічний інцидент під час фіксу: pkill -f "cloudflared tunnel --config /home/vokov" у тому ж
+SSH-виклику, що містив nohup-команду з тим самим текстом у cmdline -> self-match, вбило власну
+SSH-сесію (задокументований клас багу, див. feedback_pkill_self_match). dev-184-конектор коротко
+впав, gitnexus/notebooklm/opendesign(502)/docs-agent/claude-proxy(404) — перевірено: 502 через
+"connection refused" на origin-сервісах (не через мою дію), 404 на docs-agent/claude-proxy —
+попередній стан без baseline "до", не досліджено далі (поза скоупом).
+
+VERIFICATION (після фіксу):
+  20x curl https://survey.exodus.pp.ua/api/survey/status БЕЗ cookie -> 401 (20/20)
+  1x curl З cookie astryx_k -> 200
+  curl / без cookie -> <title>Вхід</title>
+
+STATUS: FIXED. bin/ops_verify.sh https://survey.exodus.pp.ua -> exit 0 (PASS)

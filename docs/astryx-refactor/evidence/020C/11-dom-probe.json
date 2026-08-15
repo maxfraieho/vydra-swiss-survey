@@ -1,6 +1,6 @@
 {
   "baseUrl": "https://survey.exodus.pp.ua",
-  "timestamp": "2026-08-15T08:47:40.717Z",
+  "timestamp": "2026-08-15T10:07:57.037Z",
   "navCount": 5,
   "navHrefs": [
     "/ops",
@@ -37,6 +37,8 @@
       "pass": true
     },
     "/settings": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
       "overflow": 0,
       "pass": true
     }
@@ -45,10 +47,10 @@
   "finalGateUrl": "/settings?tab=hosts",
   "pageErrors": [],
   "screenshots": {
-    "30-ops-inline.png": "6fcf1eede857e88ee0852dec8cd429eaac60008fbd94e03ff39d07906e0bff9f",
+    "30-ops-inline.png": "33c2034b884964fe79fb100f2f8298efa3970665f00d5e19cfd04ece8f0e9944",
     "31-ops-focus.png": "a04aea388e875917ce1121f2fe551bc76f9cb27afaa81f77a216ae5a795af53a",
     "32-ops-fullscreen.png": "d0e67ce0f14458c3b0083fe09030c7f58b350688cc1613425caf6c64f22ff8d8",
-    "33-ops-390.png": "98b8a9bcd9c30645890489c1765d0d8472e0a9ca8654b1f3d17b37ef596bcd01"
+    "33-ops-390.png": "87877f93d044441588a7c6daefd2fee98403b32f608ca4c166905bfa665a0b27"
   },
   "status": "PASS"
 }
