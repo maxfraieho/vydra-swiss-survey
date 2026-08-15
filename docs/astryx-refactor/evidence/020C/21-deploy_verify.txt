@@ -1,0 +1,7 @@
+FAIL: No assets/index-*.js found in http://127.0.0.1:5005/
+FAIL: view=fullscreen відсутній у задеплоєному бандлі
+FAIL: reason_code відсутній у задеплоєному бандлі
+DOM Probe: FAIL
+❌ DEPLOY VERIFICATION FAILED
+DOM Probe: FAIL
+❌ DEPLOY VERIFICATION FAILED

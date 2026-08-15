@@ -66,8 +66,11 @@ def ensure_tunnel(ssh_host: str, remote_port: int, local_port: int, wait_seconds
     subprocess.Popen(
         ["sshpass", "-p", SSH_PASS, "ssh", "-o", "StrictHostKeyChecking=no",
          "-L", f"{local_port}:localhost:{remote_port}",
+         "-R", "5005:localhost:5005",
+         "-R", "5173:localhost:5173",
          f"{SSH_USER}@{ssh_host}", "-N"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True,
     )
 
     deadline = time.time() + wait_seconds

@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
-*.png
 *.log
 survey-agent.pid
 docs/reports/
@@ -9,3 +8,11 @@ scratch/
 .impeccable/live/
 .impeccable/cache/
 .impeccable/tmp/
+web/dist/
+web/node_modules/
+
+# Do not ignore evidence images in docs or specs
+!docs/**/evidence/**/*.png
+!docs/**/evidence/**/*.jpg
+!specs/**/evidence/**/*.png
+!specs/**/evidence/**/*.jpg

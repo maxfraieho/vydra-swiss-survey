@@ -1,0 +1,25 @@
+=== Wiring Gap Analysis (Source vs Router vs Deploy) ===
+
+1. Components of 020:
+- web/src/ops/Viewport.tsx:
+  Imported by: web/src/screens/ops/SurveyOps.tsx
+- web/src/ops/useViewportMode.ts:
+  Imported by: web/src/ops/Viewport.tsx
+- web/src/ops/AttentionCard.tsx (reason_code selector & display):
+  Imported by: web/src/screens/ops/SurveyOps.tsx
+- web/src/ops/AgentIntent.tsx:
+  Imported by: web/src/screens/ops/SurveyOps.tsx
+
+2. Router Gaps Identified in web/src/main.tsx:
+- /gate and /gate/:host were still configured as top-level standalone routes instead of redirecting to /settings?tab=hosts.
+- /rules/compare and /rules/conflicts were still exposed as separate routes rather than embedded inside /traces and /rules.
+- /report needs /analytics alias for unified reporting.
+- SettingsPage.tsx did not parse ?tab= query parameter to activate specific tabs like hosts/gate.
+- Viewport.tsx lacked data-viewport-mode attribute on its root container for deterministic DOM querying.
+
+3. Fix Plan:
+- Update main.tsx with 5 clear top-level operational routes and redirects for legacy endpoints.
+- Update Nav.tsx with exactly 5 navigation items in SideNav.
+- Update SettingsPage.tsx to sync active tab with ?tab= query parameter.
+- Update Viewport.tsx to expose data-viewport-mode attribute.
+- Rebuild bundle and verify with deploy_verify.sh.

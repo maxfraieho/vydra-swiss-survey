@@ -63,7 +63,7 @@ export const Viewport: React.FC<ViewportProps> = ({
   };
 
   return (
-    <div ref={containerRef} className={isExpanded ? 'fixed-fullscreen' : 'relative w-full'}>
+    <div ref={containerRef} data-viewport-mode={mode} className={isExpanded ? 'fixed-fullscreen' : 'relative w-full'}>
       <Card padding={3}>
         {/* Top Header Bar */}
         <div className="flex-between mb-sm">

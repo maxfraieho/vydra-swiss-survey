@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TabList, Tab } from '@astryxdesign/core/TabList';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Selector } from '@astryxdesign/core/Selector';
+import { useSearchParams } from 'react-router';
 import { PageHeader } from '../../ui/primitives';
 import { useIsNarrow } from '../../shell/useIsNarrow';
 import { HostsPanel } from './HostsPanel';
@@ -35,8 +36,22 @@ const TABS: { value: SettingsTab; label: string }[] = [
 ];
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('hosts');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('tab') as SettingsTab | null;
+  const activeTab: SettingsTab = rawTab && TABS.some((t) => t.value === rawTab) ? rawTab : 'hosts';
   const isNarrow = useIsNarrow();
+
+  const handleTabChange = (tab: SettingsTab) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'hosts') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tab);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   return (
     <VStack gap={5}>
@@ -44,11 +59,11 @@ export const SettingsPage: React.FC = () => {
         {isNarrow ? (
           <Selector
             value={activeTab}
-            onChange={(v) => setActiveTab(v as SettingsTab)}
+            onChange={(v) => handleTabChange(v as SettingsTab)}
             options={TABS.map((t) => ({ value: t.value, label: t.label }))}
           />
         ) : (
-          <TabList value={activeTab} onChange={(v) => setActiveTab(v as SettingsTab)}>
+          <TabList value={activeTab} onChange={(v) => handleTabChange(v as SettingsTab)}>
             {TABS.map((t) => (
               <Tab key={t.value} value={t.value} label={t.label} />
             ))}

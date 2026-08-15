@@ -2,11 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 
 export type ViewportMode = 'inline' | 'focus' | 'fullscreen';
+export const VIEWPORT_FULLSCREEN_QUERY = 'view=fullscreen';
 
 export function useViewportMode() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawView = searchParams.get('view');
-  const mode: ViewportMode = rawView === 'fullscreen' || rawView === 'focus' ? rawView : 'inline';
+  const isFsByQuery = typeof window !== 'undefined' && window.location.search.includes(VIEWPORT_FULLSCREEN_QUERY);
+  const mode: ViewportMode = rawView === 'fullscreen' || isFsByQuery || rawView === 'focus' ? (rawView === 'focus' ? 'focus' : 'fullscreen') : 'inline';
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
 
