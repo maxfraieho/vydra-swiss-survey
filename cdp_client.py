@@ -405,16 +405,30 @@ class CDPClient:
     var tLow = t.trim().toLowerCase();
     var nLow = needle.toLowerCase();
     if (tLow === nLow) return true;
-    if (tLow.indexOf(nLow) !== -1) return true;
     var ct = clean(t), cn = clean(needle);
-    if (cn && (ct === cn || ct.indexOf(cn) !== -1)) return true;
+    if (!cn) return false;
+    if (ct === cn) return true;
+    // Word-boundary substring match only: "login"/"sign in" must not match
+    // inside an unrelated run-on phrase (e.g. a title/aria-label technical
+    // string like "design-into-signin-later"). clean() collapses all
+    // punctuation to single spaces, so padding both sides of ct and cn
+    // guarantees the match starts and ends on a real word boundary — this
+    // replaces two earlier unbounded substring checks (raw tLow.indexOf(nLow)
+    // and a clean-but-unpadded multi-word fallback) that both produced false
+    // matches on unrelated elements (SDD 023 finding, meinungsplatz.ch).
+    if ((' ' + ct + ' ').indexOf(' ' + cn + ' ') !== -1) return true;
     var digits = nLow.replace(/[^0-9]/g, '');
     if (digits.length >= 4 && (tLow.indexOf(digits) !== -1 || clean(t).indexOf(digits) !== -1)) return true;
     return false;
   }
 
   function textOf(el) {
-    return (el.innerText || el.value || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-value') || el.getAttribute('placeholder') || '').trim();
+    // Deliberately NOT reading data-value: it is a generic, non-standard
+    // attribute with no accessibility semantics (unlike aria-label/title/
+    // placeholder), so it has carried unrelated internal/tracking strings
+    // that produced false button matches on completely unrelated elements
+    // (SDD 023 finding, meinungsplatz.ch "Login" false-positive).
+    return (el.innerText || el.value || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('placeholder') || '').trim();
   }
 
   function isVisible(el) {

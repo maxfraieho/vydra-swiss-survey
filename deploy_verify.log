@@ -1,4 +1,4 @@
-=== deploy_verify.log — 021D+022 final 2026-08-15T14:51:54Z ===
+=== deploy_verify.log — 023 final 2026-08-15T16:43:25Z ===
 --- bin/ui_verify.sh ---
 === UI Invariant Verification Check ===
 Checking INV-1 (0 HEX literals in .tsx)... ✅ PASS (0 HEX found)
@@ -13,14 +13,14 @@ EXIT=0
 --- bin/deploy_verify.sh https://survey.exodus.pp.ua ---
 === Astryx 020 Deploy Verification Gate ===
 Target Base URL: https://survey.exodus.pp.ua
-Fetching bundle: https://survey.exodus.pp.ua/assets/index-BjElCRoN.js
+Fetching bundle: https://survey.exodus.pp.ua/assets/index-CJSdyMcJ.js
 bundle:view=fullscreen=1
 bundle:reason_code=1
 Checking CDP connection...
 Running DOM Probe via CDP...
 {
   "baseUrl": "https://survey.exodus.pp.ua",
-  "timestamp": "2026-08-15T14:51:59.315Z",
+  "timestamp": "2026-08-15T16:43:32.962Z",
   "navCount": 5,
   "navHrefs": [
     "/ops",
@@ -51,8 +51,6 @@ Running DOM Probe via CDP...
       "pass": true
     },
     "/report": {
-      "scrollWidth": 390,
-      "clientWidth": 390,
       "overflow": 0,
       "pass": true
     },
@@ -67,9 +65,9 @@ Running DOM Probe via CDP...
   "finalGateUrl": "/settings?tab=hosts",
   "pageErrors": [],
   "screenshots": {
-    "30-ops-inline.png": "8b5c5601ed624a3a2c52a6b7301dc3db67aa1959f46087b7cb20c54c6d959f14",
-    "31-ops-focus.png": "c26fa11639639cf6d657523f6520f2990beecf49d0884c01d6f5503859be401a",
-    "32-ops-fullscreen.png": "3a1b5f3fecb2e95ee3aa9c413fe65c908416df659db958b1cd017694af17ebf2",
+    "30-ops-inline.png": "89c5a89213259c9dbb965df792c51cde21a920505962dd7d6ae090e0b0afd225",
+    "31-ops-focus.png": "e5de6032c0766088dfeae48654f52b91f2f92cb0a5b0d8e5eeec467402ab67a3",
+    "32-ops-fullscreen.png": "980e40dc9811d7d71798d180ad68747dc4551755d378a2749805bdf44a61c52b",
     "33-ops-390.png": "30502ddec04bd387a21a50dfc84dc9d38492751403a82311750f88a26007fa3d"
   },
   "status": "PASS"
@@ -81,7 +79,7 @@ EXIT=0
 --- bin/ops_verify.sh https://survey.exodus.pp.ua ---
 === Astryx 021B Ops Verification Gate ===
 Target Base URL: https://survey.exodus.pp.ua
-Bundle: https://survey.exodus.pp.ua/assets/index-BjElCRoN.js
+Bundle: https://survey.exodus.pp.ua/assets/index-CJSdyMcJ.js
 bundle:telegram-queue=1
 bundle:resume-attach=1
 
