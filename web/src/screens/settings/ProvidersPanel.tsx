@@ -7,8 +7,7 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { useToast } from '@astryxdesign/core/Toast';
-import { MasterDetail } from '../../ui/primitives';
+import { MasterDetail, normalizeInputChange, useToast } from '../../ui/primitives';
 
 export const ProvidersPanel: React.FC = () => {
   const toast = useToast();
@@ -92,7 +91,7 @@ export const ProvidersPanel: React.FC = () => {
         <TextInput
           label="Ключ провайдера (key)"
           value={key}
-          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setKey(normalizeInputChange(val))}
           placeholder="e.g. cint або dynata"
           required
         />
@@ -100,7 +99,7 @@ export const ProvidersPanel: React.FC = () => {
         <TextInput
           label="Назва (Label)"
           value={label}
-          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setLabel(normalizeInputChange(val))}
           placeholder="Cint Survey Provider"
           required
         />
@@ -108,14 +107,14 @@ export const ProvidersPanel: React.FC = () => {
         <TextInput
           label="URL Pattern (RegExp/Substring)"
           value={urlPattern}
-          onChange={(val) => setUrlPattern(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setUrlPattern(normalizeInputChange(val))}
           placeholder="cint.com"
         />
 
         <TextInput
           label="Примітка"
           value={note}
-          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setNote(normalizeInputChange(val))}
           placeholder="Особливості інтеграції"
         />
 

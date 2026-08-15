@@ -7,7 +7,7 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
-import { useToast } from '@astryxdesign/core/Toast';
+import { normalizeInputChange, useToast } from '../../ui/primitives';
 
 interface TelegramTokenStatus {
   configured: boolean;
@@ -67,7 +67,7 @@ export const TelegramSettingsPanel: React.FC = () => {
             type="password"
             label="Новий токен Telegram (Bot API Token)"
             value={token}
-            onChange={(val) => setToken(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+            onChange={(val) => setToken(normalizeInputChange(val))}
             placeholder="Введіть токен бота (напр. 123456:ABC-DEF...)"
           />
 

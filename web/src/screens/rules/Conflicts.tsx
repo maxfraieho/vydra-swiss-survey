@@ -9,8 +9,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
-import { useToast } from '@astryxdesign/core/Toast';
-import { PageHeader, EmptyState } from '../../ui/primitives';
+import { PageHeader, EmptyState, useToast } from '../../ui/primitives';
 
 interface ConflictsData {
   count: number;

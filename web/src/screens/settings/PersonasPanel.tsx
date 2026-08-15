@@ -8,8 +8,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { useToast } from '@astryxdesign/core/Toast';
-import { MasterDetail } from '../../ui/primitives';
+import { MasterDetail, normalizeInputChange, useToast } from '../../ui/primitives';
 
 export const PersonasPanel: React.FC = () => {
   const toast = useToast();
@@ -133,7 +132,7 @@ export const PersonasPanel: React.FC = () => {
         <TextInput
           label="Ключ (key)"
           value={key}
-          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setKey(normalizeInputChange(val))}
           disabled={Boolean(selectedKey)}
           placeholder="e.g. arno"
           required
@@ -142,7 +141,7 @@ export const PersonasPanel: React.FC = () => {
         <TextInput
           label="Назва (label)"
           value={label}
-          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setLabel(normalizeInputChange(val))}
           placeholder="e.g. Арсен (Arno)"
           required
         />
@@ -160,7 +159,7 @@ export const PersonasPanel: React.FC = () => {
         <TextArea
           label="Markdown профіль / Persona Content"
           value={contentMd}
-          onChange={(val) => setContentMd(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setContentMd(normalizeInputChange(val))}
           placeholder="# Особисті дані&#10;- Вік: 34&#10;- Місто: Цюрих..."
         />
 

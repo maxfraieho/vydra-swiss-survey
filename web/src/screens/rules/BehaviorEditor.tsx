@@ -5,6 +5,7 @@ import { TextArea } from '@astryxdesign/core/TextArea';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
+import { normalizeInputChange } from '../../ui/primitives';
 
 export interface BehaviorEditorProps {
   behavior: string;
@@ -65,7 +66,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
         <TextArea
           label="Інструкція поведінки (Behavior)"
           value={behavior}
-          onChange={(val) => onBehaviorChange(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => onBehaviorChange(normalizeInputChange(val))}
           placeholder="Введіть інструкцію поведінки агента (українською мовою)..."
           rows={5}
         />
@@ -76,7 +77,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
           <TextArea
             label="DRAKON псевдокод або JSON export"
             value={scratchText}
-            onChange={(val) => setScratchText(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+            onChange={(val) => setScratchText(normalizeInputChange(val))}
             placeholder={'# назва\nIF умова\nTHEN\nдія\nEND'}
             rows={5}
           />

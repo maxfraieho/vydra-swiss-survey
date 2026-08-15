@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -8,6 +8,7 @@ import { Badge } from '@astryxdesign/core/Badge';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { Layout, LayoutContent } from '@astryxdesign/core/Layout';
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
+import { useToast as useCoreToast } from '@astryxdesign/core/Toast';
 import { useIsNarrow } from '../shell/useIsNarrow';
 import {
   statusBadgeVariant,
@@ -18,6 +19,79 @@ import {
   type RuleStatus,
   type RunOutcome,
 } from './tokens';
+
+/**
+ * Normalizes onChange event/value from Astryx TextInput/TextArea or standard HTML inputs.
+ * Astryx components might pass either a raw string or an event object with target.value.
+ */
+export function normalizeInputChange(val: unknown): string {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object' && 'target' in val) {
+    const target = (val as { target?: { value?: unknown } }).target;
+    if (target && typeof target.value === 'string') return target.value;
+  }
+  return '';
+}
+
+export interface ToastPayload {
+  variant?: 'success' | 'info' | 'warning' | 'error' | 'neutral';
+  title?: string;
+  description?: string;
+  body?: React.ReactNode;
+  type?: 'info' | 'error';
+}
+
+/**
+ * Unified Toast adapter supporting both toast.show({ variant, title, description })
+ * and direct calls like toast({ body, type }) or toast.success(title).
+ */
+export function useAppToast() {
+  const coreToast = useCoreToast();
+
+  const notify = useCallback((payload: string | ToastPayload) => {
+    let body: React.ReactNode;
+    let type: 'info' | 'error' = 'info';
+
+    if (typeof payload === 'string') {
+      body = payload;
+    } else {
+      type = payload.variant === 'error' ? 'error' : 'info';
+
+      if (payload.body) {
+        body = payload.body;
+      } else if (payload.title && payload.description) {
+        body = (
+          <div>
+            <div className="text-bold">{payload.title}</div>
+            <div className="text-xs text-secondary">{payload.description}</div>
+          </div>
+        );
+      } else if (payload.title) {
+        body = payload.title;
+      } else if (payload.description) {
+        body = payload.description;
+      }
+    }
+
+    if (typeof coreToast === 'function') {
+      return coreToast({ body, type });
+    } else if (coreToast && typeof (coreToast as any).show === 'function') {
+      return (coreToast as any).show(payload);
+    }
+  }, [coreToast]);
+
+  return {
+    show: notify,
+    notify,
+    success: (title: string, description?: string) => notify({ variant: 'success', title, description }),
+    error: (title: string, description?: string) => notify({ variant: 'error', title, description }),
+    info: (title: string, description?: string) => notify({ variant: 'info', title, description }),
+    warning: (title: string, description?: string) => notify({ variant: 'warning', title, description }),
+  };
+}
+
+// Re-export useAppToast as useToast for convenient drop-in replacement
+export { useAppToast as useToast };
 
 export interface PageHeaderProps {
   eyebrow?: string;

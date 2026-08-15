@@ -8,8 +8,7 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { useToast } from '@astryxdesign/core/Toast';
-import { MasterDetail } from '../../ui/primitives';
+import { MasterDetail, normalizeInputChange, useToast } from '../../ui/primitives';
 
 export const HostsPanel: React.FC = () => {
   const toast = useToast();
@@ -93,7 +92,7 @@ export const HostsPanel: React.FC = () => {
         <TextInput
           label="Hostname (домен або IP)"
           value={hostname}
-          onChange={(val) => setHostname(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setHostname(normalizeInputChange(val))}
           placeholder="meinungsplatz.ch або opinionhero.com"
           required
         />
@@ -101,7 +100,7 @@ export const HostsPanel: React.FC = () => {
         <TextInput
           label="Назва (Label)"
           value={label}
-          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setLabel(normalizeInputChange(val))}
           placeholder="Meinungsplatz Швейцарія"
         />
 
@@ -115,7 +114,7 @@ export const HostsPanel: React.FC = () => {
         <TextInput
           label="Примітка"
           value={note}
-          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setNote(normalizeInputChange(val))}
           placeholder="Особливості проходження опитування"
         />
 

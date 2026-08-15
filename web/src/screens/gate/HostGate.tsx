@@ -10,8 +10,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Selector } from '@astryxdesign/core/Selector';
-import { useToast } from '@astryxdesign/core/Toast';
-import { PageHeader } from '../../ui/primitives';
+import { PageHeader, useToast } from '../../ui/primitives';
 
 export const HostGate: React.FC = () => {
   const { host: routeHost } = useParams<{ host?: string }>();

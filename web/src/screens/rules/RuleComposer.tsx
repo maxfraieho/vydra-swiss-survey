@@ -8,7 +8,7 @@ import { TextArea } from '@astryxdesign/core/TextArea';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Button } from '@astryxdesign/core/Button';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
-import { useToast } from '@astryxdesign/core/Toast';
+import { normalizeInputChange, useToast } from '../../ui/primitives';
 
 export interface RuleComposerProps {
   isOpen?: boolean;
@@ -134,7 +134,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({
         <TextArea
           label="Примітка"
           value={note}
-          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setNote(normalizeInputChange(val))}
           placeholder="Обґрунтування або джерело правила"
         />
 

@@ -18,6 +18,30 @@ export interface StepTimelineProps {
   steps: StepItem[];
 }
 
+const getStatusBadgeVariant = (status: string): 'success' | 'error' | 'warning' | 'info' | 'neutral' => {
+  switch (status.toLowerCase()) {
+    case 'success':
+    case 'done':
+    case 'completed':
+    case 'ok':
+      return 'success';
+    case 'error':
+    case 'failed':
+    case 'fail':
+      return 'error';
+    case 'warning':
+    case 'warn':
+    case 'paused':
+      return 'warning';
+    case 'skipped':
+    case 'info':
+    case 'corrected':
+      return 'info';
+    default:
+      return 'neutral';
+  }
+};
+
 export const StepTimeline: React.FC<StepTimelineProps> = ({
   currentStep,
   totalSteps,
@@ -59,10 +83,15 @@ export const StepTimeline: React.FC<StepTimelineProps> = ({
               key={idx}
               className={`flex-between items-center p-xs rounded-md border-default ${s.index === currentStep ? 'bg-subtle' : ''}`}
             >
-              <div className="flex-row gap-sm items-center">
+              <div className="flex-row gap-sm items-center flex-wrap">
                 <span className="text-xs text-tertiary">
                   #{s.index}
                 </span>
+                {s.timestamp && (
+                  <span className="text-xs text-mono text-tertiary">
+                    {s.timestamp}
+                  </span>
+                )}
                 <span className="text-xs text-semibold text-primary">
                   {s.action}
                 </span>
@@ -76,7 +105,7 @@ export const StepTimeline: React.FC<StepTimelineProps> = ({
                 {s.hasCorrection && (
                   <Badge variant="warning" label="Правка" />
                 )}
-                <Badge variant={s.status === 'success' ? 'success' : s.status === 'error' ? 'error' : 'neutral'} label={s.status} />
+                <Badge variant={getStatusBadgeVariant(s.status)} label={s.status} />
               </div>
             </div>
           ))
