@@ -127,6 +127,11 @@ class TestP5SurveyAgentNoRecoveryFlag(unittest.TestCase):
         mock_cdp.get_current_url.return_value = "https://example.com/survey"
         mock_cdp.click_by_text.return_value = False
         mock_cdp.find_submit_button.return_value = None
+        # 023A/F7: the loop now checks for a tab the click may have opened.
+        # The real CDPClient returns None when no NEW tab appeared; a bare
+        # MagicMock would return a truthy Mock and overwrite current_url,
+        # which is a fidelity gap in the fake, not a behaviour change.
+        mock_cdp.check_and_attach_new_tab.return_value = None
         mock_cdp_cls.return_value = mock_cdp
 
         mock_vision = MagicMock()
