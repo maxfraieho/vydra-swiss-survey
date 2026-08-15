@@ -172,13 +172,13 @@ export const AttentionCard: React.FC<AttentionCardProps> = ({
             <TextArea
               label="Правильне значення або селектор"
               value={overrideValue}
-              onChange={(e) => setOverrideValue(e.target.value)}
+              onChange={(val) => setOverrideValue(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
               placeholder="Введіть правильну відповідь або вкажіть дію"
             />
             <TextArea
               label="Коментар для тутора (optional)"
               value={correctionNote}
-              onChange={(e) => setCorrectionNote(e.target.value)}
+              onChange={(val) => setCorrectionNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
               placeholder="Пояснення для запису уроку в базу знань"
             />
             <div className="flex-row gap-sm mt-sm">

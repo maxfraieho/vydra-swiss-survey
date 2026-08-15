@@ -134,7 +134,7 @@ export const RuleComposer: React.FC<RuleComposerProps> = ({
         <TextArea
           label="Примітка"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Обґрунтування або джерело правила"
         />
 

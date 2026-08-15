@@ -99,7 +99,7 @@ export const PatternsPanel: React.FC = () => {
         <TextInput
           label="Ключ патерну (key)"
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="e.g. select_household_income"
           required
         />
@@ -107,14 +107,14 @@ export const PatternsPanel: React.FC = () => {
         <TextInput
           label="Назва (Label)"
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Вибір річного доходу"
         />
 
         <TextInput
           label="Ключові слова (через кому)"
           value={keywordsText}
-          onChange={(e) => setKeywordsText(e.target.value)}
+          onChange={(val) => setKeywordsText(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="income, einkommen, revenu"
         />
 

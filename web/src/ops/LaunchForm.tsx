@@ -62,7 +62,7 @@ export const LaunchForm: React.FC<LaunchFormProps> = ({
           <TextInput
             label="URL опитування"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(val) => setUrl(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
             placeholder="https://opinionhero.com/... або https://meinungsplatz.ch/..."
             required
           />

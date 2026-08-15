@@ -67,7 +67,7 @@ export const TelegramSettingsPanel: React.FC = () => {
             type="password"
             label="Новий токен Telegram (Bot API Token)"
             value={token}
-            onChange={(e) => setToken(e.target.value)}
+            onChange={(val) => setToken(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
             placeholder="Введіть токен бота (напр. 123456:ABC-DEF...)"
           />
 

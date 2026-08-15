@@ -93,7 +93,7 @@ export const HostsPanel: React.FC = () => {
         <TextInput
           label="Hostname (домен або IP)"
           value={hostname}
-          onChange={(e) => setHostname(e.target.value)}
+          onChange={(val) => setHostname(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="meinungsplatz.ch або opinionhero.com"
           required
         />
@@ -101,7 +101,7 @@ export const HostsPanel: React.FC = () => {
         <TextInput
           label="Назва (Label)"
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Meinungsplatz Швейцарія"
         />
 
@@ -115,7 +115,7 @@ export const HostsPanel: React.FC = () => {
         <TextInput
           label="Примітка"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Особливості проходження опитування"
         />
 

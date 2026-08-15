@@ -156,7 +156,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Ключ джерела (key)"
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="e.g. laptop_comet"
           required
         />
@@ -164,7 +164,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Назва (label)"
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="e.g. Laptop Comet Browser"
           required
         />
@@ -182,7 +182,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Хост / IP"
           value={host}
-          onChange={(e) => setHost(e.target.value)}
+          onChange={(val) => setHost(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="192.168.3.30"
           required
         />
@@ -190,7 +190,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="CDP Порт"
           value={port}
-          onChange={(e) => setPort(e.target.value)}
+          onChange={(val) => setPort(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="9226"
           required
         />
@@ -198,7 +198,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Примітка"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Windows 11 portproxy 9226"
         />
 

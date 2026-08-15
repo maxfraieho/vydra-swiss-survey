@@ -144,7 +144,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose, onUpdat
                 <TextArea
                   label="Поведінка"
                   value={behavior}
-                  onChange={(e) => setBehavior(e.target.value)}
+                  onChange={(val) => setBehavior(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
                 />
                 <Selector
                   label="Статус"
@@ -167,7 +167,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose, onUpdat
                 <TextArea
                   label="Примітка"
                   value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                  onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
                 />
                 <div className="flex-row justify-end gap-sm">
                   <Button variant="secondary" size="sm" onClick={() => setIsEditing(false)}>

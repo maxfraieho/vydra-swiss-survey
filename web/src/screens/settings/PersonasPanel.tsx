@@ -133,7 +133,7 @@ export const PersonasPanel: React.FC = () => {
         <TextInput
           label="Ключ (key)"
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           disabled={Boolean(selectedKey)}
           placeholder="e.g. arno"
           required
@@ -142,7 +142,7 @@ export const PersonasPanel: React.FC = () => {
         <TextInput
           label="Назва (label)"
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="e.g. Арсен (Arno)"
           required
         />
@@ -160,7 +160,7 @@ export const PersonasPanel: React.FC = () => {
         <TextArea
           label="Markdown профіль / Persona Content"
           value={contentMd}
-          onChange={(e) => setContentMd(e.target.value)}
+          onChange={(val) => setContentMd(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="# Особисті дані&#10;- Вік: 34&#10;- Місто: Цюрих..."
         />
 

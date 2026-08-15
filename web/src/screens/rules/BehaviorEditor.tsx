@@ -65,7 +65,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
         <TextArea
           label="Інструкція поведінки (Behavior)"
           value={behavior}
-          onChange={(e) => onBehaviorChange(e.target.value)}
+          onChange={(val) => onBehaviorChange(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Введіть інструкцію поведінки агента (українською мовою)..."
           rows={5}
         />
@@ -76,7 +76,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
           <TextArea
             label="DRAKON псевдокод або JSON export"
             value={scratchText}
-            onChange={(e) => setScratchText(e.target.value)}
+            onChange={(val) => setScratchText(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
             placeholder={'# назва\nIF умова\nTHEN\nдія\nEND'}
             rows={5}
           />

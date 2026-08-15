@@ -21,11 +21,32 @@ export const ResumeTabCard: React.FC<ResumeTabCardProps> = ({ onResumed }) => {
   const [tabUrl, setTabUrl] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
+  const isValidUrl = (urlString: string): boolean => {
+    const trimmed = urlString.trim();
+    if (!trimmed) return false;
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const isUrlValid = isValidUrl(tabUrl);
+
+  const notify = (body: string, type: 'info' | 'error' = 'info') => {
+    if (typeof toast === 'function') {
+      toast({ body, type });
+    } else if (toast && typeof (toast as any).show === 'function') {
+      (toast as any).show({ title: body, variant: type });
+    }
+  };
+
   const handleResume = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const url = tabUrl.trim();
-    if (!url) {
-      toast.show({ variant: 'error', title: 'Вкажіть URL відкритої вкладки' });
+    if (!url || !isUrlValid) {
+      notify('Вкажіть коректний URL відкритої вкладки', 'error');
       return;
     }
 
@@ -36,12 +57,12 @@ export const ResumeTabCard: React.FC<ResumeTabCardProps> = ({ onResumed }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile, resume_tab_url: url }),
       });
-      toast.show({ variant: 'success', title: 'Підключення до вкладки розпочато' });
+      notify('Підключення до вкладки розпочато', 'info');
       setTabUrl('');
       if (onResumed) onResumed();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      toast.show({ variant: 'error', title: 'Помилка підключення до вкладки', description: msg });
+      notify(`Помилка підключення до вкладки: ${msg}`, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -68,15 +89,15 @@ export const ResumeTabCard: React.FC<ResumeTabCardProps> = ({ onResumed }) => {
               <TextInput
                 label="URL відкритої вкладки"
                 value={tabUrl}
-                onChange={(e) => setTabUrl(e.target.value)}
-                placeholder="https://meinungsplatz.ch/... або інший survey URL"
+                onChange={(val) => setTabUrl(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+                placeholder="https://meinungsplatz.ch/..."
               />
             </div>
             <div className="flex-row">
               <Button
                 variant="primary"
                 type="submit"
-                disabled={submitting || !tabUrl.trim()}
+                disabled={submitting || !isUrlValid}
               >
                 {submitting ? 'Підключення…' : '▶ Продовжити'}
               </Button>

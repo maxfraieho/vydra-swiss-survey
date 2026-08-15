@@ -92,7 +92,7 @@ export const ProvidersPanel: React.FC = () => {
         <TextInput
           label="Ключ провайдера (key)"
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="e.g. cint або dynata"
           required
         />
@@ -100,7 +100,7 @@ export const ProvidersPanel: React.FC = () => {
         <TextInput
           label="Назва (Label)"
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Cint Survey Provider"
           required
         />
@@ -108,14 +108,14 @@ export const ProvidersPanel: React.FC = () => {
         <TextInput
           label="URL Pattern (RegExp/Substring)"
           value={urlPattern}
-          onChange={(e) => setUrlPattern(e.target.value)}
+          onChange={(val) => setUrlPattern(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="cint.com"
         />
 
         <TextInput
           label="Примітка"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
           placeholder="Особливості інтеграції"
         />
 
