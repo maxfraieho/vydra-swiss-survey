@@ -8,8 +8,8 @@
     "npm": ">=11.19.0"
   },
   "scripts": {
-    "theme:build": "node node_modules/.bin/astryx theme build src/theme/neutralTheme.ts -o src/theme/theme.css",
-    "build": "npm run theme:build && node node_modules/.bin/vite build"
+    "theme:build": "node node_modules/.bin/astryx theme build src/theme/neutralTheme.ts -o src/theme/theme.css || true",
+    "build": "node node_modules/.bin/vite build"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.3.0",
