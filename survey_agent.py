@@ -33,6 +33,14 @@ PROFILE_CACHE_DIR = os.path.expanduser("~/.vydra-survey-profiles")
 # looking for a tab the click may have opened.
 NEW_TAB_SETTLE_SECONDS = 0.8
 
+# 023A/F9: vision runs against a proxy that can time out. A single failure
+# used to end the whole run, so retry inside the step, and degrade to a
+# 'wait' step (handled by the dispatcher) rather than to 'unknown_action'.
+VISION_MAX_ATTEMPTS = 3
+VISION_RETRY_BACKOFF_SECONDS = 2.0
+VISION_WAIT_SECONDS = 3.0
+MAX_CONSECUTIVE_VISION_FAILURES = 3
+
 PROFILES = {
     "arno": {"persona_file": "опитування.txt", "label": "Арно Дюбуа (Гланд, 25р.)"},
     "annet": {"persona_file": "Лена-опитування.txt", "label": "Аннет Буонасьє (Гланд, 52р.)"},
@@ -215,6 +223,7 @@ def main() -> None:
         completed = False
         trace_steps: list[dict] = []
         stop_reason = None
+        vision_failures = 0  # 023A/F9: consecutive steps whose vision calls all failed
         for step in range(1, args.max_steps + 1):
             # 023A/F6: current_url was assigned exactly once, before the loop, so
             # every consumer below (the captcha Telegram notification, verify_step,
@@ -290,11 +299,29 @@ def main() -> None:
             except Exception:
                 pass
             topic = reflection.detect_pattern(ptxt, extra_keywords=extra_keywords)
-            try:
-                decision = vision.decide_action(shot_path, persona, step)
-            except Exception as _v_err:
-                log(f"[Vision] Exception on step {step}: {_v_err}")
-                decision = {"action": "wait", "reason": str(_v_err)}
+            # 023A/F9: retry a failing vision call inside the step instead of
+            # letting one proxy timeout terminate the run.
+            decision = None
+            last_v_err = None
+            for attempt in range(1, VISION_MAX_ATTEMPTS + 1):
+                try:
+                    decision = vision.decide_action(shot_path, persona, step)
+                    last_v_err = None
+                    break
+                except Exception as _v_err:
+                    last_v_err = _v_err
+                    log(f"[Vision] Exception on step {step} "
+                        f"(attempt {attempt}/{VISION_MAX_ATTEMPTS}): {_v_err}")
+                    if attempt < VISION_MAX_ATTEMPTS:
+                        time.sleep(VISION_RETRY_BACKOFF_SECONDS * attempt)
+            if decision is None:
+                vision_failures += 1
+                log(f"[Vision] All {VISION_MAX_ATTEMPTS} attempts failed on step {step} "
+                    f"({vision_failures}/{MAX_CONSECUTIVE_VISION_FAILURES} consecutive "
+                    f"failed steps) — degrading to a wait step.")
+                decision = {"action": "wait", "reason": str(last_v_err)}
+            else:
+                vision_failures = 0
 
             # Save latest screenshot for Astryx UI
             try:
@@ -359,6 +386,21 @@ def main() -> None:
                 client.type_text(value)
             elif action == "scroll":
                 client.scroll()
+            elif action == "wait":
+                # 023A/F9: "wait" is what the vision-failure path (and Gemma itself)
+                # substitutes. It used to fall through to the else-branch below and
+                # end the run with stop_reason='unknown_action' on the FIRST proxy
+                # timeout. Sleeping and re-screenshotting gives the backend a chance
+                # to recover; a persistent outage still terminates, but explicitly.
+                if vision_failures >= MAX_CONSECUTIVE_VISION_FAILURES:
+                    log(f"Vision unavailable for {vision_failures} consecutive steps "
+                        f"— stopping.")
+                    stop_reason = "vision_unavailable"
+                    step_failed = True
+                else:
+                    log(f"Waiting {VISION_WAIT_SECONDS}s before re-reading the page "
+                        f"(reason: {decision.get('reason', '') or 'model asked to wait'!r}).")
+                    time.sleep(VISION_WAIT_SECONDS)
             else:
                 log(f"Unknown action {action!r} from Gemma — stopping.")
                 stop_reason = "unknown_action"
