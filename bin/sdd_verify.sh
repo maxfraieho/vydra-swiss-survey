@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SDD Verification Script - Verifies presence and structure of SDD spec files
-set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "=== SDD Verification Check ==="
 
@@ -35,6 +36,9 @@ REQUIRED_SPECS=(
     "specs/014-impeccable-official-ui-critique/spec.md"
     "specs/015-rules-db-synapse-restore-bugfix/spec.md"
     "specs/016-telegram-task-fetch-bugfix/spec.md"
+    "specs/020-ops-viewport-and-tabs/spec.md"
+    "specs/020-ops-viewport-and-tabs/plan.md"
+    "specs/020-ops-viewport-and-tabs/tasks.md"
 )
 
 for spec in "${REQUIRED_SPECS[@]}"; do
@@ -46,10 +50,10 @@ for spec in "${REQUIRED_SPECS[@]}"; do
     fi
 done
 
-if [ "$MISSING" -eq 0 ]; then
-    echo "=== All SDD Specifications Verified Successfully ==="
-    exit 0
-else
+if [ "$MISSING" -gt 0 ]; then
     echo "=== SDD Verification FAILED ($MISSING missing specs) ==="
     exit 1
 fi
+
+echo "=== All SDD Specifications Verified Successfully ==="
+bash "$REPO_DIR/bin/ui_verify.sh"

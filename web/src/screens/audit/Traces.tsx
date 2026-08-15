@@ -4,9 +4,11 @@ import { useResource } from '../../api/hooks';
 import { TraceDetail } from './TraceDetail';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
-import { Heading } from '@astryxdesign/core/Heading';
-import { ClickableCard } from '@astryxdesign/core/ClickableCard';
-import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
+import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
+import { Selector } from '@astryxdesign/core/Selector';
+import { PageHeader, EmptyState, OutcomePill } from '../../ui/primitives';
+import type { RunOutcome } from '../../ui/tokens';
 
 export interface TraceSummary {
   run_id: string;
@@ -14,6 +16,7 @@ export interface TraceSummary {
   persona: string;
   outcome: string;
   created_at?: string;
+  has_human_corrections?: boolean;
 }
 
 export const Traces: React.FC = () => {
@@ -22,6 +25,7 @@ export const Traces: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId || null);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   useEffect(() => {
     if (routeRunId) {
@@ -32,6 +36,7 @@ export const Traces: React.FC = () => {
   const hostFilter = searchParams.get('host') || '';
   const personaFilter = searchParams.get('persona') || '';
   const outcomeFilter = searchParams.get('outcome') || '';
+  const humanOnlyFilter = searchParams.get('human_only') === 'true';
 
   const queryParams = new URLSearchParams();
   if (hostFilter) queryParams.set('host', hostFilter);
@@ -39,172 +44,152 @@ export const Traces: React.FC = () => {
   if (outcomeFilter) queryParams.set('outcome', outcomeFilter);
 
   const endpoint = `/api/traces?${queryParams.toString()}`;
-  const { data: traces, loading, error } = useResource<TraceSummary[]>(endpoint);
+  const { data: traces, loading } = useResource<TraceSummary[]>(endpoint);
+
+  const updateParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value && value !== 'all') {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
+    setSearchParams(next);
+  };
 
   const handleSelectTrace = (runId: string) => {
     setSelectedRunId(runId);
     navigate(`/traces/${encodeURIComponent(runId)}`);
   };
 
-  const updateParam = (key: string, value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value) {
-      newParams.set(key, value);
-    } else {
-      newParams.delete(key);
-    }
-    setSearchParams(newParams);
+  const toggleCompare = (runId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedForCompare((prev) =>
+      prev.includes(runId) ? prev.filter((id) => id !== runId) : prev.length < 2 ? [...prev, runId] : [prev[1], runId]
+    );
   };
 
+  const filteredTraces = (traces || []).filter((t) => {
+    if (humanOnlyFilter && !t.has_human_corrections) return false;
+    return true;
+  });
+
   return (
-    <VStack gap={5}>
-      {/* Filters Bar */}
-      <Card padding={4}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="Фільтр за хостом..."
-          value={hostFilter}
-          onChange={(e) => updateParam('host', e.target.value)}
-          style={{
-            background: 'var(--color-background-page)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            color: 'var(--color-text-primary)',
-            fontSize: '13px',
-          }}
-        />
+    <VStack gap={4}>
+      <PageHeader
+        eyebrow="АУДИТ"
+        title="Прогони опитувань (Traces)"
+        subtitle="Історія виконання сесій та аналіз правок людини"
+        actions={
+          selectedForCompare.length === 2 ? (
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/rules/compare?run1=${selectedForCompare[0]}&run2=${selectedForCompare[1]}`)}
+            >
+              ⚖️ Порівняти вибрані 2 прогони
+            </Button>
+          ) : undefined
+        }
+      />
 
-        <select
-          value={personaFilter}
-          onChange={(e) => updateParam('persona', e.target.value)}
-          style={{
-            background: 'var(--color-background-page)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            color: 'var(--color-text-primary)',
-            fontSize: '13px',
-          }}
-        >
-          <option value="">Усі Персони</option>
-          <option value="arno">Arno (Арсен)</option>
-          <option value="annet">Annette (Олена)</option>
-        </select>
+      <Card padding={3}>
+        <div className="flex-row flex-wrap gap-sm items-center">
+          <input
+            type="text"
+            placeholder="Фільтр за хостом..."
+            value={hostFilter}
+            onChange={(e) => updateParam('host', e.target.value)}
+            className="input-standard min-w-0"
+            style={{ maxWidth: '240px' }}
+          />
 
-        <select
-          value={outcomeFilter}
-          onChange={(e) => updateParam('outcome', e.target.value)}
-          style={{
-            background: 'var(--color-background-page)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            color: 'var(--color-text-primary)',
-            fontSize: '13px',
-          }}
-        >
-          <option value="">Усі Результати (Outcomes)</option>
-          <option value="finished">Finished</option>
-          <option value="success">Success</option>
-          <option value="error">Error</option>
-        </select>
+          <Selector
+            label=""
+            value={personaFilter || 'all'}
+            onChange={(v) => updateParam('persona', v)}
+            options={[
+              { value: 'all', label: 'Усі персони' },
+              { value: 'arno', label: 'Arno (Арсен)' },
+              { value: 'annet', label: 'Annette (Олена)' },
+            ]}
+          />
 
-        {(hostFilter || personaFilter || outcomeFilter) && (
-          <button
-            onClick={() => setSearchParams(new URLSearchParams())}
-            style={{
-              background: 'var(--color-border)',
-              color: 'var(--color-text-primary)',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            Скинути фільтри
-          </button>
-        )}
-      </div>
+          <Selector
+            label=""
+            value={outcomeFilter || 'all'}
+            onChange={(v) => updateParam('outcome', v)}
+            options={[
+              { value: 'all', label: 'Усі результати' },
+              { value: 'success', label: 'Успіх (success)' },
+              { value: 'finished', label: 'Завершено (finished)' },
+              { value: 'failed', label: 'Помилка (failed)' },
+              { value: 'stopped', label: 'Зупинено (stopped)' },
+            ]}
+          />
+
+          <label className="flex-row items-center gap-xs text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              checked={humanOnlyFilter}
+              onChange={(e) => updateParam('human_only', e.target.checked ? 'true' : '')}
+            />
+            Тільки з правками людини
+          </label>
+        </div>
       </Card>
 
-      {/* Table Card */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-        <Card padding={0}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Heading level={2} style={{ fontSize: '15px' }}>
-              Прогони Агента (Traces) ({traces?.length || 0})
-            </Heading>
-            {loading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Оновлення...</span>}
-          </div>
-
-          {error && (
-            <div style={{ padding: '20px', color: 'var(--color-text-red)', fontSize: '13px' }}>
-              Помилка завантаження прогонів: {error.message}
-            </div>
-          )}
-
-          {!loading && traces && traces.length === 0 && (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-              Жодного прогону не знайдено за обраними фільтрами.
-            </div>
-          )}
-
-          {traces && traces.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
-              {traces.map((t) => {
-                const isSelected = selectedRunId === t.run_id;
-                const isOk = t.outcome === 'success' || t.outcome === 'finished';
-                return (
-                  <ClickableCard
-                    key={t.run_id}
-                    label={`Прогін ${t.run_id}`}
-                    onClick={() => handleSelectTrace(t.run_id)}
-                    style={{ background: isSelected ? 'var(--color-background-muted)' : undefined }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 600, wordBreak: 'break-all' }}>{t.run_id}</span>
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          textTransform: 'uppercase',
-                          background: isOk ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                          color: isOk ? 'var(--color-text-green)' : 'var(--color-text-red)',
-                        }}
-                      >
-                        {t.outcome || 'unknown'}
-                      </span>
-                    </div>
-                    <MetadataList columns={1} label={{ position: 'start' }}>
-                      <MetadataListItem label="Хост">{t.host}</MetadataListItem>
-                      <MetadataListItem label="Персона">{t.persona}</MetadataListItem>
-                      <MetadataListItem label="Дата/Час">{t.created_at || '-'}</MetadataListItem>
-                    </MetadataList>
-                  </ClickableCard>
-                );
-              })}
-            </div>
-          )}
+      {filteredTraces.length === 0 ? (
+        <Card padding={4}>
+          <EmptyState
+            title="Прогонів не знайдено"
+            description="Спробуйте змінити критерії фільтрації або запустіть нове опитування на пульті."
+          />
         </Card>
-      </div>
+      ) : (
+        <div className="flex-col gap-sm">
+          {filteredTraces.map((trace) => {
+            const isCompared = selectedForCompare.includes(trace.run_id);
+            return (
+              <Card key={trace.run_id} padding={3}>
+                <div
+                  onClick={() => handleSelectTrace(trace.run_id)}
+                  className="flex-between flex-wrap gap-sm cursor-pointer"
+                >
+                  <div className="flex-row items-center gap-sm">
+                    <input
+                      type="checkbox"
+                      checked={isCompared}
+                      onClick={(e) => toggleCompare(trace.run_id, e)}
+                      onChange={() => {}}
+                    />
+                    <OutcomePill outcome={trace.outcome as RunOutcome} />
+                    <span className="text-sm text-bold text-primary">
+                      {trace.host}
+                    </span>
+                    <Badge variant="neutral" label={trace.persona} />
+                    {trace.has_human_corrections && (
+                      <Badge variant="warning" label="Урок для тутора" />
+                    )}
+                  </div>
 
-      <TraceDetail
-        runId={selectedRunId}
-        onClose={() => {
-          setSelectedRunId(null);
-          navigate('/traces');
-        }}
-      />
+                  <span className="text-xs text-tertiary">
+                    {trace.created_at || trace.run_id}
+                  </span>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedRunId && (
+        <TraceDetail
+          runId={selectedRunId}
+          onClose={() => {
+            setSelectedRunId(null);
+            navigate('/traces');
+          }}
+        />
+      )}
     </VStack>
   );
 };

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
-import { Markdown } from '@astryxdesign/core/Markdown';
 import { parseDrakonPseudocode, ParsedRule, ParseResult } from './drakonPseudocode';
 import { TextArea } from '@astryxdesign/core/TextArea';
-import { Selector } from '@astryxdesign/core/Selector';
 import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
 import { Card } from '@astryxdesign/core/Card';
 
 export interface BehaviorEditorProps {
@@ -24,7 +23,7 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
   const [scratchText, setScratchText] = useState<string>('');
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
 
-  const { data: vocabData, loading: vocabLoading } = useResource<{ topic_keywords: string[] }>(
+  const { data: vocabData } = useResource<{ topic_keywords: string[] }>(
     '/api/rules/vocabulary'
   );
 
@@ -41,188 +40,86 @@ export const BehaviorEditor: React.FC<BehaviorEditorProps> = ({
     setActiveTab('text');
   };
 
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* 1. Two-tab switcher */}
-      <div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <Button
-            type="button"
-            variant={activeTab === 'text' ? 'primary' : 'secondary'}
-            label="Текст"
-            onClick={() => setActiveTab('text')}
-          />
-          <Button
-            type="button"
-            variant={activeTab === 'pseudocode' ? 'primary' : 'secondary'}
-            label="Псевдокод"
-            onClick={() => setActiveTab('pseudocode')}
-          />
-        </div>
-
-        {activeTab === 'text' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <TextArea
-              label="Інструкція поведінки (Behavior)"
-              value={behavior}
-              onChange={onBehaviorChange}
-              placeholder="Введіть інструкцію поведінки агента (українською мовою)..."
-              rows={6}
-              maxLength={2000}
-            />
-          </div>
-        )}
-
-        {activeTab === 'pseudocode' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <TextArea
-              label="DRAKON псевдокод або JSON export"
-              value={scratchText}
-              onChange={setScratchText}
-              placeholder={'# назва\nIF умова\nTHEN\nдія\nEND'}
-              rows={6}
-            />
-
-            <div>
-              <Button type="button" variant="secondary" label="Розпізнати" onClick={handleParse} />
-            </div>
-
-            {parseResult && parseResult.inputKind === 'json' && (
-              <div
-                style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid #d97706',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  color: 'var(--color-text-yellow)',
-                  fontSize: '13px',
-                }}
-              >
-                ⚠️ DRAKON JSON імпорт поки не підтримується — вставте псевдокод з "Export Pseudocode".
-              </div>
-            )}
-
-            {parseResult && parseResult.inputKind === 'pseudocode' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {parseResult.rules.map((rule, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      background: 'var(--color-background-page)',
-                      border: '1px solid var(--color-border-emphasized)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '14px' }}>
-                        {rule.name || '(без назви)'}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--color-accent)', fontFamily: 'monospace' }}>
-                          {rule.suggestedPattern || '(не вказано)'}
-                        </span>
-                        {!rule.patternIsKnown && (
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: 'rgba(245, 158, 11, 0.15)',
-                              color: 'var(--color-text-yellow)',
-                              border: '1px solid #d97706',
-                            }}
-                          >
-                            невідомий патерн
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {rule.warnings.length > 0 && (
-                      <div style={{ fontSize: '12px', color: 'var(--color-text-yellow)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {rule.warnings.map((w, wIdx) => (
-                          <div key={wIdx}>⚠️ {w}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        label="Застосувати"
-                        onClick={() => handleApplyRule(rule)}
-                      />
-                    </div>
-                  </div>
-                ))}
-
-                {parseResult.globalUnparsed.length > 0 && (
-                  <div
-                    style={{
-                      background: 'var(--color-background-page)',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      fontSize: '12px',
-                      color: 'var(--color-text-secondary)',
-                    }}
-                  >
-                    <div style={{ color: 'var(--color-text-yellow)', fontWeight: 700, marginBottom: '6px' }}>
-                      Нерозпізнані рядки:
-                    </div>
-                    {parseResult.globalUnparsed.map((u, uIdx) => (
-                      <div key={uIdx} style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--color-text-disabled)' }}>
-                        L{u.line}: "{u.text}" — {u.reason}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 2. Live preview */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-disabled)' }}>
-          Попередній перегляд
-        </label>
-        <Card
-          padding={4}
-          style={{ minHeight: '48px' }}
+    <div className="flex-col gap-md">
+      <div className="flex-row gap-xs mb-xs">
+        <Button
+          type="button"
+          size="sm"
+          variant={activeTab === 'text' ? 'primary' : 'secondary'}
+          onClick={() => setActiveTab('text')}
         >
-          {behavior && behavior.trim() !== '' ? (
-            <Markdown headingLevelStart={4}>{behavior}</Markdown>
-          ) : (
-            <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic', fontSize: '13px' }}>
-              Попередній перегляд з'явиться тут при введенні тексту...
-            </span>
-          )}
-        </Card>
+          Текст
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={activeTab === 'pseudocode' ? 'primary' : 'secondary'}
+          onClick={() => setActiveTab('pseudocode')}
+        >
+          Псевдокод
+        </Button>
       </div>
 
-      {/* 3. Pattern select */}
-      <Selector
-        label="Патерн (Pattern)"
-        isLoading={vocabLoading}
-        placeholder="-- Оберіть патерн --"
-        value={pattern || undefined}
-        onChange={(v) => onPatternChange(v || '')}
-        options={
-          pattern && !knownPatterns.includes(pattern)
-            ? [...knownPatterns, { value: pattern, label: `${pattern} (застарілий)` }]
-            : knownPatterns
-        }
-      />
+      {activeTab === 'text' && (
+        <TextArea
+          label="Інструкція поведінки (Behavior)"
+          value={behavior}
+          onChange={(e) => onBehaviorChange(e.target.value)}
+          placeholder="Введіть інструкцію поведінки агента (українською мовою)..."
+          rows={5}
+        />
+      )}
+
+      {activeTab === 'pseudocode' && (
+        <div className="flex-col gap-sm">
+          <TextArea
+            label="DRAKON псевдокод або JSON export"
+            value={scratchText}
+            onChange={(e) => setScratchText(e.target.value)}
+            placeholder={'# назва\nIF умова\nTHEN\nдія\nEND'}
+            rows={5}
+          />
+
+          <div className="flex-row justify-end">
+            <Button type="button" variant="secondary" size="sm" onClick={handleParse}>
+              Розпізнати
+            </Button>
+          </div>
+
+          {parseResult && parseResult.inputKind === 'json' && (
+            <div className="p-sm bg-subtle rounded-md border-default text-xs text-yellow">
+              ⚠️ DRAKON JSON імпорт поки не підтримується — вставте псевдокод з "Export Pseudocode".
+            </div>
+          )}
+
+          {parseResult && parseResult.inputKind === 'pseudocode' && (
+            <div className="flex-col gap-sm">
+              {parseResult.rules.map((rule, idx) => (
+                <Card key={idx} padding={3}>
+                  <div className="flex-between flex-wrap gap-xs mb-xs">
+                    <span className="text-sm text-bold text-primary">{rule.name || '(без назви)'}</span>
+                    <div className="flex-row items-center gap-xs">
+                      <span className="text-xs text-accent text-mono">{rule.suggestedPattern || '(не вказано)'}</span>
+                      {!rule.patternIsKnown && (
+                        <Badge variant="warning" label="невідомий патерн" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-secondary mb-sm">{rule.suggestedBehavior}</div>
+
+                  <div className="flex-row justify-end">
+                    <Button type="button" variant="primary" size="sm" onClick={() => handleApplyRule(rule)}>
+                      Застосувати це правило
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

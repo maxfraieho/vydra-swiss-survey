@@ -34,8 +34,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/" element={<AppShell />}>
-            <Route index element={<Navigate to="/rules" replace />} />
+            <Route index element={<Navigate to="/ops" replace />} />
+            <Route path="ops" element={<SurveyOps />} />
             <Route path="rules" element={<RulesTable />} />
+            <Route path="rules/:ruleId" element={<RulesTable />} />
             <Route path="rules/compare" element={<Compare />} />
             <Route path="rules/conflicts" element={<Conflicts />} />
             <Route path="gate" element={<HostGate />} />
@@ -43,9 +45,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="traces" element={<Traces />} />
             <Route path="traces/:runId" element={<Traces />} />
             <Route path="report" element={<Report />} />
-            <Route path="ops" element={<SurveyOps />} />
             <Route path="settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/rules" replace />} />
+            <Route path="*" element={<Navigate to="/ops" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

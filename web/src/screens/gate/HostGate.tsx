@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { useResource } from '../../api/hooks';
 import { HostRow } from '../../api/settings';
 import { HostGateData, approveHostGate } from '../../api/rules';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { HStack } from '@astryxdesign/core/HStack';
-import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
 import { Selector } from '@astryxdesign/core/Selector';
 import { useToast } from '@astryxdesign/core/Toast';
+import { PageHeader } from '../../ui/primitives';
 
 export const HostGate: React.FC = () => {
   const { host: routeHost } = useParams<{ host?: string }>();
@@ -18,14 +19,12 @@ export const HostGate: React.FC = () => {
   const toast = useToast();
 
   const selectedHost = routeHost ? decodeURIComponent(routeHost) : '*';
-
   const { data: hostsList } = useResource<HostRow[]>('/api/settings/hosts');
-  const { data: gateData, loading: gateLoading, error: gateError, refetch: refetchGate } =
+  const { data: gateData, refetch: refetchGate } =
     useResource<HostGateData>(`/api/gate/${encodeURIComponent(selectedHost)}`);
 
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Build host options including '*' and all configured hosts
   const hostOptions = ['*'];
   if (hostsList) {
     for (const h of hostsList) {
@@ -35,218 +34,104 @@ export const HostGate: React.FC = () => {
     }
   }
 
-  const handleHostChange = (newHost: string) => {
-    navigate(`/gate/${encodeURIComponent(newHost)}`);
-  };
-
   const handleApprove = async () => {
     setSubmitting(true);
     try {
       await approveHostGate(selectedHost, { playbook_mode: 'active' });
-      toast({ body: `Правила хоста '${selectedHost}' увімкнено (active)!` });
+      toast.show({ variant: 'success', title: `Правила хоста '${selectedHost}' увімкнено (active)!` });
       refetchGate();
-    } catch (err: any) {
-      toast({ body: err?.message || 'Не вдалося увімкнути правила хоста', type: 'error' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Не вдалося увімкнути правила хоста', description: msg });
     } finally {
       setSubmitting(false);
     }
   };
 
+  const getBadgeVariant = (mode?: string) => {
+    if (mode === 'active') return 'success';
+    if (mode === 'shadow') return 'warning';
+    return 'neutral';
+  };
+
   return (
-    <VStack gap={5}>
-      {/* Header & Selector */}
-      <Card padding={5}>
-        <VStack gap={4}>
-          <HStack justify="space-between" align="center">
-            <div>
-              <Heading level={2} style={{ marginBottom: '4px' }}>
-                🛡️ Гейт хоста (Host Gate)
-              </Heading>
-              <Text type="body" color="secondary" display="block">
-                Керування режимом навчання та активацією правил для вибраного хоста.
-              </Text>
-            </div>
-            {gateData && (
-              <div
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  background:
-                    gateData.playbook_mode === 'active'
-                      ? 'rgba(16, 185, 129, 0.15)'
-                      : gateData.playbook_mode === 'shadow'
-                      ? 'rgba(245, 158, 11, 0.15)'
-                      : 'rgba(107, 114, 128, 0.15)',
-                  border: `1px solid ${
-                    gateData.playbook_mode === 'active'
-                      ? '#059669'
-                      : gateData.playbook_mode === 'shadow'
-                      ? '#d97706'
-                      : '#4b5563'
-                  }`,
-                  color:
-                    gateData.playbook_mode === 'active'
-                      ? 'var(--color-text-green)'
-                      : gateData.playbook_mode === 'shadow'
-                      ? 'var(--color-text-yellow)'
-                      : '#9ca3af',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                }}
-              >
-                РЕЖИМ: {gateData.playbook_mode.toUpperCase()}
-              </div>
-            )}
-          </HStack>
-
-          <div style={{ maxWidth: '360px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: 'var(--color-text-secondary)' }}>
-              Вибір хоста:
-            </label>
-            <Selector
-              value={selectedHost}
-              onChange={(e) => handleHostChange(e.target.value)}
-              options={hostOptions.map((h) => ({
-                label: h === '*' ? '* (Глобальний / Усі хости)' : h,
-                value: h,
-              }))}
+    <VStack gap={4}>
+      <PageHeader
+        eyebrow="ГЕЙТИ"
+        title="Гейт хоста (Host Gate)"
+        subtitle="Керування режимом навчання та активацією правил для вибраного хоста"
+        actions={
+          gateData ? (
+            <Badge
+              variant={getBadgeVariant(gateData.playbook_mode)}
+              label={`РЕЖИМ: ${gateData.playbook_mode.toUpperCase()}`}
             />
-          </div>
-        </VStack>
-      </Card>
+          ) : undefined
+        }
+      />
 
-      {/* Loading & Error states */}
-      {gateLoading && (
-        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
-          Завантаження метрик гейта хоста '{selectedHost}'...
+      <Card padding={4}>
+        <div className="mb-md max-w-sm">
+          <Selector
+            label="Виберіть хост"
+            value={selectedHost}
+            onChange={(newHost) => navigate(`/gate/${encodeURIComponent(newHost)}`)}
+            options={hostOptions.map((h) => ({ value: h, label: h === '*' ? '* (Глобальні правила)' : h }))}
+          />
         </div>
-      )}
 
-      {gateError && (
-        <Card padding={5}>
-          <Text type="body" style={{ color: 'var(--color-text-red)' }}>
-            ⚠️ Помилка завантаження гейта: {gateError.message}
-          </Text>
-        </Card>
-      )}
-
-      {/* Metrics Checklist Card */}
-      {!gateLoading && !gateError && gateData && (
-        <Card padding={5}>
+        {gateData && (
           <VStack gap={4}>
-            <Heading level={3} style={{ fontSize: '16px', marginBottom: '8px' }}>
-              📋 Чек-лист готовності хоста: <code style={{ color: 'var(--color-accent)' }}>{gateData.host}</code>
-            </Heading>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-              {/* Metric Item: Shadow rules */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '8px',
-                  background: 'var(--color-bg-subtle)',
-                  border: `1px solid ${gateData.unreviewed_shadow_rules > 0 ? 'var(--color-border-yellow)' : 'var(--color-border-subtle)'}`,
-                }}
-              >
-                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
-                  Незрозглянуті Shadow-правила
+            <div className="grid-responsive">
+              <div className="p-md rounded-lg bg-subtle border-default">
+                <div className="text-xs text-secondary mb-xs">
+                  Shadow-правила на випробуванні
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: gateData.unreviewed_shadow_rules > 0 ? 'var(--color-text-yellow)' : 'var(--color-text-primary)' }}>
-                  {gateData.unreviewed_shadow_rules > 0 ? `⚠️ ${gateData.unreviewed_shadow_rules}` : '✅ 0'}
+                <div className={`text-xl text-bold ${gateData.shadow_rules_count > 0 ? 'text-yellow' : 'text-primary'}`}>
+                  {gateData.shadow_rules_count}
                 </div>
-                {gateData.unreviewed_shadow_rules > 0 && (
-                  <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    <Link to="/rules" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>
-                      Розглянути в Правилах →
-                    </Link>
-                  </div>
-                )}
               </div>
 
-              {/* Metric Item: Conflicts */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '8px',
-                  background: 'var(--color-bg-subtle)',
-                  border: `1px solid ${gateData.conflicts_count > 0 ? 'var(--color-border-red)' : 'var(--color-border-subtle)'}`,
-                }}
-              >
-                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
-                  Невирішені Конфлікти
+              <div className="p-md rounded-lg bg-subtle border-default">
+                <div className="text-xs text-secondary mb-xs">
+                  Конфлікти правил
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: gateData.conflicts_count > 0 ? 'var(--color-text-red)' : 'var(--color-text-primary)' }}>
-                  {gateData.conflicts_count > 0 ? `🚨 ${gateData.conflicts_count}` : '✅ 0'}
+                <div className={`text-xl text-bold ${gateData.unresolved_conflicts > 0 ? 'text-red' : 'text-green'}`}>
+                  {gateData.unresolved_conflicts === 0 ? '0 (OK)' : `${gateData.unresolved_conflicts} нерозв'язано`}
                 </div>
-                {gateData.conflicts_count > 0 && (
-                  <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    <Link to="/rules/conflicts" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>
-                      Вирішити в Конфліктах →
-                    </Link>
-                  </div>
-                )}
               </div>
 
-              {/* Metric Item: Completed Run */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '8px',
-                  background: 'var(--color-bg-subtle)',
-                  border: '1px solid var(--color-border-subtle)',
-                }}
-              >
-                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
+              <div className="p-md rounded-lg bg-subtle border-default">
+                <div className="text-xs text-secondary mb-xs">
                   Завершений успішний прогін
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: gateData.has_completed_run ? 'var(--color-text-green)' : 'var(--color-text-red)' }}>
+                <div className={`text-lg text-bold ${gateData.has_completed_run ? 'text-green' : 'text-red'}`}>
                   {gateData.has_completed_run ? '✅ Зафіксовано' : '❌ Відсутній'}
                 </div>
               </div>
 
-              {/* Metric Item: Total Rules breakdown */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '8px',
-                  background: 'var(--color-bg-subtle)',
-                  border: '1px solid var(--color-border-subtle)',
-                }}
-              >
-                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
+              <div className="p-md rounded-lg bg-subtle border-default">
+                <div className="text-xs text-secondary mb-xs">
                   Загальна статистика правил
                 </div>
-                <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+                <div className="text-sm">
                   <strong>Всього:</strong> {gateData.total_rules} |{' '}
-                  <span style={{ color: 'var(--color-text-green)' }}>Active: {gateData.active_rules}</span> |{' '}
-                  <span style={{ color: '#9ca3af' }}>Retired: {gateData.retired_rules}</span>
+                  <span className="text-green">Active: {gateData.active_rules}</span> |{' '}
+                  <span className="text-tertiary">Retired: {gateData.retired_rules}</span>
                 </div>
-                {gateData.missing_evidence_rules > 0 && (
-                  <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginTop: '4px' }}>
-                    Без доказів (evidence): {gateData.missing_evidence_rules}
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Gated status summary */}
-            {gateData.gated_by && (
-              <Text type="body" color="secondary" style={{ fontSize: '13px' }}>
-                ℹ️ Налаштування гейта успадковано від рівню: <code>{gateData.gated_by}</code>
-              </Text>
-            )}
-
-            {/* Approve Button Action */}
-            <div style={{ paddingTop: '12px', borderTop: '1px solid var(--color-border-subtle)' }}>
+            <div className="border-top pt-md">
               <HStack justify="space-between" align="center">
                 <div>
                   {gateData.ready_for_active ? (
-                    <Text type="body" style={{ color: 'var(--color-text-green)', fontWeight: 600 }}>
+                    <Text type="body" className="text-green text-semibold">
                       ✅ Всі умови виконано. Хост готовий до увімкнення правил!
                     </Text>
                   ) : (
-                    <Text type="body" style={{ color: 'var(--color-text-yellow)', fontWeight: 600 }}>
-                      ⚠️ Увага: Увімкнення заблоковано до виконання всіх умов чек-листа (shadow-правила, конфлікти, хоча б 1 успішний прогін).
+                    <Text type="body" className="text-yellow text-semibold">
+                      ⚠️ Увімкнення заблоковано до виконання всіх умов чек-листа.
                     </Text>
                   )}
                 </div>
@@ -256,13 +141,13 @@ export const HostGate: React.FC = () => {
                   onClick={handleApprove}
                   disabled={!gateData.ready_for_active || submitting}
                 >
-                  {submitting ? 'Збереження...' : gateData.playbook_mode === 'active' ? 'Правила увімкнено (Оновити active)' : 'Увімкнути правила хоста'}
+                  {submitting ? 'Збереження...' : gateData.playbook_mode === 'active' ? 'Правила увімкнено (active)' : 'Увімкнути правила хоста'}
                 </Button>
               </HStack>
             </div>
           </VStack>
-        </Card>
-      )}
+        )}
+      </Card>
     </VStack>
   );
 };

@@ -25,10 +25,7 @@ export const TelegramSettingsPanel: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token.trim()) {
-      toast({ body: 'Введіть токен Telegram', type: 'error' });
-      return;
-    }
+    if (!token.trim()) return;
     setSaving(true);
     try {
       await apiFetch('/api/settings/telegram-token', {
@@ -36,11 +33,12 @@ export const TelegramSettingsPanel: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token.trim() }),
       });
-      toast({ body: 'Токен Telegram успішно збережено' });
+      toast.show({ variant: 'success', title: 'Токен Telegram успішно збережено' });
       setToken('');
       refetch();
-    } catch (err: any) {
-      toast({ body: err?.message || 'Помилка збереження токена Telegram', type: 'error' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Помилка збереження токена Telegram', description: msg });
     } finally {
       setSaving(false);
     }
@@ -51,52 +49,36 @@ export const TelegramSettingsPanel: React.FC = () => {
     : 'Токен не налаштовано — використовується типовий';
 
   return (
-    <VStack gap={5}>
-      <Card padding={5}>
-        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
-              ✈️ TELEGRAM BOT TOKEN
-            </span>
-            <Heading level={3} style={{ marginTop: '4px', fontSize: '16px' }}>
-              Налаштування токена Telegram
-            </Heading>
-          </div>
-          {loading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Завантаження...</span>}
+    <VStack gap={4}>
+      <Card padding={4}>
+        <div className="flex-between mb-md">
+          <Heading level={3} style={{ fontSize: '16px' }}>
+            Налаштування токена Telegram
+          </Heading>
+          {data?.configured && <Badge variant="success" label="Активний" />}
         </div>
 
-        {error && (
-          <div style={{ padding: '12px', color: 'var(--color-text-red)', fontSize: '13px', marginBottom: '16px' }}>
-            ⚠️ Помилка завантаження стану: {error.message}
-          </div>
-        )}
-
-        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {data?.configured ? (
-            <Badge variant="success" label={maskedText} />
-          ) : (
-            <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)' }}>
-              {maskedText}
-            </span>
-          )}
+        <div className="mb-md">
+          <span className="text-xs text-secondary">{maskedText}</span>
         </div>
 
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSave} className="flex-col gap-md">
           <TextInput
             type="password"
             label="Новий токен Telegram (Bot API Token)"
             value={token}
-            onChange={setToken}
-            placeholder={data?.masked ? `Поточний токен: ${data.masked}` : 'Введіть токен бота (напр. 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11)'}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="Введіть токен бота (напр. 123456:ABC-DEF...)"
           />
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="flex-row justify-end">
             <Button
               type="submit"
               variant="primary"
-              isDisabled={saving || !token.trim()}
-              label={saving ? 'Збереження...' : 'Зберегти'}
-            />
+              disabled={saving || !token.trim()}
+            >
+              {saving ? 'Збереження...' : 'Зберегти токен'}
+            </Button>
           </div>
         </form>
       </Card>

@@ -1,106 +1,69 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
-import { resolveConflict } from '../../api/rules';
-import { RuleRow } from './RulesTable';
-import { Markdown } from '@astryxdesign/core/Markdown';
+import { resolveConflictGroup, ConflictGroup } from '../../api/rules';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
-import { Button } from '@astryxdesign/core/Button';
 import { Selector } from '@astryxdesign/core/Selector';
+import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
 import { useToast } from '@astryxdesign/core/Toast';
-import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
+import { PageHeader, EmptyState } from '../../ui/primitives';
 
-export interface ConflictGroup {
-  host: string;
-  persona: string;
-  pattern: string;
-  count: number;
-  rules: RuleRow[];
-}
-
-export interface ConflictsResponse {
+interface ConflictsData {
   count: number;
   conflicts: ConflictGroup[];
 }
 
 export const Conflicts: React.FC = () => {
   const toast = useToast();
-  const { data, loading, error, refetch } = useResource<ConflictsResponse>('/api/rules/conflicts');
+  const { data, loading, refetch } = useResource<ConflictsData>('/api/rules/conflicts');
 
-  const [busyRuleId, setBusyRuleId] = useState<number | null>(null);
   const [loserAction, setLoserAction] = useState<'retire' | 'delete'>('retire');
   const [resolutionNote, setResolutionNote] = useState<string>('');
+  const [busyGroupId, setBusyGroupId] = useState<number | null>(null);
 
-  const handleResolve = async (ruleId: number, winnerId: number) => {
-    setBusyRuleId(winnerId);
+  const handleResolve = async (group: ConflictGroup, winnerId: number, groupIndex: number) => {
+    setBusyGroupId(groupIndex);
     try {
-      await resolveConflict(ruleId, {
-        winner_id: winnerId,
+      await resolveConflictGroup({
+        host: group.host,
+        persona: group.persona,
+        pattern: group.pattern,
+        winner_rule_id: winnerId,
         loser_action: loserAction,
         note: resolutionNote.trim() || undefined,
       });
-      toast({ body: `Конфлікт вирішено! Правило #${winnerId} обрано переможцем (active).` });
-      setResolutionNote('');
+      toast.show({ variant: 'success', title: `Конфлікт розв'язано: Правило #${winnerId} вибрано як переможець` });
       refetch();
-    } catch (err: any) {
-      toast({ body: err?.message || 'Помилка при вирішенні конфлікту', type: 'error' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Не вдалося розв’язати конфлікт', description: msg });
     } finally {
-      setBusyRuleId(null);
+      setBusyGroupId(null);
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
-        Завантаження перевірки конфліктів джерел...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card padding={5}>
-        <Text type="body" style={{ color: 'var(--color-text-red)' }}>Помилка перевірки конфліктів: {error.message}</Text>
-      </Card>
-    );
-  }
-
   return (
-    <VStack gap={5}>
-      <Card padding={5}>
-        <HStack justify="between" align="center">
-          <div>
-            <Heading level={2} style={{ marginBottom: '4px' }}>
-              ⚔️ Конфлікти джерел знань (Source Conflicts)
-            </Heading>
-            <Text type="body" color="secondary" display="block">
-              Групи (host, persona, pattern), які мають різну поведінку від різних джерел.
-            </Text>
-          </div>
-          <div
-            style={{
-              padding: '6px 14px',
-              borderRadius: '8px',
-              background: data && data.count > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-              border: `1px solid ${data && data.count > 0 ? 'var(--color-border-red)' : '#059669'}`,
-              color: data && data.count > 0 ? 'var(--color-text-red)' : 'var(--color-text-green)',
-              fontWeight: 700,
-              fontSize: '13px',
-            }}
-          >
-            {data?.count || 0} Конфліктів
-          </div>
-        </HStack>
-      </Card>
+    <VStack gap={4}>
+      <PageHeader
+        eyebrow="КОНФЛІКТИ"
+        title="Конфлікти правил (Rule Conflicts)"
+        subtitle="Групи (host, persona, pattern), які мають різну поведінку від різних джерел"
+        actions={
+          <Badge
+            variant={data && data.count > 0 ? 'error' : 'success'}
+            label={`${data?.count || 0} Конфліктів`}
+          />
+        }
+      />
 
-      {/* Global Resolution Settings Bar */}
       {data && data.conflicts.length > 0 && (
-        <Card padding={4} style={{ background: 'var(--color-background-muted)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ minWidth: '240px' }}>
+        <Card padding={4}>
+          <div className="flex-row flex-wrap gap-md items-center">
+            <div className="min-w-0" style={{ minWidth: '240px' }}>
               <Selector
                 label="Дія для програвших правил"
                 value={loserAction}
@@ -116,15 +79,7 @@ export const Conflicts: React.FC = () => {
               placeholder="Примітка рішення (необов'язково)..."
               value={resolutionNote}
               onChange={(e) => setResolutionNote(e.target.value)}
-              style={{
-                flex: '1 1 200px',
-                background: 'var(--color-background-page)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: 'var(--color-text-primary)',
-                fontSize: '13px',
-              }}
+              className="input-standard flex-1"
             />
           </div>
         </Card>
@@ -132,69 +87,49 @@ export const Conflicts: React.FC = () => {
 
       {data && data.conflicts.length === 0 ? (
         <Card padding={5}>
-          <Text type="body" display="block" style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-green)', fontWeight: 600 }}>
-            ✅ Конфліктів між джерелами не виявлено. Усі правила узгоджені!
-          </Text>
+          <EmptyState
+            title="Конфліктів не виявлено"
+            description="Усі правила між джерелами узгоджені!"
+          />
         </Card>
       ) : (
         <VStack gap={4}>
           {data?.conflicts.map((group, idx) => (
             <Card key={idx} padding={4}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#ef4444', color: '#fff', textTransform: 'uppercase' }}>
-                    КОНФЛІКТ #{idx + 1}
-                  </span>
-                  <span style={{ fontSize: '14px', color: 'var(--color-text-primary)', fontWeight: 700 }}>
-                    {group.host} • {group.persona} • <code style={{ color: 'var(--color-accent)' }}>{group.pattern}</code>
+              <div className="flex-between flex-wrap gap-sm mb-sm">
+                <div className="flex-row items-center gap-md">
+                  <Badge variant="error" label={`КОНФЛІКТ #${idx + 1}`} />
+                  <span className="text-sm text-primary text-bold">
+                    {group.host} • {group.persona} • <code className="text-accent">{group.pattern}</code>
                   </span>
                 </div>
-                <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
+                <span className="text-xs text-tertiary">
                   Правил у конфлікті: {group.rules.length}
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                {group.rules.map((r) => {
-                  const isBusy = busyRuleId === r.id;
-                  return (
-                    <Card key={r.id} padding={4} style={{ border: r.effective ? '1px solid var(--color-border-blue)' : undefined }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
-                        {r.effective ? (
-                          <span style={{ color: 'var(--color-text-blue)', fontWeight: 700, fontSize: '12px', background: 'rgba(59, 130, 246, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                            🏆 WINNER (effective)
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-red)', fontSize: '12px', background: 'rgba(239, 68, 68, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                            ⚠️ Shadowed by #{r.shadowed_by}
-                          </span>
-                        )}
+              <div className="flex-col gap-sm">
+                {group.rules.map((rule) => (
+                  <div key={rule.id} className="p-sm bg-subtle rounded-md border-default flex-between flex-wrap gap-sm">
+                    <div className="flex-col gap-xs">
+                      <div className="flex-row items-center gap-sm">
+                        <span className="text-sm text-bold text-primary">#{rule.id}</span>
+                        <Badge variant="neutral" label={rule.source} />
+                        <span className="text-xs text-secondary">Впевненість: {Math.round(rule.confidence * 100)}%</span>
                       </div>
+                      <div className="text-xs text-primary">{rule.behavior}</div>
+                    </div>
 
-                      <MetadataList columns={1} label={{ position: 'start' }}>
-                        <MetadataListItem label="Джерело">{r.source}</MetadataListItem>
-                        <MetadataListItem label="Status">{r.status}</MetadataListItem>
-                        <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
-                      </MetadataList>
-
-                      <div style={{ marginTop: '8px', marginBottom: '12px' }}>
-                        <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
-                      </div>
-
-                      <div style={{ paddingTop: '8px', borderTop: '1px solid var(--color-border-subtle)', display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button
-                          type="button"
-                          variant={r.effective ? 'secondary' : 'primary'}
-                          size="sm"
-                          label={isBusy ? 'Збереження...' : r.effective ? 'Підтвердити як Winner' : '🏆 Обрати переможцем'}
-                          onClick={() => handleResolve(group.rules[0].id, r.id)}
-                          isDisabled={isBusy}
-                        />
-                      </div>
-                    </Card>
-                  );
-                })}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={busyGroupId === idx}
+                      onClick={() => handleResolve(group, rule.id, idx)}
+                    >
+                      Вибрати переможцем
+                    </Button>
+                  </div>
+                ))}
               </div>
             </Card>
           ))}

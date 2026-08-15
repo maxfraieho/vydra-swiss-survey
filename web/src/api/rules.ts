@@ -15,20 +15,25 @@ export function createRule(v: RuleFormValues) {
   return apiFetch<RuleDetailData>('/api/rules', {
     method: 'POST',
     body: JSON.stringify({
-      host: v.host.trim(), persona: v.persona.trim() || '*',
-      pattern: v.pattern.trim(), behavior: v.behavior.trim(),
-      confidence: v.confidence, status: v.status,
+      host: v.host.trim(),
+      persona: v.persona.trim() || '*',
+      pattern: v.pattern.trim(),
+      behavior: v.behavior.trim(),
+      confidence: v.confidence,
+      status: v.status,
       note: v.note?.trim() || undefined,
     }),
   });
 }
 
-export function updateRule(id: number, v: RuleFormValues) {
+export function updateRule(id: number, v: Partial<RuleFormValues>) {
   return apiFetch<RuleDetailData>(`/api/rules/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      behavior: v.behavior.trim(), confidence: v.confidence,
-      status: v.status, note: v.note?.trim() || undefined,
+      behavior: v.behavior?.trim(),
+      confidence: v.confidence,
+      status: v.status,
+      note: v.note?.trim() || undefined,
     }),
   });
 }
@@ -40,10 +45,12 @@ export function fetchRule(id: number) {
 export interface HostGateData {
   host: string;
   playbook_mode: 'shadow' | 'active' | 'off';
-  gated_by: string | null;
-  unreviewed_shadow_rules: number;
-  conflicts_count: number;
-  missing_evidence_rules: number;
+  gated_by?: string | null;
+  unreviewed_shadow_rules?: number;
+  shadow_rules_count: number;
+  conflicts_count?: number;
+  unresolved_conflicts: number;
+  missing_evidence_rules?: number;
   total_rules: number;
   active_rules: number;
   retired_rules: number;
@@ -65,6 +72,24 @@ export function approveHostGate(
   });
 }
 
+export interface ConflictRule {
+  id: number;
+  host: string;
+  persona: string;
+  pattern: string;
+  behavior: string;
+  source: string;
+  status: 'active' | 'shadow' | 'retired';
+  confidence: number;
+}
+
+export interface ConflictGroup {
+  host: string;
+  persona: string;
+  pattern: string;
+  rules: ConflictRule[];
+}
+
 export function resolveConflict(
   ruleId: number,
   options: { winner_id: number; loser_action: 'retire' | 'delete'; note?: string }
@@ -75,16 +100,33 @@ export function resolveConflict(
   });
 }
 
-export function bulkUpdateRules(
-  ids: number[],
-  op: 'promote' | 'retire' | 'delete',
-  note?: string
-): Promise<{ op: string; requested: number; changed: number }> {
-  return apiFetch<{ op: string; requested: number; changed: number }>('/api/rules/bulk', {
+export function resolveConflictGroup(options: {
+  host: string;
+  persona: string;
+  pattern: string;
+  winner_rule_id: number;
+  loser_action: 'retire' | 'delete';
+  note?: string;
+}): Promise<{ ok: boolean }> {
+  return apiFetch('/api/rules/conflicts/resolve', {
     method: 'POST',
-    body: JSON.stringify({ ids, op, note: note?.trim() || undefined }),
+    body: JSON.stringify(options),
   });
 }
 
-
-
+export function bulkUpdateRules(
+  args: { rule_ids: number[]; action: 'promote' | 'retire' | 'delete'; note?: string } | number[],
+  op?: 'promote' | 'retire' | 'delete',
+  note?: string
+): Promise<{ op: string; requested: number; changed: number }> {
+  if (Array.isArray(args)) {
+    return apiFetch<{ op: string; requested: number; changed: number }>('/api/rules/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ ids: args, op, note: note?.trim() || undefined }),
+    });
+  }
+  return apiFetch<{ op: string; requested: number; changed: number }>('/api/rules/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ids: args.rule_ids, op: args.action, note: args.note?.trim() || undefined }),
+  });
+}

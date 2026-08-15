@@ -1,46 +1,32 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { ProviderRow, createProvider, deleteProvider } from '../../api/settings';
-import { useIsNarrow } from '../../shell/useIsNarrow';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
-import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useToast } from '@astryxdesign/core/Toast';
+import { MasterDetail } from '../../ui/primitives';
 
 export const ProvidersPanel: React.FC = () => {
-  const isNarrow = useIsNarrow();
   const toast = useToast();
-  const { data: providers, loading: providersLoading, error: providersError, refetch: refetchProviders } =
+  const { data: providers, refetch: refetchProviders } =
     useResource<ProviderRow[]>('/api/settings/providers');
 
   const [key, setKey] = useState<string>('');
   const [label, setLabel] = useState<string>('');
   const [urlPattern, setUrlPattern] = useState<string>('');
   const [note, setNote] = useState<string>('');
-
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [providerToDelete, setProviderToDelete] = useState<ProviderRow | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAttemptedSubmit(true);
-
     const trimmedKey = key.trim();
     const trimmedLabel = label.trim();
-
-    const missing: string[] = [];
-    if (!trimmedKey) missing.push('Ключ (key)');
-    if (!trimmedLabel) missing.push('Назва (label)');
-
-    if (missing.length > 0) {
-      return;
-    }
+    if (!trimmedKey || !trimmedLabel) return;
 
     setSubmitting(true);
     try {
@@ -54,168 +40,105 @@ export const ProvidersPanel: React.FC = () => {
       setLabel('');
       setUrlPattern('');
       setNote('');
-      setAttemptedSubmit(false);
-      toast({ body: 'Збережено' });
+      toast.show({ variant: 'success', title: 'Провайдера створено' });
       refetchProviders();
-    } catch (err: any) {
-      toast({ body: err?.message || 'Не вдалося створити провайдера', type: 'error' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Помилка створення провайдера', description: msg });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = (prov: ProviderRow) => {
-    setProviderToDelete(prov);
-    setConfirmDeleteOpen(true);
+  const executeDelete = async () => {
+    if (!providerToDelete) return;
+    try {
+      await deleteProvider(providerToDelete.id);
+      toast.show({ variant: 'info', title: `Провайдера '${providerToDelete.key}' видалено` });
+      setProviderToDelete(null);
+      refetchProviders();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Не вдалося видалити провайдера', description: msg });
+    }
   };
 
-  return (
-    <VStack gap={5}>
-      {/* Table Card */}
-      <Card padding={0} style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Heading level={3} style={{ fontSize: '15px' }}>
-            Провайдери ({providers?.length || 0})
-          </Heading>
-          {providersLoading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Завантаження...</span>}
-        </div>
-
-        {providersError && (
-          <div style={{ padding: '16px 20px', color: 'var(--color-text-red)', fontSize: '13px' }}>
-            ⚠️ Помилка завантаження провайдерів: {providersError.message}
+  const masterList = (
+    <div className="flex-col gap-sm">
+      {(providers || []).map((p) => (
+        <Card key={p.id} padding={3}>
+          <div className="flex-between">
+            <div className="flex-col gap-xs">
+              <span className="text-sm text-bold text-primary">{p.label}</span>
+              <span className="text-xs text-accent text-mono">{p.key}</span>
+            </div>
+            <Button variant="destructive" size="sm" onClick={() => setProviderToDelete(p)}>
+              ✕
+            </Button>
           </div>
-        )}
+          {p.url_pattern && <div className="text-xs text-secondary mt-xs">{p.url_pattern}</div>}
+        </Card>
+      ))}
+    </div>
+  );
 
-        {!providersLoading && providers && providers.length === 0 && (
-          <div style={{ padding: '24px 20px', color: 'var(--color-text-tertiary)', fontSize: '13px', textAlign: 'center' }}>
-            Провайдери відсутні. Створіть першого провайдера за допомогою форми нижче.
-          </div>
-        )}
-
-        {providers && providers.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
-            {providers.map((p) => (
-              <Card key={p.id} padding={4}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.label}</span>
-                  <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{p.id}</span>
-                </div>
-                <MetadataList columns={1} label={{ position: 'start' }}>
-                  <MetadataListItem label="Key">{p.key}</MetadataListItem>
-                  <MetadataListItem label="URL Pattern">{p.url_pattern || '—'}</MetadataListItem>
-                  <MetadataListItem label="Примітка">{p.note || '—'}</MetadataListItem>
-                </MetadataList>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(p)}
-                    style={{
-                      padding: '4px 10px',
-                      minHeight: '44px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      border: '1px solid var(--color-border-red)',
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      color: 'var(--color-text-red)',
-                    }}
-                  >
-                    Вилучити
-                  </button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Creation Form Card */}
-      <Card padding={5}>
-      <form
-        onSubmit={handleCreate}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
-        <Heading level={4} style={{ fontSize: '14px' }}>
-          + Додати провайдера
+  const formSection = (
+    <Card padding={4}>
+      <form onSubmit={handleCreate} className="flex-col gap-md">
+        <Heading level={3} style={{ fontSize: '16px' }}>
+          Додати нового провайдера
         </Heading>
 
+        <TextInput
+          label="Ключ провайдера (key)"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="e.g. cint або dynata"
+          required
+        />
 
-        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <TextInput
-            label="Key (Ідентифікатор)"
-            isRequired
-            value={key}
-            onChange={setKey}
-            placeholder="e.g. qualtrics"
-            status={attemptedSubmit && !key.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
-          />
+        <TextInput
+          label="Назва (Label)"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Cint Survey Provider"
+          required
+        />
 
-          <TextInput
-            label="Label (Назва)"
-            isRequired
-            value={label}
-            onChange={setLabel}
-            placeholder="e.g. Qualtrics Surveys"
-            status={attemptedSubmit && !label.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
-          />
-        </div>
+        <TextInput
+          label="URL Pattern (RegExp/Substring)"
+          value={urlPattern}
+          onChange={(e) => setUrlPattern(e.target.value)}
+          placeholder="cint.com"
+        />
 
-        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <TextInput
-            label="URL Pattern"
-            isOptional
-            value={urlPattern}
-            onChange={setUrlPattern}
-            placeholder="e.g. %qualtrics.com%"
-          />
+        <TextInput
+          label="Примітка"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Особливості інтеграції"
+        />
 
-          <TextInput
-            label="Примітка (Note)"
-            isOptional
-            value={note}
-            onChange={setNote}
-            placeholder="Короткий коментар..."
-          />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-          <Button
-            type="submit"
-            variant="primary"
-            isDisabled={submitting}
-            label={submitting ? 'Збереження...' : 'Створити провайдера'}
-          />
+        <div className="flex-row justify-end mt-sm">
+          <Button variant="primary" type="submit" disabled={submitting}>
+            {submitting ? 'Збереження...' : 'Зберегти провайдера'}
+          </Button>
         </div>
       </form>
-      </Card>
+    </Card>
+  );
+
+  return (
+    <VStack gap={4}>
+      <MasterDetail master={masterList} detail={formSection} />
 
       <AlertDialog
-        isOpen={confirmDeleteOpen}
-        onOpenChange={setConfirmDeleteOpen}
-        title={providerToDelete ? `Вилучити провайдера "${providerToDelete.label}" (${providerToDelete.key})?` : ''}
-        description="Цю дію неможливо скасувати."
-        actionLabel="Вилучити"
-        onAction={async () => {
-          if (!providerToDelete) return;
-          try {
-            await deleteProvider(providerToDelete.id);
-            toast({ body: 'Вилучено' });
-            refetchProviders();
-          } catch (err: any) {
-            toast({ body: err?.message || 'Не вдалося вилучити провайдера', type: 'error' });
-          } finally {
-            setConfirmDeleteOpen(false);
-            setProviderToDelete(null);
-          }
-        }}
+        isOpen={Boolean(providerToDelete)}
+        onClose={() => setProviderToDelete(null)}
+        title="Видалити провайдера?"
+        description={`Ви дійсно хочете видалити '${providerToDelete?.label}'?`}
+        confirmLabel="Видалити"
+        onConfirm={executeDelete}
       />
     </VStack>
   );

@@ -1,26 +1,63 @@
 import React from 'react';
 import { SideNav, SideNavSection, SideNavItem } from '@astryxdesign/core/SideNav';
+import { Badge } from '@astryxdesign/core/Badge';
 import { Link, useLocation } from 'react-router';
+import { usePolling } from '../api/hooks';
+
+interface ConflictsCountResponse {
+  count: number;
+}
 
 export const Nav: React.FC = () => {
   const { pathname } = useLocation();
+
+  const { data: conflicts } = usePolling<ConflictsCountResponse>('/api/rules/conflicts/count', {
+    intervalMs: 15000,
+  });
+  const conflictCount = conflicts?.count ?? 0;
+
   return (
     <SideNav>
-      <SideNavSection title="🧠 Знання">
-        <SideNavItem as={Link} href="/rules" label="Правила" isSelected={pathname === '/rules'} />
-        <SideNavItem as={Link} href="/rules/compare" label="Порівняння" isSelected={pathname === '/rules/compare'} />
-        <SideNavItem as={Link} href="/rules/conflicts" label="Конфлікти" isSelected={pathname === '/rules/conflicts'} />
-        <SideNavItem as={Link} href="/gate" label="Гейт хоста" isSelected={pathname.startsWith('/gate')} />
+      <SideNavSection title="Робота">
+        <SideNavItem
+          as={Link}
+          href="/ops"
+          label="Пульт оператора"
+          isSelected={pathname === '/ops' || pathname === '/'}
+        />
+        <SideNavItem
+          as={Link}
+          href="/traces"
+          label="Прогони"
+          isSelected={pathname.startsWith('/traces')}
+        />
       </SideNavSection>
-      <SideNavSection title="🔍 Аудит">
-        <SideNavItem as={Link} href="/traces" label="Прогони (Traces)" isSelected={pathname.startsWith('/traces')} />
-        <SideNavItem as={Link} href="/report" label="Звіт (Report)" isSelected={pathname === '/report'} />
+
+      <SideNavSection title="Навчання">
+        <SideNavItem
+          as={Link}
+          href="/rules"
+          label="Навички агента"
+          isSelected={pathname === '/rules' || /^\/rules\/\d+$/.test(pathname)}
+          endContent={
+            conflictCount > 0 ? <Badge variant="error" label={String(conflictCount)} /> : undefined
+          }
+        />
+        <SideNavItem
+          as={Link}
+          href="/report"
+          label="Звіт"
+          isSelected={pathname === '/report'}
+        />
       </SideNavSection>
-      <SideNavSection title="🎓 Опитування">
-        <SideNavItem as={Link} href="/ops" label="Ops (HITL)" isSelected={pathname === '/ops'} />
-      </SideNavSection>
-      <SideNavSection title="⚙️ Налаштування">
-        <SideNavItem as={Link} href="/settings" label="Хости, персони, патерни" isSelected={pathname === '/settings'} />
+
+      <SideNavSection title="Налаштування">
+        <SideNavItem
+          as={Link}
+          href="/settings"
+          label="Налаштування"
+          isSelected={pathname === '/settings'}
+        />
       </SideNavSection>
     </SideNav>
   );

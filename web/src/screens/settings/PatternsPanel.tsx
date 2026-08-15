@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
 import { PatternRow, createPattern, deletePattern } from '../../api/settings';
-import { useIsNarrow } from '../../shell/useIsNarrow';
 import { Badge } from '@astryxdesign/core/Badge';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Selector } from '@astryxdesign/core/Selector';
@@ -9,48 +8,26 @@ import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
-import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useToast } from '@astryxdesign/core/Toast';
+import { MasterDetail } from '../../ui/primitives';
 
 export const PatternsPanel: React.FC = () => {
-  const isNarrow = useIsNarrow();
   const toast = useToast();
-  const { data: patterns, loading: patternsLoading, error: patternsError, refetch: refetchPatterns } =
+  const { data: patterns, refetch: refetchPatterns } =
     useResource<PatternRow[]>('/api/settings/patterns');
 
   const [key, setKey] = useState<string>('');
   const [label, setLabel] = useState<string>('');
   const [keywordsText, setKeywordsText] = useState<string>('');
   const [qualifyingPolarity, setQualifyingPolarity] = useState<string>('');
-
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
   const [patternToDelete, setPatternToDelete] = useState<PatternRow | null>(null);
-
-  const formatKeywords = (kw: any): string => {
-    if (!kw) return '—';
-    if (Array.isArray(kw)) return kw.join(', ');
-    if (typeof kw === 'string') {
-      try {
-        const parsed = JSON.parse(kw);
-        if (Array.isArray(parsed)) return parsed.join(', ');
-      } catch {}
-      return kw;
-    }
-    return String(kw);
-  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAttemptedSubmit(true);
-
-    const trimmedKey = key.trim();
-    if (!trimmedKey) {
-      return;
-    }
-
+    const trimmed = key.trim();
+    if (!trimmed) return;
     const keywordsArray = keywordsText
       .split(',')
       .map((k) => k.trim())
@@ -59,7 +36,7 @@ export const PatternsPanel: React.FC = () => {
     setSubmitting(true);
     try {
       await createPattern({
-        key: trimmedKey,
+        key: trimmed,
         label: label.trim() || undefined,
         keywords: keywordsArray.length > 0 ? keywordsArray : undefined,
         qualifying_polarity: qualifyingPolarity || undefined,
@@ -68,179 +45,110 @@ export const PatternsPanel: React.FC = () => {
       setLabel('');
       setKeywordsText('');
       setQualifyingPolarity('');
-      setAttemptedSubmit(false);
-      toast({ body: 'Збережено' });
+      toast.show({ variant: 'success', title: 'Патерн створено' });
       refetchPatterns();
-    } catch (err: any) {
-      toast({ body: err?.message || 'Не вдалося створити патерн', type: 'error' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Помилка створення патерну', description: msg });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (pattern: PatternRow) => {
-    if (pattern.is_builtin === 1) return;
-    setPatternToDelete(pattern);
-    setConfirmDeleteOpen(true);
+  const executeDelete = async () => {
+    if (!patternToDelete) return;
+    try {
+      await deletePattern(patternToDelete.id);
+      toast.show({ variant: 'info', title: `Патерн '${patternToDelete.key}' видалено` });
+      setPatternToDelete(null);
+      refetchPatterns();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Не вдалося видалити патерн', description: msg });
+    }
   };
 
-  return (
-    <VStack gap={5}>
-      {/* Table Card */}
-      <Card padding={0} style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Heading level={3} style={{ fontSize: '15px' }}>
-            Патерни ({patterns?.length || 0})
-          </Heading>
-          {patternsLoading && <span style={{ fontSize: '12px', color: 'var(--color-text-disabled)' }}>Завантаження...</span>}
-        </div>
-
-        {patternsError && (
-          <div style={{ padding: '16px 20px', color: 'var(--color-text-red)', fontSize: '13px' }}>
-            ⚠️ Помилка завантаження патернів: {patternsError.message}
+  const masterList = (
+    <div className="flex-col gap-sm">
+      {(patterns || []).map((p) => (
+        <Card key={p.id} padding={3}>
+          <div className="flex-between">
+            <div className="flex-row items-center gap-sm">
+              <span className="text-sm text-bold text-accent text-mono">{p.key}</span>
+              {p.is_builtin === 1 && <Badge variant="neutral" label="Builtin" />}
+            </div>
+            {p.is_builtin !== 1 && (
+              <Button variant="destructive" size="sm" onClick={() => setPatternToDelete(p)}>
+                ✕
+              </Button>
+            )}
           </div>
-        )}
+          {p.label && <div className="text-xs text-secondary mt-xs">{p.label}</div>}
+        </Card>
+      ))}
+    </div>
+  );
 
-        {!patternsLoading && patterns && patterns.length === 0 && (
-          <div style={{ padding: '24px 20px', color: 'var(--color-text-tertiary)', fontSize: '13px', textAlign: 'center' }}>
-            Патерни відсутні. Створіть перший патерн за допомогою форми нижче.
-          </div>
-        )}
-
-        {patterns && patterns.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
-            {patterns.map((p) => {
-              const isBuiltin = ['tobacco', 'income_floor', 'industry_exclusion'].includes(p.key);
-              return (
-                <Card key={p.id || p.key} padding={4} className="impeccable-glass">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{p.key}</span>
-                    </div>
-                    <Badge variant={isBuiltin ? 'info' : 'neutral'} label={isBuiltin ? 'вбудований' : 'користувацький'} />
-                  </div>
-                  <MetadataList columns={1} label={{ position: 'start' }}>
-                    <MetadataListItem label="Label">{p.label || '—'}</MetadataListItem>
-                    <MetadataListItem label="Keywords">{formatKeywords(p.keywords)}</MetadataListItem>
-                    <MetadataListItem label="Polarity">{p.qualifying_polarity || '—'}</MetadataListItem>
-                  </MetadataList>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                    <button
-                      type="button"
-                      disabled={isBuiltin}
-                      onClick={() => handleDelete(p)}
-                      style={{
-                        padding: '4px 10px',
-                        minHeight: '44px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: isBuiltin ? 'not-allowed' : 'pointer',
-                        opacity: isBuiltin ? 0.4 : 1,
-                        border: isBuiltin ? '1px solid var(--color-border)' : '1px solid var(--color-border-red)',
-                        background: isBuiltin ? 'var(--color-background-muted)' : 'rgba(239, 68, 68, 0.1)',
-                        color: isBuiltin ? 'var(--color-text-tertiary)' : 'var(--color-text-red)',
-                      }}
-                    >
-                      Вилучити
-                    </button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* Creation Form Card */}
-      <Card padding={5}>
-      <form
-        onSubmit={handleCreate}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
-        <Heading level={4} style={{ fontSize: '14px' }}>
-          + Додати патерн
+  const formSection = (
+    <Card padding={4}>
+      <form onSubmit={handleCreate} className="flex-col gap-md">
+        <Heading level={3} style={{ fontSize: '16px' }}>
+          Додати новий патерн
         </Heading>
 
+        <TextInput
+          label="Ключ патерну (key)"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="e.g. select_household_income"
+          required
+        />
 
-        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <TextInput
-            label="Key (Ідентифікатор)"
-            isRequired
-            value={key}
-            onChange={setKey}
-            placeholder="e.g. tobacco"
-            status={attemptedSubmit && !key.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
-          />
+        <TextInput
+          label="Назва (Label)"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Вибір річного доходу"
+        />
 
-          <TextInput
-            label="Label (Назва)"
-            isOptional
-            value={label}
-            onChange={setLabel}
-            placeholder="e.g. Тютюн та паління"
-          />
-        </div>
+        <TextInput
+          label="Ключові слова (через кому)"
+          value={keywordsText}
+          onChange={(e) => setKeywordsText(e.target.value)}
+          placeholder="income, einkommen, revenu"
+        />
 
-        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: '12px' }}>
-          <TextInput
-            label="Keywords (через кому)"
-            isOptional
-            value={keywordsText}
-            onChange={setKeywordsText}
-            placeholder="e.g. tobacco, smoking, cigarette"
-          />
+        <Selector
+          label="Полярність кваліфікації"
+          value={qualifyingPolarity}
+          onChange={(v) => setQualifyingPolarity(v)}
+          options={[
+            { value: '', label: 'Нейтральна (None)' },
+            { value: 'positive', label: 'Позитивна (Positive)' },
+            { value: 'negative', label: 'Негативна (Negative)' },
+          ]}
+        />
 
-          <Selector
-            label="Qualifying Polarity"
-            value={qualifyingPolarity || undefined}
-            onChange={(v) => setQualifyingPolarity(v || '')}
-            placeholder="— не вказано —"
-            options={[
-              { value: 'affirm', label: 'affirm' },
-              { value: 'deny', label: 'deny' },
-              { value: 'not_fully_healthy', label: 'not_fully_healthy' },
-            ]}
-          />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-          <Button
-            type="submit"
-            variant="primary"
-            isDisabled={submitting}
-            label={submitting ? 'Збереження...' : 'Створити патерн'}
-          />
+        <div className="flex-row justify-end mt-sm">
+          <Button variant="primary" type="submit" disabled={submitting}>
+            {submitting ? 'Збереження...' : 'Зберегти патерн'}
+          </Button>
         </div>
       </form>
-      </Card>
+    </Card>
+  );
+
+  return (
+    <VStack gap={4}>
+      <MasterDetail master={masterList} detail={formSection} />
 
       <AlertDialog
-        isOpen={confirmDeleteOpen}
-        onOpenChange={setConfirmDeleteOpen}
-        title={patternToDelete ? `Вилучити патерн "${patternToDelete.key}"?` : ''}
-        description="Цю дію неможливо скасувати."
-        actionLabel="Вилучити"
-        onAction={async () => {
-          if (!patternToDelete) return;
-          try {
-            await deletePattern(patternToDelete.key);
-            toast({ body: 'Вилучено' });
-            refetchPatterns();
-          } catch (err: any) {
-            toast({ body: err?.message || 'Не вдалося вилучити патерн', type: 'error' });
-          } finally {
-            setConfirmDeleteOpen(false);
-            setPatternToDelete(null);
-          }
-        }}
+        isOpen={Boolean(patternToDelete)}
+        onClose={() => setPatternToDelete(null)}
+        title="Видалити патерн?"
+        description={`Ви дійсно хочете видалити '${patternToDelete?.key}'?`}
+        confirmLabel="Видалити"
+        onConfirm={executeDelete}
       />
     </VStack>
   );

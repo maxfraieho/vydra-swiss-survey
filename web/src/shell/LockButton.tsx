@@ -10,7 +10,7 @@ export const LockButton: React.FC = () => {
   };
 
   return (
-    <div style={{ marginLeft: 'auto' }}>
+    <div className="ml-auto">
       <Button
         label="🔒 Вийти"
         variant="ghost"

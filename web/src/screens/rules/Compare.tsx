@@ -1,154 +1,85 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router';
 import { useResource } from '../../api/hooks';
-import { RuleRow } from './RulesTable';
-import { Markdown } from '@astryxdesign/core/Markdown';
 import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
-import { Heading } from '@astryxdesign/core/Heading';
-import { Text } from '@astryxdesign/core/Text';
-import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList';
-
-export interface CompareResult {
-  pattern: string;
-  count: number;
-  rules: RuleRow[];
-}
+import { Button } from '@astryxdesign/core/Button';
+import { Badge } from '@astryxdesign/core/Badge';
+import { PageHeader, EmptyState, RuleStatusPill } from '../../ui/primitives';
+import type { RuleRow } from './RulesTable';
 
 export const Compare: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const patternParam = searchParams.get('pattern') || '';
-  const [inputPattern, setInputPattern] = useState(patternParam);
+  const [inputPattern, setInputPattern] = useState<string>('');
+  const [activePattern, setActivePattern] = useState<string>('');
 
-  const endpoint = patternParam ? `/api/rules/compare?pattern=${encodeURIComponent(patternParam)}` : null;
-  const { data, loading, error } = useResource<CompareResult>(endpoint);
+  const { data: matchedRules, loading } = useResource<RuleRow[]>(
+    activePattern ? `/api/rules?pattern=${encodeURIComponent(activePattern)}` : null
+  );
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputPattern.trim()) {
-      setSearchParams({ pattern: inputPattern.trim() });
-    } else {
-      setSearchParams({});
+      setActivePattern(inputPattern.trim());
     }
   };
 
   return (
-    <VStack gap={5}>
-      <Card padding={5}>
-        <Heading level={2} style={{ marginBottom: '8px' }}>
-          Порівняння патернів правил (Compare)
-        </Heading>
-        <Text type="body" color="secondary" display="block" style={{ marginBottom: '16px' }}>
-          Порівняйте поведінку одного патерну між різними хостами, профайлами та джерелами.
-        </Text>
+    <VStack gap={4}>
+      <PageHeader
+        eyebrow="ПОРІВНЯННЯ"
+        title="Порівняння правил"
+        subtitle="Аналіз версій правил для однакових патернів"
+      />
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px' }}>
+      <Card padding={4}>
+        <form onSubmit={handleSubmit} className="flex-row gap-sm items-center">
           <input
             type="text"
-            placeholder="Введіть exact pattern (наприклад: q_income_swiss)..."
+            placeholder="Введіть патерн (напр. select_gender)..."
             value={inputPattern}
             onChange={(e) => setInputPattern(e.target.value)}
-            style={{
-              flex: 1,
-              background: 'var(--color-background-page)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              padding: '10px 14px',
-              color: 'var(--color-text-primary)',
-              fontSize: '13px',
-            }}
+            className="input-standard flex-1"
           />
-          <button
-            type="submit"
-            style={{
-              background: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 20px',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
-          >
+          <Button variant="primary" type="submit">
             Порівняти
-          </button>
+          </Button>
         </form>
       </Card>
 
       {loading && (
-        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
-          Завантаження порівняння для "{patternParam}"...
+        <Card padding={4}>
+          <div className="text-center text-xs text-tertiary">Пошук правил для порівняння...</div>
+        </Card>
+      )}
+
+      {matchedRules && matchedRules.length === 0 && (
+        <Card padding={4}>
+          <EmptyState
+            title="Правил не знайдено"
+            description={`Для патерну '${activePattern}' немає зареєстрованих правил.`}
+          />
+        </Card>
+      )}
+
+      {matchedRules && matchedRules.length > 0 && (
+        <div className="grid-responsive">
+          {matchedRules.map((rule) => (
+            <Card key={rule.id} padding={4}>
+              <div className="flex-between mb-sm">
+                <span className="text-sm text-bold text-primary">Правило #{rule.id}</span>
+                <RuleStatusPill status={rule.status} />
+              </div>
+              <div className="flex-col gap-xs text-xs">
+                <div><strong>Хост:</strong> {rule.host}</div>
+                <div><strong>Персона:</strong> {rule.persona}</div>
+                <div><strong>Джерело:</strong> {rule.source}</div>
+                <div><strong>Впевненість:</strong> {Math.round(rule.confidence * 100)}%</div>
+                <div className="p-sm bg-subtle rounded-md border-default mt-xs">
+                  {rule.behavior}
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
-      )}
-
-      {error && (
-        <Card padding={5}>
-          <Text type="body" style={{ color: 'var(--color-text-red)' }}>Помилка порівняння: {error.message}</Text>
-        </Card>
-      )}
-
-      {!patternParam && (
-        <Card padding={5}>
-          <Text type="body" color="secondary" display="block" style={{ textAlign: 'center', padding: '20px 0' }}>
-            💡 Введіть назву патерну у полі вище для порівняння.
-          </Text>
-        </Card>
-      )}
-
-      {data && (
-        <Card padding={0}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border-emphasized)' }}>
-            <Heading level={3} style={{ fontSize: '15px' }}>
-              Результати для патерну "{data.pattern}" ({data.count} правил)
-            </Heading>
-          </div>
-
-          {data.rules.length === 0 ? (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '13px' }}>
-              Жодного правила не знайдено для цього патерну.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
-              {data.rules.map((r) => (
-                <Card key={r.id} padding={4}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontFamily: 'monospace', color: 'var(--color-text-disabled)' }}>#{r.id}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {r.effective ? (
-                        <span style={{ fontSize: '12px', color: 'var(--color-text-blue)' }}>✅ win</span>
-                      ) : (
-                        <span style={{ fontSize: '12px', color: 'var(--color-text-red)' }}>⚠️ #{r.shadowed_by}</span>
-                      )}
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          textTransform: 'uppercase',
-                          background: r.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                          color: r.status === 'active' ? 'var(--color-text-green)' : 'var(--color-text-yellow)',
-                        }}
-                      >
-                        {r.status}
-                      </span>
-                    </div>
-                  </div>
-                  <MetadataList columns={1} label={{ position: 'start' }}>
-                    <MetadataListItem label="Хост">{r.host}</MetadataListItem>
-                    <MetadataListItem label="Персона">{r.persona}</MetadataListItem>
-                    <MetadataListItem label="Джерело">{r.source}</MetadataListItem>
-                    <MetadataListItem label="Conf">{r.confidence}</MetadataListItem>
-                  </MetadataList>
-                  <div style={{ marginTop: '8px' }}>
-                    <Markdown density="compact" headingLevelStart={4}>{r.behavior}</Markdown>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </Card>
       )}
     </VStack>
   );

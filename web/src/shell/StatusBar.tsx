@@ -57,9 +57,9 @@ export const StatusBar: React.FC = () => {
   };
 
   return (
-    <div style={{ background: '#0f172a', borderBottom: '1px solid var(--color-border-emphasized)', padding: isNarrow ? '6px 12px' : '8px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', minWidth: 0 }}>
+    <div className={`bg-subtle border-bottom ${isNarrow ? 'p-xs' : 'py-xs px-sm'}`}>
+      <div className="flex-between flex-wrap gap-sm">
+        <div className="text-xs text-tertiary min-w-0">
           meinungsplatz.ch • SOCKS5 Proxy CH
         </div>
 
@@ -77,7 +77,7 @@ export const StatusBar: React.FC = () => {
           endContent={
             <Button
               as={Link}
-              href="/"
+              href="/ops"
               label="До кроку у Режимі Навчання"
               variant="secondary"
             />

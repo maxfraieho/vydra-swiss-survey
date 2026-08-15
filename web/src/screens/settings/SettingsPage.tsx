@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { TabList } from '@astryxdesign/core/TabList';
-import { Tab } from '@astryxdesign/core/TabList';
-import { Card } from '@astryxdesign/core/Card';
+import { TabList, Tab } from '@astryxdesign/core/TabList';
 import { VStack } from '@astryxdesign/core/VStack';
-import { Heading } from '@astryxdesign/core/Heading';
+import { Selector } from '@astryxdesign/core/Selector';
+import { PageHeader } from '../../ui/primitives';
+import { useIsNarrow } from '../../shell/useIsNarrow';
 import { HostsPanel } from './HostsPanel';
 import { PersonasPanel } from './PersonasPanel';
 import { PatternsPanel } from './PatternsPanel';
@@ -11,45 +11,53 @@ import { ProvidersPanel } from './ProvidersPanel';
 import { AISourcePanel } from './AISourcePanel';
 import { BrowserSourcesPanel } from './BrowserSourcesPanel';
 import { TelegramSettingsPanel } from './TelegramSettingsPanel';
+import { HostGate } from '../gate/HostGate';
 
-type SettingsTab = 'hosts' | 'personas' | 'patterns' | 'providers' | 'ai-source' | 'browser' | 'telegram';
+type SettingsTab =
+  | 'hosts'
+  | 'gate'
+  | 'personas'
+  | 'patterns'
+  | 'providers'
+  | 'ai-source'
+  | 'browser'
+  | 'telegram';
+
+const TABS: { value: SettingsTab; label: string }[] = [
+  { value: 'hosts', label: 'Хости' },
+  { value: 'gate', label: 'Доступи (Gate)' },
+  { value: 'personas', label: 'Персони' },
+  { value: 'patterns', label: 'Патерни' },
+  { value: 'providers', label: 'Провайдери' },
+  { value: 'ai-source', label: 'Модель ШІ' },
+  { value: 'browser', label: 'Браузер' },
+  { value: 'telegram', label: 'Telegram' },
+];
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('hosts');
+  const isNarrow = useIsNarrow();
 
   return (
     <VStack gap={5}>
-      {/* Header & Tab Bar */}
-      <Card
-        padding={4}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}
-      >
-        <div>
-          <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-            ⚙️ КЕРУВАННЯ
-          </span>
-          <Heading level={2} style={{ marginTop: '4px', fontSize: '18px' }}>
-            Налаштування
-          </Heading>
-        </div>
+      <PageHeader eyebrow="КЕРУВАННЯ" title="Налаштування">
+        {isNarrow ? (
+          <Selector
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as SettingsTab)}
+            options={TABS.map((t) => ({ value: t.value, label: t.label }))}
+          />
+        ) : (
+          <TabList value={activeTab} onChange={(v) => setActiveTab(v as SettingsTab)}>
+            {TABS.map((t) => (
+              <Tab key={t.value} value={t.value} label={t.label} />
+            ))}
+          </TabList>
+        )}
+      </PageHeader>
 
-        <TabList value={activeTab} onChange={(v) => setActiveTab(v as SettingsTab)}>
-          <Tab value="hosts" label="Хости" />
-          <Tab value="personas" label="Персони" />
-          <Tab value="patterns" label="Патерни" />
-          <Tab value="providers" label="Провайдери" />
-          <Tab value="ai-source" label="Модель ШІ" />
-          <Tab value="browser" label="Браузер" />
-          <Tab value="telegram" label="Telegram" />
-        </TabList>
-      </Card>
-
-      {/* Active Panel View */}
       {activeTab === 'hosts' && <HostsPanel />}
+      {activeTab === 'gate' && <HostGate />}
       {activeTab === 'personas' && <PersonasPanel />}
       {activeTab === 'patterns' && <PatternsPanel />}
       {activeTab === 'providers' && <ProvidersPanel />}
@@ -59,4 +67,3 @@ export const SettingsPage: React.FC = () => {
     </VStack>
   );
 };
-

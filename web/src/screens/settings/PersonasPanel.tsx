@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useResource } from '../../api/hooks';
-import { useIsNarrow } from '../../shell/useIsNarrow';
 import { PersonaRow, createPersona, updatePersona, deletePersona } from '../../api/settings';
-import { Markdown } from '@astryxdesign/core/Markdown';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Selector } from '@astryxdesign/core/Selector';
@@ -11,26 +9,20 @@ import { Card } from '@astryxdesign/core/Card';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { useToast } from '@astryxdesign/core/Toast';
+import { MasterDetail } from '../../ui/primitives';
 
 export const PersonasPanel: React.FC = () => {
-  const isNarrow = useIsNarrow();
   const toast = useToast();
-  const { data: personas, loading: personasLoading, error: personasError, refetch: refetchPersonas } =
+  const { data: personas, refetch: refetchPersonas } =
     useResource<PersonaRow[]>('/api/settings/personas');
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
   const [key, setKey] = useState<string>('');
   const [label, setLabel] = useState<string>('');
   const [contentMd, setContentMd] = useState<string>('');
   const [active, setActive] = useState<number>(1);
-
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [attemptedSubmit, setAttemptedSubmit] = useState<boolean>(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
-
-  // When personas load or selectedKey changes, sync form if editing existing
-  const selectedPersona = personas?.find((p) => p.key === selectedKey) || null;
 
   const handleSelectPersona = (p: PersonaRow) => {
     setSelectedKey(p.key);
@@ -38,7 +30,6 @@ export const PersonasPanel: React.FC = () => {
     setLabel(p.label);
     setContentMd(p.content_md || '');
     setActive(p.active);
-    setAttemptedSubmit(false);
   };
 
   const handleNewPersona = () => {
@@ -47,264 +38,152 @@ export const PersonasPanel: React.FC = () => {
     setLabel('');
     setContentMd('');
     setActive(1);
-    setAttemptedSubmit(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAttemptedSubmit(true);
-
     const trimmedKey = key.trim();
     const trimmedLabel = label.trim();
-
-    const missing: string[] = [];
-    if (!selectedKey && !trimmedKey) missing.push('Ключ (key)');
-    if (!trimmedLabel) missing.push('Назва (label)');
-
-    if (missing.length > 0) {
-      return;
-    }
+    if (!selectedKey && !trimmedKey) return;
+    if (!trimmedLabel) return;
 
     setSubmitting(true);
     try {
       if (selectedKey) {
-        // Update existing persona
-        await updatePersona(selectedKey, {
-          label: trimmedLabel,
-          content_md: contentMd,
-          active,
-        });
+        await updatePersona(selectedKey, { label: trimmedLabel, content_md: contentMd, active });
       } else {
-        // Create new persona
-        await createPersona({
-          key: trimmedKey,
-          label: trimmedLabel,
-          content_md: contentMd,
-          active,
-        });
+        await createPersona({ key: trimmedKey, label: trimmedLabel, content_md: contentMd, active });
         setSelectedKey(trimmedKey);
       }
-      toast({ body: 'Збережено' });
+      toast.show({ variant: 'success', title: 'Персону успішно збережено' });
       refetchPersonas();
-    } catch (err: any) {
-      toast({ body: err?.message || 'Не вдалося зберегти персону', type: 'error' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Помилка збереження', description: msg });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async () => {
+  const executeDelete = async () => {
     if (!selectedKey) return;
-    setConfirmDeleteOpen(true);
+    setSubmitting(true);
+    try {
+      await deletePersona(selectedKey);
+      toast.show({ variant: 'info', title: `Персону '${selectedKey}' видалено` });
+      setSelectedKey(null);
+      handleNewPersona();
+      refetchPersonas();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Не вдалося видалити персону', description: msg });
+    } finally {
+      setSubmitting(false);
+      setConfirmDeleteOpen(false);
+    }
   };
 
-  const charCount = contentMd.length;
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '320px 1fr', gap: '20px' }}>
-      {/* Left Column: Cards List */}
-      <Card
-        padding={4}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          maxHeight: '800px',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Heading level={3} style={{ fontSize: '15px' }}>
-            Персони ({personas?.length || 0})
-          </Heading>
-          <Button type="button" variant="secondary" label="+ Нова" onClick={handleNewPersona} />
-        </div>
-
-        {personasLoading && <div style={{ color: 'var(--color-text-disabled)', fontSize: '13px' }}>Завантаження...</div>}
-
-        {personasError && (
-          <div style={{ color: 'var(--color-text-red)', fontSize: '13px' }}>
-            ⚠️ {personasError.message}
-          </div>
-        )}
-
-        {personas && personas.length === 0 && !personasLoading && (
-          <div style={{ color: 'var(--color-text-tertiary)', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
-            Персони відсутні.
-          </div>
-        )}
-
-        {personas?.map((p) => {
-          const isSelected = selectedKey === p.key;
-          return (
-            <div
-              key={p.key}
-              onClick={() => handleSelectPersona(p)}
-              style={{
-                background: isSelected ? 'var(--color-background-muted)' : 'var(--color-background-page)',
-                border: isSelected ? '1px solid var(--color-accent)' : '1px solid var(--color-border-emphasized)',
-                borderRadius: '8px',
-                padding: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '13px', fontFamily: 'monospace' }}>
-                  {p.key}
-                </span>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    textTransform: 'uppercase',
-                    background: p.active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                    color: p.active ? 'var(--color-text-green)' : '#9ca3af',
-                  }}
-                >
-                  {p.active ? 'Активна' : 'Неактивна'}
-                </span>
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{p.label}</div>
+  const masterContent = (
+    <div className="flex-col gap-sm">
+      <Button variant="primary" size="sm" onClick={handleNewPersona}>
+        + Створити персону
+      </Button>
+      {(personas || []).map((p) => {
+        const isSelected = p.key === selectedKey;
+        return (
+          <div
+            key={p.key}
+            onClick={() => handleSelectPersona(p)}
+            className={`p-sm rounded-lg cursor-pointer flex-col gap-xs ${isSelected ? 'bg-muted border-emphasized' : 'bg-page border-default'}`}
+          >
+            <div className="flex-between">
+              <span className="text-sm text-bold text-primary text-mono">
+                {p.key}
+              </span>
+              <span className={`text-xs text-semibold ${p.active ? 'text-green' : 'text-tertiary'}`}>
+                {p.active ? 'Активна' : 'Вимкнено'}
+              </span>
             </div>
-          );
-        })}
-      </Card>
+            <div className="text-xs text-secondary">{p.label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
-      {/* Right Column: Persona Editor */}
-      <Card padding={5}>
-      <form
-        onSubmit={handleSave}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-emphasized)', paddingBottom: '12px' }}>
+  const detailContent = (
+    <Card padding={4}>
+      <form onSubmit={handleSave} className="flex-col gap-md">
+        <div className="flex-between border-bottom pb-sm">
           <div>
-            <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 700, textTransform: 'uppercase' }}>
+            <span className="text-xs text-tertiary text-uppercase">
               {selectedKey ? 'Редагування' : 'Створення'}
             </span>
-            <Heading level={3} style={{ marginTop: '2px', fontSize: '16px' }}>
+            <Heading level={3} style={{ fontSize: '16px' }}>
               {selectedKey ? `Персона: ${selectedKey}` : 'Нова персона'}
             </Heading>
           </div>
           {selectedKey && (
-            <Button type="button" variant="destructive" label="Вилучити персону" onClick={handleDelete} />
+            <Button type="button" variant="destructive" size="sm" onClick={() => setConfirmDeleteOpen(true)}>
+              Вилучити
+            </Button>
           )}
         </div>
 
+        <TextInput
+          label="Ключ (key)"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          disabled={Boolean(selectedKey)}
+          placeholder="e.g. arno"
+          required
+        />
 
-        {/* Form Inputs: Key, Label, Active */}
-        <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr 120px', gap: '12px' }}>
-          <TextInput
-            label="Key (Ідентифікатор)"
-            isRequired
-            value={key}
-            onChange={setKey}
-            isDisabled={Boolean(selectedKey)}
-            placeholder="e.g. swiss_resident"
-            status={attemptedSubmit && !key.trim() && !selectedKey ? { type: 'error', message: "Обов'язкове поле" } : undefined}
-          />
+        <TextInput
+          label="Назва (label)"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. Арсен (Arno)"
+          required
+        />
 
-          <TextInput
-            label="Label (Назва)"
-            isRequired
-            value={label}
-            onChange={setLabel}
-            placeholder="e.g. Swiss Resident (DE/FR/IT)"
-            status={attemptedSubmit && !label.trim() ? { type: 'error', message: "Обов'язкове поле" } : undefined}
-          />
+        <Selector
+          label="Статус"
+          value={String(active)}
+          onChange={(v) => setActive(Number(v))}
+          options={[
+            { value: '1', label: '1 - Активна' },
+            { value: '0', label: '0 - Неактивна' },
+          ]}
+        />
 
-          <Selector
-            label="Статус"
-            value={String(active)}
-            onChange={(v) => setActive(parseInt(v || '1', 10))}
-            options={[
-              { value: '1', label: 'Активна' },
-              { value: '0', label: 'Неактивна' },
-            ]}
-          />
-        </div>
+        <TextArea
+          label="Markdown профіль / Persona Content"
+          value={contentMd}
+          onChange={(e) => setContentMd(e.target.value)}
+          placeholder="# Особисті дані&#10;- Вік: 34&#10;- Місто: Цюрих..."
+        />
 
-        {/* Content Markdown Textarea */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <TextArea
-            label="Опис персони (Markdown content)"
-            value={contentMd}
-            onChange={setContentMd}
-            placeholder="Введіть опис персони у форматі Markdown..."
-            rows={8}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '12px', color: 'var(--color-text-disabled)' }}>
-            {charCount} символів
-          </div>
-        </div>
-
-        {/* Live Preview Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-disabled)' }}>
-            Попередній перегляд Markdown
-          </label>
-          <Card
-            variant="muted"
-            padding={4}
-            style={{
-              minHeight: '60px',
-              maxHeight: '300px',
-              overflowY: 'auto',
-            }}
-          >
-            {contentMd && contentMd.trim() !== '' ? (
-              <Markdown headingLevelStart={4}>{contentMd}</Markdown>
-            ) : (
-              <span style={{ color: 'var(--color-text-tertiary)', fontStyle: 'italic', fontSize: '13px' }}>
-                Попередній перегляд з'явиться тут при введенні тексту...
-              </span>
-            )}
-          </Card>
-        </div>
-
-        {/* Submit row */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
-          <Button
-            type="submit"
-            variant="primary"
-            isDisabled={submitting}
-            label={submitting ? 'Збереження...' : selectedKey ? 'Зберегти зміни' : 'Створити персону'}
-          />
+        <div className="flex-row justify-end mt-xs">
+          <Button variant="primary" type="submit" disabled={submitting}>
+            {submitting ? 'Збереження...' : selectedKey ? 'Оновити' : 'Створити'}
+          </Button>
         </div>
       </form>
-      </Card>
+    </Card>
+  );
+
+  return (
+    <div>
+      <MasterDetail master={masterContent} detail={detailContent} />
 
       <AlertDialog
         isOpen={confirmDeleteOpen}
-        onOpenChange={setConfirmDeleteOpen}
-        title={selectedKey ? `Вилучити персону "${selectedKey}"?` : ''}
-        description="Цю дію неможливо скасувати."
-        actionLabel="Вилучити"
-        isActionLoading={submitting}
-        onAction={async () => {
-          if (!selectedKey) return;
-          setSubmitting(true);
-          try {
-            await deletePersona(selectedKey);
-            handleNewPersona();
-            toast({ body: 'Вилучено' });
-            refetchPersonas();
-          } catch (err: any) {
-            toast({ body: err?.message || 'Не вдалося вилучити персону', type: 'error' });
-          } finally {
-            setSubmitting(false);
-            setConfirmDeleteOpen(false);
-          }
-        }}
+        onClose={() => setConfirmDeleteOpen(false)}
+        title="Видалити персону?"
+        description={`Ви впевнені, що хочете видалити '${selectedKey}'?`}
+        confirmLabel="Видалити"
+        onConfirm={executeDelete}
       />
     </div>
   );

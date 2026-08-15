@@ -100,7 +100,7 @@ export const DetailsMarkdown: React.FC<DetailsMarkdownProps> = ({
             key={index}
             trigger={segment.title}
             defaultIsOpen={false}
-            style={{ marginBlock: '12px' }}
+            className="my-sm"
           >
             <DetailsMarkdown {...markdownProps} source={segment.body} />
           </Collapsible>

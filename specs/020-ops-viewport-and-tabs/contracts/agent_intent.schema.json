@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentFrame",
+  "type": "object",
+  "required": ["frame_id", "url", "step_index", "status", "agent_intent"],
+  "properties": {
+    "frame_id": {
+      "type": "string",
+      "description": "Unique frame identifier (timestamp or uuid)"
+    },
+    "url": {
+      "type": "string",
+      "description": "Current URL of the target webpage"
+    },
+    "step_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current 1-based or 0-based step index"
+    },
+    "step_total": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Estimated total steps if known"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "running", "starting", "waiting_auth", "waiting_verification", "paused", "completed", "error"]
+    },
+    "agent_intent": {
+      "type": "object",
+      "required": ["action", "confidence", "rationale"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["click", "type", "select", "navigate", "wait", "captcha_solve", "done"]
+        },
+        "target_selector": {
+          "type": ["string", "null"]
+        },
+        "target_text": {
+          "type": ["string", "null"]
+        },
+        "value": {
+          "type": ["string", "null"]
+        },
+        "target_bbox": {
+          "type": ["object", "null"],
+          "required": ["x", "y", "w", "h"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 1 },
+            "y": { "type": "number", "minimum": 0, "maximum": 1 },
+            "w": { "type": "number", "minimum": 0, "maximum": 1 },
+            "h": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    },
+    "human_correction": {
+      "type": ["object", "null"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["approve", "override_click", "override_type", "skip", "pause"]
+        },
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "wrong_element",
+            "missed_captcha",
+            "bad_value",
+            "stuck_navigation",
+            "premature_action",
+            "other"
+          ]
+        },
+        "point": {
+          "type": ["object", "null"],
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 1 },
+            "y": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "override_value": {
+          "type": ["string", "null"]
+        },
+        "note": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}
