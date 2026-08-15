@@ -88,6 +88,16 @@ ACTIVE_SURVEY_STATE = {
     "verification_result": None,
     "log_history": [],
     "last_error": None,
+    # 023A/F10: health of the bridge to the learning pipeline. A failure here
+    # never blocks the run, so this is the only place an operator can see that
+    # steps are being executed without tutor verification.
+    "tutor_bridge": {
+        "failures": 0,
+        "consecutive_failures": 0,
+        "last_error": None,
+        "last_error_at": None,
+        "last_ok_at": None,
+    },
     "tutor_activity": {
         "last_action_source": "idle",
         "tutor_explanation": "Тутор активний. Очікування вибору опитування або ручної корекції.",
