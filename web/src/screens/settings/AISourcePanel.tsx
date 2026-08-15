@@ -127,7 +127,7 @@ export const AISourcePanel: React.FC = () => {
       <Card padding={4}>
         <form onSubmit={handleSave} className="flex-col gap-md">
           <div className="flex-between border-bottom pb-xs">
-            <Heading level={3} style={{ fontSize: '16px' }}>
+            <Heading level={3}>
               Конфігурація AI Джерела
             </Heading>
             {config?.token_configured && (

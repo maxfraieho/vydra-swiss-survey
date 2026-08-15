@@ -85,7 +85,7 @@ export const ProvidersPanel: React.FC = () => {
   const formSection = (
     <Card padding={4}>
       <form onSubmit={handleCreate} className="flex-col gap-md">
-        <Heading level={3} style={{ fontSize: '16px' }}>
+        <Heading level={3}>
           Додати нового провайдера
         </Heading>
 

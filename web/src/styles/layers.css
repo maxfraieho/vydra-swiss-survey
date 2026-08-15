@@ -105,4 +105,11 @@
     box-sizing: border-box;
     width: 100%;
   }
+
+  .min-w-200 { min-width: 200px; }
+  .min-w-240 { min-width: 240px; }
+  .max-h-240 { max-height: 240px; }
+  .max-h-360 { max-height: 360px; }
+  .viewport-canvas-inline { min-height: 360px; max-height: 520px; }
+  .viewport-canvas-expanded { min-height: 60vh; max-height: 75vh; }
 }

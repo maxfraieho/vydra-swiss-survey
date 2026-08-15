@@ -48,7 +48,7 @@ export const StepTimeline: React.FC<StepTimelineProps> = ({
         </div>
       ) : null}
 
-      <div className="flex-col gap-sm overflow-auto" style={{ maxHeight: '240px' }}>
+      <div className="flex-col gap-sm overflow-auto max-h-240">
         {steps.length === 0 ? (
           <div className="text-xs text-tertiary">
             Історія кроків порожня

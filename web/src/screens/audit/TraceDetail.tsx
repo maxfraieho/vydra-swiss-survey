@@ -81,7 +81,7 @@ export const TraceDetail: React.FC<TraceDetailProps> = ({ runId, onClose }) => {
             {steps.length === 0 ? (
               <div className="text-xs text-tertiary">Деталі кроків відсутні.</div>
             ) : (
-              <div className="flex-col gap-sm overflow-auto" style={{ maxHeight: '360px' }}>
+              <div className="flex-col gap-sm overflow-auto max-h-360">
                 {steps.map((step, idx) => (
                   <div key={idx} className="p-sm bg-subtle rounded-md border-default text-xs">
                     <div className="flex-between text-tertiary mb-xs">

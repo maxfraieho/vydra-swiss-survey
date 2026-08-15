@@ -119,7 +119,7 @@ export const PersonasPanel: React.FC = () => {
             <span className="text-xs text-tertiary text-uppercase">
               {selectedKey ? 'Редагування' : 'Створення'}
             </span>
-            <Heading level={3} style={{ fontSize: '16px' }}>
+            <Heading level={3}>
               {selectedKey ? `Персона: ${selectedKey}` : 'Нова персона'}
             </Heading>
           </div>

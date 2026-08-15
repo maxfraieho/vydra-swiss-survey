@@ -98,8 +98,7 @@ export const Traces: React.FC = () => {
             placeholder="Фільтр за хостом..."
             value={hostFilter}
             onChange={(e) => updateParam('host', e.target.value)}
-            className="input-standard min-w-0"
-            style={{ maxWidth: '240px' }}
+            className="input-standard min-w-0 max-w-xs"
           />
 
           <Selector

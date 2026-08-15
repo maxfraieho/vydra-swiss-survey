@@ -35,8 +35,7 @@ export const ViewportToolbar: React.FC<ViewportToolbarProps> = ({
           }
         }}
         placeholder="Введіть текст або капчу для сторінки..."
-        className="input-standard flex-1 min-w-0"
-        style={{ minWidth: '200px' }}
+        className="input-standard flex-1 min-w-0 min-w-200"
       />
       <Button
         size="sm"

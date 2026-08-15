@@ -63,7 +63,7 @@ export const Conflicts: React.FC = () => {
       {data && data.conflicts.length > 0 && (
         <Card padding={4}>
           <div className="flex-row flex-wrap gap-md items-center">
-            <div className="min-w-0" style={{ minWidth: '240px' }}>
+            <div className="min-w-0 min-w-240">
               <Selector
                 label="Дія для програвших правил"
                 value={loserAction}

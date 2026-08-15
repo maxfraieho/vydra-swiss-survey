@@ -19,13 +19,13 @@ else
     FAILURES=$((FAILURES + 1))
 fi
 
-# INV-2: sum of style={{ in web/src/**/*.tsx <= 40
-echo -n "Checking INV-2 (style={{ occurrences <= 40)... "
+# INV-2: sum of style={{ in web/src/**/*.tsx <= 17
+echo -n "Checking INV-2 (style={{ occurrences <= 17)... "
 STYLE_COUNT=$(grep -roh 'style={{' "$WEB_SRC" --include="*.tsx" 2>/dev/null | wc -l || true)
-if [ "$STYLE_COUNT" -le 40 ]; then
-    echo "✅ PASS ($STYLE_COUNT style={{ found, target <= 40)"
+if [ "$STYLE_COUNT" -le 17 ]; then
+    echo "✅ PASS ($STYLE_COUNT style={{ found, target <= 17)"
 else
-    echo "❌ FAIL ($STYLE_COUNT style={{ found, target <= 40)"
+    echo "❌ FAIL ($STYLE_COUNT style={{ found, target <= 17)"
     FAILURES=$((FAILURES + 1))
 fi
 

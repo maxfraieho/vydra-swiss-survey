@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Card } from '@astryxdesign/core/Card';
 import { Button } from '@astryxdesign/core/Button';
 import { useViewportMode } from './useViewportMode';
+import { useViewportZoom } from './useViewportZoom';
 import { useTutorRelay } from './useTutorRelay';
 import { ViewportToolbar } from './ViewportToolbar';
+import { DesktopEmulationToggle } from './DesktopEmulationToggle';
 import { SurveyStatusPill } from '../ui/primitives';
 import type { SurveyStatus } from '../ui/tokens';
 import type { TargetBBox, NormalizedPoint } from '../types/agent';
@@ -38,8 +40,21 @@ export const Viewport: React.FC<ViewportProps> = ({
   onRefresh,
 }) => {
   const { mode, setMode, containerRef, toggleFullscreen } = useViewportMode();
-  const [scale, setScale] = useState(1);
   const [imgLoaded, setImgLoaded] = useState(false);
+
+  const {
+    zoomPercent,
+    scale,
+    transformOrigin,
+    canvasRef,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    fitToWidth,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useViewportZoom();
 
   const {
     imgRef,
@@ -66,8 +81,8 @@ export const Viewport: React.FC<ViewportProps> = ({
     <div ref={containerRef} data-viewport-mode={mode} className={isExpanded ? 'fixed-fullscreen' : 'relative w-full'}>
       <Card padding={3}>
         {/* Top Header Bar */}
-        <div className="flex-between mb-sm">
-          <div className="flex-row gap-sm items-center">
+        <div className="flex-between mb-sm flex-wrap gap-xs">
+          <div className="flex-row gap-sm items-center flex-wrap">
             <SurveyStatusPill status={status} />
             {url && (
               <span className="text-xs text-secondary truncate max-w-sm">
@@ -80,10 +95,30 @@ export const Viewport: React.FC<ViewportProps> = ({
               </span>
             )}
           </div>
-          <div className="flex-row gap-xs">
-            <Button variant="secondary" size="sm" onClick={() => setScale((s) => (s > 1 ? 1 : 1.75))}>
-              {scale > 1 ? '🔍 100%' : '🔍 175%'}
-            </Button>
+
+          <div className="flex-row gap-xs items-center flex-wrap">
+            <DesktopEmulationToggle />
+
+            <div className="flex-row gap-xs items-center border-subtle rounded-md px-sm py-xs">
+              <Button variant="secondary" size="sm" onClick={zoomOut} disabled={zoomPercent <= 25}>
+                −
+              </Button>
+              <span className="text-xs text-bold min-w-0" data-testid="viewport-zoom-label">
+                🔍 {zoomPercent}%
+              </span>
+              <Button variant="secondary" size="sm" onClick={zoomIn} disabled={zoomPercent >= 400}>
+                +
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => fitToWidth()}>
+                Fit
+              </Button>
+              {zoomPercent !== 100 && (
+                <Button variant="secondary" size="sm" onClick={resetZoom}>
+                  100%
+                </Button>
+              )}
+            </div>
+
             <Button variant="secondary" size="sm" onClick={onRefresh}>
               🔄
             </Button>
@@ -105,10 +140,19 @@ export const Viewport: React.FC<ViewportProps> = ({
 
         {/* Viewport Canvas Frame */}
         <div
-          className="relative bg-subtle border-emphasized rounded-lg overflow-auto flex-center"
-          style={{ minHeight: isExpanded ? '60vh' : '360px', maxHeight: isExpanded ? '75vh' : '520px' }}
+          ref={canvasRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className={`relative bg-subtle border-emphasized rounded-lg overflow-auto flex-center ${
+            isExpanded ? 'viewport-canvas-expanded' : 'viewport-canvas-inline'
+          }`}
         >
-          <div className="relative" style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+          <div
+            className="relative"
+            data-testid="viewport-canvas-inner"
+            style={{ transform: `scale(${scale})`, transformOrigin }}
+          >
             <img
               ref={imgRef}
               src={screenshotSrc}

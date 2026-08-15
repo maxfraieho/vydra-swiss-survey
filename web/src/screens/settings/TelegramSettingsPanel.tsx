@@ -52,7 +52,7 @@ export const TelegramSettingsPanel: React.FC = () => {
     <VStack gap={4}>
       <Card padding={4}>
         <div className="flex-between mb-md">
-          <Heading level={3} style={{ fontSize: '16px' }}>
+          <Heading level={3}>
             Налаштування токена Telegram
           </Heading>
           {data?.configured && <Badge variant="success" label="Активний" />}
