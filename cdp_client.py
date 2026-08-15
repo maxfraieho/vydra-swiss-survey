@@ -276,18 +276,20 @@ class CDPClient:
 
 
     def set_device_metrics_override(self, width: int, height: int, mobile: bool = False, device_scale_factor: float = 1.0) -> None:
-        try:
-            if width <= 0 or height <= 0:
-                self._send("Emulation.clearDeviceMetricsOverride")
-            else:
-                self._send("Emulation.setDeviceMetricsOverride", {
-                    "width": int(width),
-                    "height": int(height),
-                    "deviceScaleFactor": float(device_scale_factor),
-                    "mobile": bool(mobile),
-                })
-        except Exception:
-            pass
+        # Must be attached to a tab first (attach_or_open_tab/attach_exact_tab) -
+        # self.ws is None otherwise and this would silently no-op if it swallowed
+        # the AttributeError like it used to.
+        if self.ws is None:
+            raise CDPError("set_device_metrics_override called before attaching to a tab (self.ws is None)")
+        if width <= 0 or height <= 0:
+            self._send("Emulation.clearDeviceMetricsOverride")
+        else:
+            self._send("Emulation.setDeviceMetricsOverride", {
+                "width": int(width),
+                "height": int(height),
+                "deviceScaleFactor": float(device_scale_factor),
+                "mobile": bool(mobile),
+            })
 
     def _prune_stray_tabs(self) -> None:
         """Disabled tab auto-pruning to preserve all user open tabs."""

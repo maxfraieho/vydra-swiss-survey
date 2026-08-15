@@ -1,8 +1,8 @@
-=== deploy_verify.log — 021B-fixes run 2026-08-15T10:56:05Z ===
+=== deploy_verify.log — 021C run 2026-08-15T12:32:48Z ===
 --- bin/ui_verify.sh ---
 === UI Invariant Verification Check ===
 Checking INV-1 (0 HEX literals in .tsx)... ✅ PASS (0 HEX found)
-Checking INV-2 (style={{ occurrences <= 40)... ✅ PASS (0 style={{ found, target <= 40)
+Checking INV-2 (style={{ occurrences <= 17)... ✅ PASS (0 style={{ found, target <= 17)
 Checking INV-3 (Max 250 lines per .tsx file in screens/ and ops/)... ✅ PASS (All files <= 250 lines)
 Checking INV-7 (0 fontSize < 12px in .tsx)... ✅ PASS (0 sub-12px font sizes found)
 Checking INV-8 (Agent contract schema and TypeScript definitions)... ✅ PASS (Contract schema & types present)
@@ -13,14 +13,14 @@ EXIT=0
 --- bin/deploy_verify.sh https://survey.exodus.pp.ua ---
 === Astryx 020 Deploy Verification Gate ===
 Target Base URL: https://survey.exodus.pp.ua
-Fetching bundle: https://survey.exodus.pp.ua/assets/index-BReQhSmj.js
+Fetching bundle: https://survey.exodus.pp.ua/assets/index-Ci1Bo3xT.js
 bundle:view=fullscreen=1
 bundle:reason_code=1
 Checking CDP connection...
 Running DOM Probe via CDP...
 {
   "baseUrl": "https://survey.exodus.pp.ua",
-  "timestamp": "2026-08-15T10:56:10.214Z",
+  "timestamp": "2026-08-15T12:32:52.904Z",
   "navCount": 5,
   "navHrefs": [
     "/ops",
@@ -57,8 +57,6 @@ Running DOM Probe via CDP...
       "pass": true
     },
     "/settings": {
-      "scrollWidth": 390,
-      "clientWidth": 390,
       "overflow": 0,
       "pass": true
     }
@@ -67,10 +65,10 @@ Running DOM Probe via CDP...
   "finalGateUrl": "/settings?tab=hosts",
   "pageErrors": [],
   "screenshots": {
-    "30-ops-inline.png": "e39dae8f99934f2cc8e0aab1c9dce2806cd19a329e91268c19284e9e66d4e655",
-    "31-ops-focus.png": "e85e75683e6a7f58ed0dd661435fe2697d97ec0a2921defd3bfbe352e3d1289a",
-    "32-ops-fullscreen.png": "6ce845997d25714e2012bc6e648a3ab5d87eb176c32db319ff1751c21869d0d5",
-    "33-ops-390.png": "540fa304a31d0d43935a67abb9994c06b8cf27ccc01eb3decfcdb764811b8090"
+    "30-ops-inline.png": "c878aec452ffb3a70b1dfd4b39a24205af22bb49feffca2732494d177ce9d997",
+    "31-ops-focus.png": "db1fb0327a642738d0bc0497b28942b0c7f3f394ff7285a047294a473b92f722",
+    "32-ops-fullscreen.png": "0b9f49e92b87d5e5c6f29e9439d5f4ba410e195e710de79463754170b9e09845",
+    "33-ops-390.png": "bcbcf3754f9d65e150fe9c6acc43f4401864e0b715adc85b60b93c4f61fe1e5a"
   },
   "status": "PASS"
 }
@@ -81,7 +79,7 @@ EXIT=0
 --- bin/ops_verify.sh https://survey.exodus.pp.ua ---
 === Astryx 021B Ops Verification Gate ===
 Target Base URL: https://survey.exodus.pp.ua
-Bundle: https://survey.exodus.pp.ua/assets/index-BReQhSmj.js
+Bundle: https://survey.exodus.pp.ua/assets/index-Ci1Bo3xT.js
 bundle:telegram-queue=1
 bundle:resume-attach=1
 

@@ -1088,6 +1088,10 @@ def cdp_emulate_api():
         from cdp_client import CDPClient
         client = CDPClient(19225)
         try:
+            target_url = None
+            with STATE_LOCK:
+                target_url = ACTIVE_SURVEY_STATE.get("url")
+            client.attach_or_open_tab(target_url or "https://meinungsplatz.ch/")
             client.set_device_metrics_override(width, height, mobile=mobile)
             add_log(f"🖥️ Встановлено емуляцію екрана CDP: {width}x{height} (mobile={mobile})")
         finally:
