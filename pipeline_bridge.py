@@ -36,6 +36,10 @@ import run_state
 VERIFY_ENDPOINT = "http://127.0.0.1:5005/api/survey/verify_step"
 VERIFY_TIMEOUT = 300
 
+#: 023A/F11 — read-back of the run status as the SERVER sees it.
+STATUS_ENDPOINT = "http://127.0.0.1:5005/api/survey/status"
+STATUS_TIMEOUT = 3
+
 #: 023A/F10 — observability for the learning-pipeline bridge. Bookkeeping only:
 #: nothing here can raise, block or change control flow.
 TUTOR_BRIDGE_STATE: dict = {
@@ -170,6 +174,49 @@ def poll_operator_status():
             return astryx_survey_server.ACTIVE_SURVEY_STATE.get("status")
     except Exception:
         return None
+
+
+def poll_operator_status_http(endpoint: str = STATUS_ENDPOINT,
+                              timeout: int = STATUS_TIMEOUT):
+    """Run status as reported by the RUNNING server over HTTP, or None.
+
+    023A/F11. ``poll_operator_status()`` below reads
+    ``astryx_survey_server.ACTIVE_SURVEY_STATE`` via an in-process import. That
+    is correct only when caller and server share a process. In production they
+    do NOT: ``run_survey_execution()`` launches ``survey_agent.py`` with
+    ``subprocess.Popen``, so the import inside the agent yields a FRESH module
+    object whose state is the initial ``{'status': 'idle'}`` — never the
+    server's. Measured on a clean process:
+
+        $ python3 -c "import pipeline_bridge; print(pipeline_bridge.poll_operator_status())"
+        idle
+
+    Consequently the operator's pause/resume/abort can only be observed over
+    HTTP. ``auth.is_authed`` grants 127.0.0.1 unconditionally and the token is
+    sent anyway, so no extra credential is introduced here.
+    """
+    try:
+        req = urllib.request.Request(
+            endpoint,
+            headers={"X-Astryx-Token": os.environ.get("ASTRYX_API_TOKEN", "")})
+        resp = urllib.request.urlopen(req, timeout=timeout)
+        return _json.loads(resp.read().decode("utf-8")).get("status")
+    except Exception:
+        return None
+
+
+def poll_operator_status_live():
+    """Best available view of the operator's status.
+
+    HTTP first (the cross-process truth), falling back to the in-process read
+    when the server is not reachable — which keeps single-process callers and
+    the SDD 022 tests working unchanged. ``poll_operator_status()`` itself is
+    deliberately left byte-identical to its 022 form.
+    """
+    status = poll_operator_status_http()
+    if status is not None:
+        return status
+    return poll_operator_status()
 
 
 def report_running() -> None:

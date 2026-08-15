@@ -41,6 +41,12 @@ VISION_RETRY_BACKOFF_SECONDS = 2.0
 VISION_WAIT_SECONDS = 3.0
 MAX_CONSECUTIVE_VISION_FAILURES = 3
 
+# 023A/F11: the operator's pause is honoured at every step, not only while a
+# captcha is being solved. PAUSE_MAX_SECONDS is a safety cap so a forgotten
+# pause cannot hold a browser session open forever.
+PAUSE_POLL_SECONDS = 2.0
+PAUSE_MAX_SECONDS = 1800
+
 PROFILES = {
     "arno": {"persona_file": "опитування.txt", "label": "Арно Дюбуа (Гланд, 25р.)"},
     "annet": {"persona_file": "Лена-опитування.txt", "label": "Аннет Буонасьє (Гланд, 52р.)"},
@@ -235,6 +241,35 @@ def main() -> None:
             if stepped_url and stepped_url != current_url:
                 log(f"URL changed: {current_url!r} -> {stepped_url!r}")
                 current_url = stepped_url
+
+            # 023A/F11: /api/survey/pause wrote run_state.PAUSED into
+            # ACTIVE_SURVEY_STATE, but the loop only ever read the server's
+            # state inside the captcha branch below — so outside a captcha wait
+            # the pause button did nothing at all and the agent kept clicking.
+            pause_started = None
+            op_status = None
+            while True:
+                op_status = pipeline_bridge.poll_operator_status_live()
+                if op_status != run_state.PAUSED:
+                    break
+                if pause_started is None:
+                    pause_started = time.time()
+                    log(f"⏸️ Paused by operator — holding before step {step}. "
+                        f"No further clicks until resume or abort.")
+                if time.time() - pause_started > PAUSE_MAX_SECONDS:
+                    log(f"Pause exceeded {PAUSE_MAX_SECONDS}s without a resume — stopping.")
+                    stop_reason = "paused_timeout"
+                    break
+                time.sleep(PAUSE_POLL_SECONDS)
+            if stop_reason:
+                break
+            if pause_started is not None:
+                if op_status in (run_state.IDLE, run_state.ERROR):
+                    log(f"Run aborted by operator while paused (status={op_status!r}).")
+                    stop_reason = "aborted_by_operator"
+                    break
+                log(f"▶️ Resumed by operator after {int(time.time() - pause_started)}s "
+                    f"(status={op_status!r}).")
 
             captchas = client.detect_captcha_signatures()
             if captchas:
