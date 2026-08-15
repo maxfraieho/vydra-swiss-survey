@@ -11,7 +11,7 @@ interface ConflictsCountResponse {
 export const Nav: React.FC = () => {
   const { pathname } = useLocation();
 
-  const { data: conflicts } = usePolling<ConflictsCountResponse>('/api/rules/conflicts/count', {
+  const { data: conflicts, error: conflictsError } = usePolling<ConflictsCountResponse>('/api/rules/conflicts/count', {
     intervalMs: 15000,
   });
   const conflictCount = conflicts?.count ?? 0;
@@ -40,7 +40,11 @@ export const Nav: React.FC = () => {
           label="Навички агента"
           isSelected={pathname === '/rules' || /^\/rules\/\d+$/.test(pathname)}
           endContent={
-            conflictCount > 0 ? <Badge variant="error" label={String(conflictCount)} /> : undefined
+            conflictsError ? (
+              <Badge variant="warning" label="?" />
+            ) : conflictCount > 0 ? (
+              <Badge variant="error" label={String(conflictCount)} />
+            ) : undefined
           }
         />
         <SideNavItem

@@ -50,6 +50,18 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   }
 
   const contentType = response.headers.get('content-type');
+  const isApiEndpoint = url.includes('/api/');
+
+  // Flask's SPA catch-all serves index.html (200, text/html) for unmatched
+  // /api/ routes instead of 404 - callers must not silently treat that as data.
+  if (isApiEndpoint && contentType && contentType.includes('text/html')) {
+    throw new ApiError(
+      `API returned HTML instead of JSON for ${endpoint} (route likely missing on backend)`,
+      response.status,
+      null
+    );
+  }
+
   if (contentType && contentType.includes('application/json')) {
     return response.json();
   }

@@ -265,6 +265,23 @@ def compare_rules():
         conn.close()
 
 
+@rules_bp.route("/api/rules/conflicts/count", methods=["GET"])
+def get_conflicts_count():
+    """GET /api/rules/conflicts/count: cheap {"count": N} for the Nav badge poll."""
+    conn = persona_graph_memory._connect()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM ("
+            "  SELECT host, persona, pattern FROM host_rules "
+            "  GROUP BY host, persona, pattern "
+            "  HAVING COUNT(DISTINCT source) >= 2 AND COUNT(DISTINCT behavior) >= 2"
+            ")"
+        ).fetchone()
+        return jsonify({"count": row[0] if row else 0})
+    finally:
+        conn.close()
+
+
 @rules_bp.route("/api/rules/conflicts", methods=["GET"])
 def get_conflicts():
     """GET /api/rules/conflicts: groups (host, persona, pattern) where >=2 rows have distinct source and distinct behavior."""

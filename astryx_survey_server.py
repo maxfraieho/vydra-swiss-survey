@@ -911,7 +911,10 @@ def claim_telegram_queue_api(update_id):
         ACTIVE_SURVEY_STATE["wait_expires_at"] = None
 
     add_log(f"⚡ Завдання з Telegram #{update_id} взято в роботу для {PROFILES.get(profile, {}).get('name', profile)} ({url})")
-    threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
+    # Claim = attach to the persona's existing browser tab for this URL first
+    # (attach_exact_tab gracefully falls back to a fresh run if no matching
+    # tab is open - see survey_agent.py is_active_survey check).
+    threading.Thread(target=run_survey_execution, args=(profile, url, url), daemon=True).start()
     return jsonify({"status": "success", "profile": profile, "url": url})
 
 @app.route("/api/survey/telegram_queue/<update_id>/discard", methods=["POST"])

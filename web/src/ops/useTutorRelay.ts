@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { getApiBase } from '../api/client';
+import { apiFetch } from '../api/client';
+import { ApiError } from '../api/errors';
 import type { NormalizedPoint } from '../types/agent';
 
 export interface RelayActionPayload {
@@ -23,20 +24,14 @@ export function useTutorRelay(onActionSuccess?: () => void) {
     setRelayLoading(true);
     setRelayFeedback(null);
     try {
-      const res = await fetch(`${getApiBase()}/api/survey/relay_action`, {
+      const data = await apiFetch<{ info?: string }>('/api/survey/relay_action', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setRelayFeedback(data.info || 'Дію виконано в CDP');
-        onActionSuccess?.();
-      } else {
-        setRelayFeedback(`Помилка: ${data.message || data.error}`);
-      }
+      setRelayFeedback(data.info || 'Дію виконано в CDP');
+      onActionSuccess?.();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
       setRelayFeedback(`Збій зв'язку: ${msg}`);
     } finally {
       setRelayLoading(false);
