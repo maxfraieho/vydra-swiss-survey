@@ -200,15 +200,38 @@ class CDPClient:
         self._inject_stealth_anti_bot_overrides()
         return True
 
-    def check_and_attach_new_tab(self) -> str | None:
+    def list_page_target_ids(self) -> set[str]:
+        """Ids of every open `page` target right now, or an empty set on error.
+
+        Used to snapshot the tab pool immediately before a click so that
+        check_and_attach_new_tab() can tell a genuinely NEW tab from a tab that
+        was already sitting in the shared CDP pool (023A/F7).
+        """
+        try:
+            r = requests.get(f"{self.base}/json/list", timeout=3)
+            if not r.ok:
+                return set()
+            return {t["id"] for t in r.json() if t.get("type") == "page" and t.get("id")}
+        except Exception:
+            return set()
+
+    def check_and_attach_new_tab(self, known_target_ids: set[str] | None = None) -> str | None:
         """Checks if a new page tab was opened by a click action and switches target_id to it.
-        Returns the new URL if switched, or None if no new tab was detected."""
+        Returns the new URL if switched, or None if no new tab was detected.
+
+        `known_target_ids` is the tab pool as it looked BEFORE the click. Tabs in
+        that set are skipped, so an unrelated tab someone else already had open
+        in the shared CDP pool is never hijacked. Passing None keeps the original
+        (unguarded) behaviour for backwards compatibility — no caller does.
+        """
         try:
             r = requests.get(f"{self.base}/json/list", timeout=3)
             if not r.ok:
                 return None
             tabs = [t for t in r.json() if t.get("type") == "page"]
             for t in reversed(tabs):
+                if known_target_ids is not None and t.get("id") in known_target_ids:
+                    continue
                 if t.get("id") != self.target_id:
                     ws_url = t.get("webSocketDebuggerUrl")
                     if ws_url:

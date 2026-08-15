@@ -29,6 +29,10 @@ import run_state
 
 PROFILE_CACHE_DIR = os.path.expanduser("~/.vydra-survey-profiles")
 
+# 023A/F7: how long to let the browser settle after a click before
+# looking for a tab the click may have opened.
+NEW_TAB_SETTLE_SECONDS = 0.8
+
 PROFILES = {
     "arno": {"persona_file": "опитування.txt", "label": "Арно Дюбуа (Гланд, 25р.)"},
     "annet": {"persona_file": "Лена-опитування.txt", "label": "Аннет Буонасьє (Гланд, 52р.)"},
@@ -328,6 +332,9 @@ def main() -> None:
 
             step_failed = False
             if action == "click":
+                # 023A/F7: snapshot the tab pool before clicking so a genuinely new
+                # tab can be told apart from tabs that were already open.
+                tabs_before = client.list_page_target_ids()
                 if not client.click_by_text(target):
                     log(f"Could not find exact element matching target_text={target!r} — attempting submit button fallback.")
                     sub = client.find_submit_button()
@@ -337,6 +344,15 @@ def main() -> None:
                     else:
                         log(f"Target not found and no submit button available — skipping click for step {step}.")
                         step_failed = True
+                # 023A/F7: many panels hand the survey off to the provider in a NEW
+                # tab. check_and_attach_new_tab() existed for exactly this but was
+                # never called, so the agent kept screenshotting the stale tab for
+                # the rest of the run.
+                time.sleep(NEW_TAB_SETTLE_SECONDS)
+                new_tab_url = client.check_and_attach_new_tab(known_target_ids=tabs_before)
+                if new_tab_url:
+                    log(f"New tab opened by the click — switched CDP target to {new_tab_url!r}")
+                    current_url = new_tab_url
             elif action == "type":
                 if target and not client.click_by_text(target):
                     step_failed = True
