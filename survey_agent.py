@@ -23,7 +23,9 @@ import time
 
 from cdp_client import CDPClient
 from vision import GemmaVision, VisionError
+import pipeline_bridge
 import reflection
+import run_state
 
 PROFILE_CACHE_DIR = os.path.expanduser("~/.vydra-survey-profiles")
 
@@ -225,48 +227,28 @@ def main() -> None:
                     except Exception as _e:
                         log(f"Warning: notify_tutor_captcha_blocking failed: {_e}")
 
-                    try:
-                        import astryx_survey_server
-                        with astryx_survey_server.STATE_LOCK:
-                            astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "waiting_verification"
-                            astryx_survey_server.ACTIVE_SURVEY_STATE["reason_code"] = "captcha_detected"
-                            astryx_survey_server.ACTIVE_SURVEY_STATE["pending_decision"] = {
-                                "action": "captcha_solve",
-                                "target_text": f"CAPTCHA: {', '.join(captchas)}",
-                                "rationale": f"Виявлено захист: {', '.join(captchas)}",
-                                "confidence": 0.99
-                            }
-                    except Exception:
-                        pass
+                    pipeline_bridge.report_blocking("captcha_detected", {
+                        "action": "captcha_solve",
+                        "target_text": f"CAPTCHA: {', '.join(captchas)}",
+                        "rationale": f"Виявлено захист: {', '.join(captchas)}",
+                        "confidence": 0.99
+                    })
 
                     resolved = False
                     start_wait = time.time()
                     while time.time() - start_wait < 600:
                         time.sleep(2.0)
-                        server_status = None
-                        try:
-                            import astryx_survey_server
-                            with astryx_survey_server.STATE_LOCK:
-                                server_status = astryx_survey_server.ACTIVE_SURVEY_STATE.get("status")
-                        except Exception:
-                            pass
+                        server_status = pipeline_bridge.poll_operator_status()
 
-                        if server_status in ("idle", "error"):
+                        if server_status in (run_state.IDLE, run_state.ERROR):
                             log("Task aborted by operator.")
                             stop_reason = "aborted_by_operator"
                             break
 
-                        if server_status == "running" or not client.detect_captcha_signatures():
+                        if server_status == run_state.RUNNING or not client.detect_captcha_signatures():
                             resolved = True
                             log("CAPTCHA resolved (operator resume or DOM check). Resuming execution.")
-                            try:
-                                import astryx_survey_server
-                                with astryx_survey_server.STATE_LOCK:
-                                    astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "running"
-                                    astryx_survey_server.ACTIVE_SURVEY_STATE["reason_code"] = None
-                                    astryx_survey_server.ACTIVE_SURVEY_STATE["pending_decision"] = None
-                            except Exception:
-                                pass
+                            pipeline_bridge.report_running()
                             break
                     if not resolved:
                         if stop_reason != "aborted_by_operator":
@@ -307,30 +289,9 @@ def main() -> None:
                 pass
 
             # Training / Verification hook with Astryx (Port 5005)
-            try:
-                import urllib.request
-                import json as _json
-                req = urllib.request.Request("http://127.0.0.1:5005/api/survey/verify_step",
-                                             data=_json.dumps({
-                                                 "step": step,
-                                                 "shot_path": shot_path,
-                                                 "decision": decision,
-                                                 "profile": args.profile,
-                                                 "url": current_url,
-                                                 "page_text": ptxt[:2000],
-                                                 "pattern": topic
-                                             }).encode("utf-8"),
-                                             headers={"Content-Type": "application/json",
-                                                      "X-Astryx-Token": os.environ.get("ASTRYX_API_TOKEN", "")})
-                resp = urllib.request.urlopen(req, timeout=300)
-                verif_res = _json.loads(resp.read().decode("utf-8"))
-                if verif_res.get("override_action"):
-                    decision["action"] = verif_res.get("override_action")
-                    decision["target_text"] = verif_res.get("override_target", decision.get("target_text"))
-                    decision["value"] = verif_res.get("override_value", decision.get("value"))
-                    log(f"[Verification Override] step {step}: action={decision['action']} target={decision['target_text']}")
-            except Exception as _ve:
-                pass
+            pipeline_bridge.verify_step(step=step, shot_path=shot_path, decision=decision,
+                                        profile=args.profile, url=current_url,
+                                        page_text=ptxt, pattern=topic, log=log)
 
             action = decision.get("action")
             target = str(decision.get("target_text", ""))
@@ -410,7 +371,7 @@ def main() -> None:
                               rules_used=applied_rule_ids)
 
             if applied_rule_ids:
-                bump_rule_outcome(applied_rule_ids, outcome)
+                bump_rule_outcome(applied_rule_ids, outcome, run_id=run_id)
 
             if outcome in ("disqualified", "incomplete", "error"):
                 lessons = reflection.reflect({

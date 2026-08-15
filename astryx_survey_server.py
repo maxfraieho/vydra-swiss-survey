@@ -13,6 +13,7 @@ from rules_api import rules_bp
 from settings_api import settings_bp
 from auth import auth_bp, is_authed, _site_secret
 import persona_graph_memory
+import run_state
 
 app = Flask(__name__)
 app.secret_key = "astryx_swiss_survey_secret_key_5005"
@@ -70,7 +71,7 @@ CURRENT_PROC = None
 CURRENT_PROC_LOCK = threading.Lock()
 
 ACTIVE_SURVEY_STATE = {
-    "status": "idle", # idle, waiting_auth, running, waiting_verification, finished, error
+    "status": run_state.IDLE, # idle, waiting_auth, running, waiting_verification, finished, error
     "reason_code": None, # captcha_detected, wrong_element, etc.
     "active_task_id": None,
     "profile": None,
@@ -97,6 +98,17 @@ ACTIVE_SURVEY_STATE = {
 }
 
 STATE_LOCK = threading.Lock()
+
+
+def _set_survey_status(new_status: str, where: str = "") -> None:
+    """Single write point for ACTIVE_SURVEY_STATE["status"] (SDD 022, R2).
+
+    Validation is log-only — the assignment always happens, exactly as it did when
+    the literal was written inline. Callers keep their existing STATE_LOCK usage.
+    """
+    run_state.check_transition(ACTIVE_SURVEY_STATE.get("status"), new_status, where=where)
+    ACTIVE_SURVEY_STATE["status"] = new_status
+
 
 def update_tutor_activity(source: str, explanation: str, rule: dict | None = None, promo: dict | None = None):
     with STATE_LOCK:
@@ -311,7 +323,7 @@ def push_task_from_text(text: str, force: bool = False, override_url: str | None
             for t in PENDING_TASKS:
                 if t["profile"] == profile and t["reward"] == reward and t["status"] == "waiting_auth":
                     created_ts = t.get("created_timestamp", 0)
-                    if now_dt.timestamp() - created_ts < 30 and ACTIVE_SURVEY_STATE.get("active_task_id") == t["id"] and ACTIVE_SURVEY_STATE.get("status") == "waiting_auth":
+                    if now_dt.timestamp() - created_ts < 30 and ACTIVE_SURVEY_STATE.get("active_task_id") == t["id"] and ACTIVE_SURVEY_STATE.get("status") == run_state.WAITING_AUTH:
                         is_recent_duplicate = True
                         task_item = t
                         break
@@ -322,14 +334,14 @@ def push_task_from_text(text: str, force: bool = False, override_url: str | None
                 PENDING_TASKS.append(task_item)
             
             # If system is idle or missing active task, set as active automatically
-            if ACTIVE_SURVEY_STATE["status"] in ("idle", "finished", "error") or not ACTIVE_SURVEY_STATE.get("active_task_id"):
+            if ACTIVE_SURVEY_STATE["status"] in (run_state.IDLE, run_state.FINISHED, run_state.ERROR) or not ACTIVE_SURVEY_STATE.get("active_task_id"):
                 set_active_task_locked(task_item)
                 
     add_log(f"🔔 Нове опитування додано в чергу: {PROFILES[profile]['name']} ({reward}, {duration})")
     return task_item
 
 def set_active_task_locked(task_item):
-    ACTIVE_SURVEY_STATE["status"] = "waiting_auth"
+    _set_survey_status(run_state.WAITING_AUTH, "set_active_task_locked")
     ACTIVE_SURVEY_STATE["active_task_id"] = task_item["id"]
     ACTIVE_SURVEY_STATE["profile"] = task_item["profile"]
     ACTIVE_SURVEY_STATE["url"] = task_item["url"]
@@ -394,11 +406,11 @@ def auto_start_timer_thread():
         profile = None
         url = None
         with STATE_LOCK:
-            if ACTIVE_SURVEY_STATE["status"] == "waiting_auth":
+            if ACTIVE_SURVEY_STATE["status"] == run_state.WAITING_AUTH:
                 now = datetime.now()
                 expires = ACTIVE_SURVEY_STATE["wait_expires_at"]
                 if expires and now >= expires:
-                    ACTIVE_SURVEY_STATE["status"] = "starting"
+                    _set_survey_status(run_state.STARTING, "auto_start_timer_thread")
                     profile = ACTIVE_SURVEY_STATE["profile"]
                     url = ACTIVE_SURVEY_STATE["url"]
                     should_start = True
@@ -409,7 +421,7 @@ def auto_start_timer_thread():
 def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = None):
     global CURRENT_PROC
     with STATE_LOCK:
-        ACTIVE_SURVEY_STATE["status"] = "running"
+        _set_survey_status(run_state.RUNNING, "run_survey_execution")
 
     add_log(f"🚀 Ексклюзивний запуск Gemma 3 4B Survey Agent for {profile}...")
     try:
@@ -428,9 +440,9 @@ def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = No
                 CURRENT_PROC = None
         with STATE_LOCK:
             if proc.returncode == 0:
-                ACTIVE_SURVEY_STATE["status"] = "finished"
+                _set_survey_status(run_state.FINISHED, "run_survey_execution:exit0")
             else:
-                ACTIVE_SURVEY_STATE["status"] = "error"
+                _set_survey_status(run_state.ERROR, "run_survey_execution:exit_nonzero")
                 ACTIVE_SURVEY_STATE["last_error"] = f"Exit code {proc.returncode}"
         if proc.returncode == 0:
             add_log("✅ Опитування успішно завершено.")
@@ -440,7 +452,7 @@ def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = No
         with CURRENT_PROC_LOCK:
             CURRENT_PROC = None
         with STATE_LOCK:
-            ACTIVE_SURVEY_STATE["status"] = "error"
+            _set_survey_status(run_state.ERROR, "run_survey_execution:exception")
             ACTIVE_SURVEY_STATE["last_error"] = str(e)
         add_log(f"❌ Помилка виконання: {e}")
 
@@ -904,7 +916,7 @@ def claim_telegram_queue_api(update_id):
     profile = "annet" if ("Олени" in text or "Annette" in text or "Олена" in text) else "arno"
 
     with STATE_LOCK:
-        ACTIVE_SURVEY_STATE["status"] = "starting"
+        _set_survey_status(run_state.STARTING, "approve_telegram_item")
         ACTIVE_SURVEY_STATE["profile"] = profile
         ACTIVE_SURVEY_STATE["url"] = url
         ACTIVE_SURVEY_STATE["active_task_id"] = f"telegram_{update_id}"
@@ -942,7 +954,7 @@ def select_task_api():
         if matching:
             set_active_task_locked(matching[0])
             PENDING_TASKS = [t for t in PENDING_TASKS if t["id"] != task_id]
-            ACTIVE_SURVEY_STATE["status"] = "starting"
+            _set_survey_status(run_state.STARTING, "select_task_api")
             chosen = matching[0]
     if matching:
         add_log(f"⚡ Задачу '{chosen['profile_name']}' вибрано для виконання.")
@@ -960,7 +972,7 @@ def resume_tab_api():
     if not tab_url:
         return jsonify({"status": "error", "message": "tab_url is required"}), 400
     with STATE_LOCK:
-        ACTIVE_SURVEY_STATE["status"] = "starting"
+        _set_survey_status(run_state.STARTING, "resume_tab_api")
         ACTIVE_SURVEY_STATE["active_task_id"] = None
         ACTIVE_SURVEY_STATE["profile"] = profile
         ACTIVE_SURVEY_STATE["url"] = tab_url
@@ -976,8 +988,8 @@ def delete_pending_task_api(task_id: str):
         before = len(PENDING_TASKS)
         PENDING_TASKS = [t for t in PENDING_TASKS if t["id"] != task_id]
         removed = before != len(PENDING_TASKS)
-        if removed and ACTIVE_SURVEY_STATE.get("active_task_id") == task_id and ACTIVE_SURVEY_STATE["status"] == "waiting_auth":
-            ACTIVE_SURVEY_STATE["status"] = "idle"
+        if removed and ACTIVE_SURVEY_STATE.get("active_task_id") == task_id and ACTIVE_SURVEY_STATE["status"] == run_state.WAITING_AUTH:
+            _set_survey_status(run_state.IDLE, "dismiss_task_api")
             ACTIVE_SURVEY_STATE["active_task_id"] = None
             ACTIVE_SURVEY_STATE["wait_expires_at"] = None
     if removed:
@@ -1006,7 +1018,7 @@ def verify_step_api():
         ACTIVE_SURVEY_STATE["verification_event"].clear()
         ACTIVE_SURVEY_STATE["verification_result"] = None
         if training_mode:
-            ACTIVE_SURVEY_STATE["status"] = "waiting_verification"
+            _set_survey_status(run_state.WAITING_VERIFICATION, "verify_step_api")
 
     if not training_mode:
         return jsonify({"approved": True})
@@ -1015,7 +1027,7 @@ def verify_step_api():
     event_set = ACTIVE_SURVEY_STATE["verification_event"].wait(timeout=300)
     
     with STATE_LOCK:
-        ACTIVE_SURVEY_STATE["status"] = "running"
+        _set_survey_status(run_state.RUNNING, "verify_step_api:resume")
         res = ACTIVE_SURVEY_STATE["verification_result"] or {"approved": True}
         ACTIVE_SURVEY_STATE["pending_decision"] = None
         return jsonify(res)
@@ -1040,14 +1052,14 @@ def skip_step_api():
 @app.route("/api/survey/pause", methods=["POST"])
 def pause_step_api():
     with STATE_LOCK:
-        ACTIVE_SURVEY_STATE["status"] = "paused"
+        _set_survey_status(run_state.PAUSED, "pause_step_api")
     add_log("⏸️ Поставлено на паузу оператором.")
     return jsonify({"status": "success"})
 
 @app.route("/api/survey/resume_after_captcha", methods=["POST"])
 def resume_after_captcha_api():
     with STATE_LOCK:
-        ACTIVE_SURVEY_STATE["status"] = "running"
+        _set_survey_status(run_state.RUNNING, "resume_after_captcha_api")
         ACTIVE_SURVEY_STATE["reason_code"] = None
         ACTIVE_SURVEY_STATE["verification_result"] = {"approved": True}
         ACTIVE_SURVEY_STATE["verification_event"].set()
@@ -1067,7 +1079,7 @@ def abort_task_api():
             except Exception:
                 proc.kill()
         with STATE_LOCK:
-            ACTIVE_SURVEY_STATE["status"] = "idle"
+            _set_survey_status(run_state.IDLE, "abort_task_api")
             ACTIVE_SURVEY_STATE["reason_code"] = None
             ACTIVE_SURVEY_STATE["wait_expires_at"] = None
             ACTIVE_SURVEY_STATE["verification_result"] = {"approved": False, "abort": True}
@@ -1197,10 +1209,10 @@ def trigger_api():
 def authorize_api():
     started = False
     with STATE_LOCK:
-        if ACTIVE_SURVEY_STATE["status"] in ("waiting_auth", "idle"):
+        if ACTIVE_SURVEY_STATE["status"] in (run_state.WAITING_AUTH, run_state.IDLE):
             profile = ACTIVE_SURVEY_STATE["profile"] or "arno"
             url = ACTIVE_SURVEY_STATE["url"] or "https://meinungsplatz.ch/"
-            ACTIVE_SURVEY_STATE["status"] = "starting"
+            _set_survey_status(run_state.STARTING, "authorize_survey_api")
             started = True
     if started:
         add_log("⚡ Авторизація підтверджена! Негайний запуск опитування.")
@@ -1221,7 +1233,7 @@ def stop_api():
                 proc.kill()
         subprocess.run(["bash", os.path.expanduser("~/llm-switch.sh"), "stop"], capture_output=True)
         with STATE_LOCK:
-            ACTIVE_SURVEY_STATE["status"] = "idle"
+            _set_survey_status(run_state.IDLE, "stop_survey_api")
             ACTIVE_SURVEY_STATE["wait_expires_at"] = None
             ACTIVE_SURVEY_STATE["verification_event"].set()
         add_log("🛑 Процес зупинено за запитом користувача.")
