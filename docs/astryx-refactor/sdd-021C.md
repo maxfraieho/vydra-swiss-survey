@@ -48,8 +48,20 @@
   ("Europe/Zurich")`, `Emulation.setLocaleOverride("de-CH")` (CDP native, не лише
   JS navigator-патч), `Intl.DateTimeFormat.prototype.resolvedOptions` override для
   надійності на випадок, якщо CDP override недоступний у поточній версії Chrome.
-  Гео — лише якщо проксі дозволяє (перевірити наявність Swiss-proxy конфіга,
-  інакше задокументувати як N/A, не FAIL).
+  Гео — Swiss-proxy РЕАЛЬНО існує й уже підключений (Oracle-хост,
+  github.com/maxfraieho/termux-proxy, доступ через Tailscale на .30/.184) — не N/A,
+  обов'язковий гейт.
+
+  **Live baseline (заміряно ЦІЄЮ сесією, .30 Comet, той самий Swiss-proxy браузер,
+  ДО фіксу)**:
+  ```
+  ipinfo.io/json -> {"ip":"188.61.140.21","city":"Lausanne","region":"Vaud",
+    "country":"CH","org":"AS3303 Swisscom (Switzerland) Ltd","timezone":"Europe/Zurich"}
+  meinungsplatz.ch -> {"language":"en-US","languages":["en-US"],"timeZone":"UTC"}
+  ```
+  **Мережевий рівень (3b) вже CH — правильно.** JS-фінгерпринт (3a) досі
+  en-US/UTC — невідповідність мережі й браузера, реальний bot-detection ризик,
+  саме це і треба виправити.
 
 ## Implementation (файли)
 
@@ -70,13 +82,15 @@
 | 0 | Live availability | `curl -I https://survey.exodus.pp.ua` | `HTTP/2 200` | live 200 |
 | 1 | Zoom math | Puppeteer/CDP на `/ops`, set zoom 50/100/200/400% | `transform-origin` = точка курсора/центр, `scale` = введене ±1% | усі 4 точки в межах похибки |
 | 2 | Desktop emulation | `Emulation.setDeviceMetricsOverride(1280,800)` або `(1440,900)` → скріншот | десктопний layout, без mobile breakpoint | скріншот без mobile-класів |
-| 3 | CH fingerprints | на meinungsplatz.ch: `navigator.language`, `navigator.languages`, `Intl.DateTimeFormat().resolvedOptions().timeZone` | `de-CH`/`fr-CH`/`it-CH` + `Europe/Zurich` | точний збіг |
+| 3a | CH locale/timezone (JS) | на meinungsplatz.ch: `navigator.language`, `navigator.languages`, `Intl.DateTimeFormat().resolvedOptions().timeZone` | `de-CH`/`fr-CH`/`it-CH` + `Europe/Zurich` | точний збіг. **Baseline ДО фіксу: `en-US`/`["en-US"]`/`UTC` — FAIL** |
+| 3b | CH geo IP (проксі) | `curl -x <Swiss-proxy> https://ipinfo.io/json` через .30/.184 Tailscale-ендпоінт (Oracle, github.com/maxfraieho/termux-proxy) | `country: "CH"` | точний збіг. **Baseline: вже PASS** (`188.61.x.x`, Swisscom, Lausanne, `Europe/Zurich`) — обов'язковий гейт, НЕ N/A |
+| 3c | CH консистентність | зіставити 3a + 3b з того самого браузерного сеансу | CH IP (3b) + de-CH/fr-CH/it-CH + Europe/Zurich (3a) не суперечать | обидва PASS одночасно в 1 сесії. Якщо проксі впав під час прогону — це FAIL 3b (не N/A) |
 | 4 | Human typing | заміряти час введення 10 символів | середня затримка 30-80мс, std dev > 5мс | обидві умови |
 | 5 | Mouse Bezier | записати координати `mousemove`, перевірити кривизну шляху | кривизна > 0 (не пряма лінія) | non-linear path |
 | 6 | HITL challenge | симуляція challenge-детекції | `status=waiting_verification`, UI показує блок з Resume/Skip/Abort | live DOM-доказ |
 | 7 | Regression | `bin/ops_verify.sh` | Telegram Queue + Resume-in-tab досі PASS | exit 0, токени присутні |
-| 8 | Security | `curl /api/* без cookie` | 401; `rg -i "password\s*=\s*['\"]" *.py` | 401 + 0 plaintext-паролів у коді |
-| 9 | UI invariants | `bash bin/ui_verify.sh` | 0 HEX, `style={{` ≤ 40 (існуючий поріг скрипта; user-вимога "≤17" — уточнити з Q чи затягувати поріг) | exit 0 |
+| 8 | Security | `curl /api/* без cookie` | 401; `rg -i "password\s*=\s*['\"]" *.py`; секрети проксі НЕ в git (лише env) | 401 + 0 plaintext-паролів/секретів проксі у коді |
+| 9 | UI invariants | `bash bin/ui_verify.sh` | 0 HEX, `style={{` ≤ 17 (**затягнуто з 40 за рішенням Q** — зараз 30 occurrences, потребує рефакторингу існуючих ДО додавання нових Zoom/HITL стилів) | exit 0 |
 
 **RULE**: жоден гейт не отримує PASS без runtime-доказу (команда+вивід в evidence).
 Не писати "100% PASS" якщо хоч один FAIL — чесний FAIL + план виправлення.
@@ -87,14 +101,17 @@
   `bin/ui_verify.sh`/`bin/deploy_verify.sh`/`bin/ops_verify.sh`, коміти.
 - **AGY .234** (rpi3b, `agy --mode=accept-edits`): важка імплементація (Zoom math,
   Bezier/typing-код, CH CDP emulation, HITL wiring) + важкі E2E/Puppeteer-прогони.
+- **CDP через .30 (Comet, Swiss-proxy)**: Гейти 1-6, 3a/3b/3c — той самий CDP-тунель
+  (`ws://127.0.0.1:9226`), що використовувався для 020C/021B evidence.
 
-## Відкриті питання (потребують рішення Q перед/під час імплементації)
+## Рішення Q (закриті питання)
 
-1. Скрипт `bin/ui_verify.sh` наразі має поріг `style={{ <= 40`; задача каже `<= 17`.
-   Затягувати поріг чи лишити 40 (нові Zoom/HITL-компоненти можуть додати
-   `style={{` для transform/animation, які важко зробити через className)?
-2. Swiss-proxy для гео (Gate 3 гео-частина) — чи є конфігурований проксі, чи
-   позначити гео як N/A?
-3. Bot-filter детектор (Cloudflare/hCaptcha/recaptcha markers) — попередній
-   AGY test-plan.md (з минулої сесії, НЕ верифіковано) згадував це як вже готове;
-   реально коду немає. Будувати з нуля.
+1. `style={{` поріг у `bin/ui_verify.sh`: **затягнуто до ≤17** (з 40). Поточний стан —
+   30 occurrences → AGY має рефакторити існуючі ДО або паралельно з новими фічами,
+   інакше Гейт 9 не пройде навіть без нового коду.
+2. Swiss-proxy: **існує і живий**, Oracle-хост (github.com/maxfraieho/termux-proxy),
+   Tailscale-ендпоінти .30/.184. Секрети проксі — лише env/.env, НІКОЛИ в git;
+   у audit-документі виводити лише замаскований IP (`/24`).
+3. Bot-filter детектор — будувати з нуля (AGY test-plan.md з минулої сесії
+   не підтверджений кодом, не довіряти).
+
