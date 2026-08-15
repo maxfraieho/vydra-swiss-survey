@@ -1,0 +1,33 @@
+GATE 1 — wiring Viewport/view=fullscreen/reason_code
+=====================================
+-- main.tsx routes --
+33:          <Route path="/" element={<AppShell />}>
+35:            <Route path="ops" element={<SurveyOps />} />
+36:            <Route path="rules" element={<RulesTable />} />
+37:            <Route path="rules/:ruleId" element={<RulesTable />} />
+38:            <Route path="rules/compare" element={<Navigate to="/traces" replace />} />
+39:            <Route path="rules/conflicts" element={<Navigate to="/rules" replace />} />
+40:            <Route path="gate" element={<Navigate to="/settings?tab=hosts" replace />} />
+41:            <Route path="gate/:host" element={<Navigate to="/settings?tab=hosts" replace />} />
+42:            <Route path="traces" element={<Traces />} />
+43:            <Route path="traces/:runId" element={<Traces />} />
+44:            <Route path="report" element={<Report />} />
+45:            <Route path="analytics" element={<Report />} />
+46:            <Route path="settings" element={<SettingsPage />} />
+47:            <Route path="*" element={<Navigate to="/ops" replace />} />
+
+-- rg viewport/reason_code hits --
+web/src/ops/useViewportMode.ts:5:export const VIEWPORT_FULLSCREEN_QUERY = 'view=fullscreen';
+web/src/ops/useViewportMode.ts:7:export function useViewportMode() {
+web/src/ops/Viewport.tsx:4:import { useViewportMode } from './useViewportMode';
+web/src/ops/Viewport.tsx:40:  const { mode, setMode, containerRef, toggleFullscreen } = useViewportMode();
+web/src/ops/AttentionCard.tsx:72:      reason_code: reasonCode,
+web/src/ops/AttentionCard.tsx:127:              label="Причина правки (reason_code)"
+web/src/types/agent.ts:61:  reason_code: ReasonCodeType;
+
+-- SurveyOps imports Viewport --
+10:import { Viewport } from '../../ops/Viewport';
+125:      {/* ЗОНА 2: Інтерактивний Viewport + Таймлайн */}
+126:      <Viewport
+
+STATUS: PASS

@@ -1,0 +1,4 @@
+bundle:telegram-queue=0
+bundle:resume-attach=0
+GET https://survey.exodus.pp.ua/api/survey/status (no auth) -> 401
+GET https://survey.exodus.pp.ua/ (no auth) title -> <title>Вхід</title>

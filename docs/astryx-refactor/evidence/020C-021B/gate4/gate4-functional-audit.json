@@ -1,0 +1,44 @@
+{
+  "/ops": {
+    "title": "Astryx Swiss Survey Console",
+    "bodyTextLength": 582,
+    "errorBoundaryTriggered": false,
+    "pageErrorsCount": 0,
+    "pageErrors": [],
+    "screenshotSha256": "6fcf1eede857e88ee0852dec8cd429eaac60008fbd94e03ff39d07906e0bff9f"
+  },
+  "/rules": {
+    "title": "Astryx Swiss Survey Console",
+    "bodyTextLength": 407,
+    "errorBoundaryTriggered": false,
+    "pageErrorsCount": 0,
+    "pageErrors": [],
+    "screenshotSha256": "f9186cdd8520cbaab0b0ea7a455c0e5db906c7c3039a342a476f0b51dab26028",
+    "navConflictBadgeQuery": false
+  },
+  "/traces": {
+    "title": "Astryx Swiss Survey Console",
+    "bodyTextLength": 3641,
+    "errorBoundaryTriggered": false,
+    "pageErrorsCount": 0,
+    "pageErrors": [],
+    "screenshotSha256": "c114a967933234373bc9b24dfa34df254cc5a5470198673bdb0309096f994202",
+    "checkboxCount": 51
+  },
+  "/report": {
+    "title": "Astryx Swiss Survey Console",
+    "bodyTextLength": 13168,
+    "errorBoundaryTriggered": false,
+    "pageErrorsCount": 0,
+    "pageErrors": [],
+    "screenshotSha256": "e31c25a97afadbd48863c34766596f32515634fb4446e0c6e73d95900861fee9"
+  },
+  "/settings": {
+    "title": "Astryx Swiss Survey Console",
+    "bodyTextLength": 443,
+    "errorBoundaryTriggered": false,
+    "pageErrorsCount": 0,
+    "pageErrors": [],
+    "screenshotSha256": "6b54215bd8e8bd90d47a507cea8df512b6584d46cf3aef458ef3b57c92a58bc1"
+  }
+}

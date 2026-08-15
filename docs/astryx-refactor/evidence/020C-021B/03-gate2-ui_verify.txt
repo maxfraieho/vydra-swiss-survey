@@ -1,0 +1,9 @@
+=== UI Invariant Verification Check ===
+Checking INV-1 (0 HEX literals in .tsx)... ✅ PASS (0 HEX found)
+Checking INV-2 (style={{ occurrences <= 40)... ✅ PASS (0 style={{ found, target <= 40)
+Checking INV-3 (Max 250 lines per .tsx file in screens/ and ops/)... ✅ PASS (All files <= 250 lines)
+Checking INV-7 (0 fontSize < 12px in .tsx)... ✅ PASS (0 sub-12px font sizes found)
+Checking INV-8 (Agent contract schema and TypeScript definitions)... ✅ PASS (Contract schema & types present)
+========================================
+🎉 ALL UI INVARIANTS PASS
+EXIT_CODE=0

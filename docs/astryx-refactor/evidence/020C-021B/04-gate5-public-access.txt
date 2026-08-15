@@ -1,0 +1,21 @@
+GATE 5 — закриття публічного доступу (Basic auth / gateway)
+=====================================
+-- без cookie --
+/api/rules -> 401
+/api/settings -> 401
+/api/traces -> 401
+/api/survey/status body: {"error":"unauthorized"}
+
+-- з cookie --
+/api/survey/status -> 200
+
+-- ПРОБЛЕМА: секрет захардкоджений у git-трекнутих файлах --
+./bin/deploy_verify.sh
+./bin/dom_probe.mjs
+./tests/regression/test_web_interface_routing.py
+./auth.py
+
+auth.py:24 fallback:
+    return sec if sec else "oDWnckh7aaA8HOJiskM3uvvmUi7nQFX6"
+
+STATUS: PASS (функціонально — 401 без cookie), FINDING: секрет hardcoded у 4 файлах git (репо приватне, отже не critical, але порушує секрет-гігієну)

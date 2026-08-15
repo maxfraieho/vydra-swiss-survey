@@ -1,0 +1,17 @@
+GATE 0 — live 200 + автостарт
+=====================================
+FAIL (initial): curl -sI https://survey.exodus.pp.ua/ -> HTTP/2 502
+Root cause: два cloudflared-конектори на один tunnel ID 7c2d896d-2c77-4486-af56-ef30969ca942:
+  - dev-184 (~/.cloudflared/config.yml): survey.exodus.pp.ua -> http://localhost:5005 (OK)
+  - OrangePi (/etc/cloudflared/config.yml, root): survey.exodus.pp.ua -> http://192.168.3.196:5005 (STALE, IP телефону Q)
+Fix: sed IP 192.168.3.196 -> 192.168.3.184 в /etc/cloudflared/config.yml на OrangePi (sudo, підтверджено Q).
+Reload: kill -HUP <old pid 231179> -> процес перезапущено супервізором автоматично -> новий PID 345730 (автостарт підтверджено).
+
+POST-FIX verification (10x over 10s, `curl -s -o /dev/null -w "%{http_code}"`):
+200 200 200 200 200 200 200 200 200 200
+
+Origin (dev-184) direct check:
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5005/  -> 200
+ps aux | grep astryx_survey_server -> PID 14215, python3 astryx_survey_server.py (running)
+
+STATUS: PASS

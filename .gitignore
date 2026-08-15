@@ -16,3 +16,4 @@ web/node_modules/
 !docs/**/evidence/**/*.jpg
 !specs/**/evidence/**/*.png
 !specs/**/evidence/**/*.jpg
+node_modules/

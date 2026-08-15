@@ -1,0 +1,16 @@
+6fcf1eede857e88ee0852dec8cd429eaac60008fbd94e03ff39d07906e0bff9f  docs/astryx-refactor/evidence/020C-021B/gate4/gate4-ops.png
+e31c25a97afadbd48863c34766596f32515634fb4446e0c6e73d95900861fee9  docs/astryx-refactor/evidence/020C-021B/gate4/gate4-report.png
+f9186cdd8520cbaab0b0ea7a455c0e5db906c7c3039a342a476f0b51dab26028  docs/astryx-refactor/evidence/020C-021B/gate4/gate4-rules.png
+6b54215bd8e8bd90d47a507cea8df512b6584d46cf3aef458ef3b57c92a58bc1  docs/astryx-refactor/evidence/020C-021B/gate4/gate4-settings.png
+c114a967933234373bc9b24dfa34df254cc5a5470198673bdb0309096f994202  docs/astryx-refactor/evidence/020C-021B/gate4/gate4-traces.png
+6fcf1eede857e88ee0852dec8cd429eaac60008fbd94e03ff39d07906e0bff9f  docs/astryx-refactor/evidence/020C/30-ops-inline.png
+a04aea388e875917ce1121f2fe551bc76f9cb27afaa81f77a216ae5a795af53a  docs/astryx-refactor/evidence/020C/31-ops-focus.png
+d0e67ce0f14458c3b0083fe09030c7f58b350688cc1613425caf6c64f22ff8d8  docs/astryx-refactor/evidence/020C/32-ops-fullscreen.png
+98b8a9bcd9c30645890489c1765d0d8472e0a9ca8654b1f3d17b37ef596bcd01  docs/astryx-refactor/evidence/020C/33-ops-390.png
+
+Duplicate: 6fcf1eede857... (gate4-ops.png == 30-ops-inline.png) — очікувано:
+два незалежні live-проби /ops у default 1280x800 viewport в межах кількох секунд,
+той самий рендер стан. Не є ознакою фабрикації — інші 020C скріншоти (30-33,
+різні viewport-режими) усі унікальні, як вимагає Крок 5.
+
+STATUS: PASS

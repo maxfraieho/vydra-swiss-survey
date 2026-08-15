@@ -1,0 +1,16 @@
+DODATKOVA PEREVIRKA — Synapse Memory OS (поза Гейтами 0-7, за запитом Q)
+=====================================
+synapse_adapter.py очікує SYNAPSE_API_URL (default http://127.0.0.1:8787).
+curl http://127.0.0.1:8787/health -> 000 (не слухає), ss -tlnp | grep 8787 -> порожньо, process synapse -> немає.
+
+scripts/start_synapse_api.sh:
+  shebang: #!/data/data/com.termux/files/usr/bin/bash  (Termux-only, НЕ Alpine dev-184)
+  очікує $HOME/synapse/apps/api + tsx CLI з pnpm store
+ls ~/synapse -> No such file or directory
+
+Висновок: Synapse Memory OS ніколи не розгортався на dev-184 (192.168.3.184).
+Це Termux/телефонний сервіс (Vydra), сюди не портований. Non-blocking адаптер
+(150ms timeout, fire-and-forget) не валить survey-сервер, але агентна пам'ять
+на .184 фактично не працює.
+
+STATUS: FAIL (окремо від astryx-refactor Гейтів 0-7, потребує окремого розгортання)

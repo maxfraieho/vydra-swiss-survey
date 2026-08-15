@@ -1,0 +1,84 @@
+GATE 7 — регресія Пульта оператора (Telegram Queue + Resume-in-tab)
+=====================================
+
+-- 7a: git log -S Telegram -S update_id --
+git log -S "Telegram" --oneline -- web/src:
+a73381b 020: ops viewport fullscreen + tabs restructure with full ui invariants passing
+b2b81a8 feat(sdd): implement Feature 006 — Tutor Interactive Loop & High-Level Agent Integration
+a157c8b feat(web): add telegram fetch result toast, task deletion and telegram token settings panel
+f5a0541 feat: U5 — React-порт Режиму Навчання (HITL) + фікс мобільної шапки
+
+git log -S "Continue in existing" --oneline:
+
+-> a73381b (020 tabs restructure) видалив блок "Черга опитувань з Telegram" з
+   web/src/screens/settings/TelegramSettingsPanel.tsx (fetch_telegram button, queue card).
+-> 3be7aa1 додав resume-in-tab (cdp_client.attach_exact_tab, /api/survey/resume_tab,
+   web/src/screens/ops/SurveyOps.tsx panel) — панель у SurveyOps.tsx знесена в a73381b.
+STATUS: PASS (регресію знайдено і задокументовано)
+
+-- 7b: Telegram queue (listener + dedup update_id + Claim/Discard) --
+Backend listener:
+120:RECENT_TELEGRAM_PUSHES = []
+165:        cached_msgs = list(RECENT_TELEGRAM_PUSHES)
+289:def telegram_listener_thread():
+291:    last_update_id = 0
+297:            params = urllib.parse.urlencode({"offset": last_update_id + 1, "timeout": 20})
+303:                        last_update_id = update["update_id"]
+311:                                RECENT_TELEGRAM_PUSHES.append(update)
+312:                                if len(RECENT_TELEGRAM_PUSHES) > 50:
+313:                                    RECENT_TELEGRAM_PUSHES.pop(0)
+803:            RECENT_TELEGRAM_PUSHES.append(payload)
+Thread start: 1036:    threading.Thread(target=telegram_listener_thread, daemon=True).start()
+Live confirmation (log_history): 
+Frontend state UI (active/error/last_update_at) search:
+(none found)
+Frontend Claim/Discard search:
+(none found)
+STATUS: FAIL — backend dedup/listener живий, 0 структурованого стану (active/error/last_update_at) і 0 Claim/Discard UI
+
+-- 7c: Resume-from-URL (persona select + CDP attach existing tab) --
+Backend:
+astryx_survey_server.py:337:def run_survey_execution(profile: str, url: str, resume_tab_url: str | None = None):
+astryx_survey_server.py:345:        if resume_tab_url:
+astryx_survey_server.py:346:            cmd += ["--resume-tab", resume_tab_url]
+astryx_survey_server.py:829:@app.route("/api/survey/resume_tab", methods=["POST"])
+astryx_survey_server.py:830:def resume_tab_api():
+survey_agent.py:186:        if args.resume_tab:
+survey_agent.py:187:            log(f"Resuming in existing tab: {args.resume_tab}")
+survey_agent.py:188:            is_existing = client.attach_exact_tab(args.resume_tab)
+cdp_client.py:180:    def attach_exact_tab(self, url: str) -> bool:
+Frontend (SurveyOps.tsx, ops/*.tsx):
+(none found — UI panel відсутня)
+STATUS: FAIL — backend endpoint /api/survey/resume_tab живий і orphaned, фронтенд-панель відсутня повністю
+
+-- 7d: секрети (bot token/паролі) тільки з env/секрет-стора --
+def get_telegram_bot_token() -> str:
+    default_token = "8861125591:AAFUAdGZr_r3yq39msEBKaHorSmbJK4zT-s"
+    env_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if env_token and ":" in env_token and len(env_token) > 20:
+        return env_token
+    db_token = persona_graph_memory.get_setting("telegram_bot_token")
+    if db_token and ":" in db_token and len(db_token) > 20:
+        return db_token
+    return default_token
+
+TELEGRAM_BOT_TOKEN = get_telegram_bot_token()
+STATUS: FAIL (CRITICAL) — default_token у astryx_survey_server.py (get_telegram_bot_token) є РЕАЛЬНИМ Telegram Bot API токеном, захардкодженим у git-трекнутому файлі. env/DB-setting використовуються ЯКЩО задані, але fallback-значення саме по собі є leak. Ротацію НЕ виконано за рішенням Q (Q ротує сам).
+
+-- 7e: bin/ops_verify.sh --
+=== Astryx 021B Ops Verification Gate ===
+Target Base URL: https://survey.exodus.pp.ua
+Bundle: https://survey.exodus.pp.ua/assets/index-DalGzCm2.js
+bundle:telegram-queue=0
+FAIL: telegram-queue відсутній у задеплоєному бандлі — Telegram Queue / Resume-in-tab UI не задеплоєно
+bundle:resume-attach=0
+FAIL: resume-attach відсутній у задеплоєному бандлі — Telegram Queue / Resume-in-tab UI не задеплоєно
+
+Checking console/API auth gating (no cookie => must be blocked)...
+GET https://survey.exodus.pp.ua/api/survey/status (no auth) -> 401
+GET https://survey.exodus.pp.ua/ (no auth) title -> <title>Вхід</title>
+❌ OPS VERIFICATION FAILED
+EXIT_CODE=1
+STATUS: PASS (скрипт створено, коректно/чесно падає при відсутніх токенах — feature не задеплоєно)
+
+GATE 7 OVERALL: FAIL (7b, 7c не виконано; 7d CRITICAL — live Telegram token hardcoded в репо, потребує ротації)

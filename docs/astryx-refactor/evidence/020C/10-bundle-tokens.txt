@@ -1,2 +1,2 @@
 bundle:view=fullscreen=1
-bundle:reason_code=2
+bundle:reason_code=1
