@@ -16,7 +16,7 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Badge } from '@astryxdesign/core/Badge';
-import { useToast } from '@astryxdesign/core/Toast';
+import { normalizeInputChange, useToast } from '../../ui/primitives';
 
 export const AISourcePanel: React.FC = () => {
   const toast = useToast();
@@ -148,7 +148,7 @@ export const AISourcePanel: React.FC = () => {
           <TextInput
             label="Base URL"
             value={baseUrl}
-            onChange={(val) => setBaseUrl(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+            onChange={(val) => setBaseUrl(normalizeInputChange(val))}
             placeholder="http://192.168.3.184:18880"
             required
           />
@@ -156,7 +156,7 @@ export const AISourcePanel: React.FC = () => {
           <TextInput
             label="Назва моделі"
             value={model}
-            onChange={(val) => setModel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+            onChange={(val) => setModel(normalizeInputChange(val))}
             placeholder="multimedia-proxy або gpt-4o"
             required
           />
@@ -166,7 +166,7 @@ export const AISourcePanel: React.FC = () => {
               label="API Token / Secret"
               type="password"
               value={tokenInput}
-              onChange={(val) => setTokenInput(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+              onChange={(val) => setTokenInput(normalizeInputChange(val))}
               placeholder="Введіть новий токен"
             />
           ) : (

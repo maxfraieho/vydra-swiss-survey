@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@astryxdesign/core/Card';
 import { Button } from '@astryxdesign/core/Button';
 import { Banner } from '@astryxdesign/core/Banner';
-import { EmptyState, FormGrid } from '../ui/primitives';
+import { EmptyState, FormGrid, normalizeInputChange } from '../ui/primitives';
 import { Selector } from '@astryxdesign/core/Selector';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { REASON_CODE_LABELS, type ReasonCodeType, type HumanCorrection } from '../types/agent';
@@ -172,13 +172,13 @@ export const AttentionCard: React.FC<AttentionCardProps> = ({
             <TextArea
               label="Правильне значення або селектор"
               value={overrideValue}
-              onChange={(val) => setOverrideValue(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+              onChange={(val) => setOverrideValue(normalizeInputChange(val))}
               placeholder="Введіть правильну відповідь або вкажіть дію"
             />
             <TextArea
               label="Коментар для тутора (optional)"
               value={correctionNote}
-              onChange={(val) => setCorrectionNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+              onChange={(val) => setCorrectionNote(normalizeInputChange(val))}
               placeholder="Пояснення для запису уроку в базу знань"
             />
             <div className="flex-row gap-sm mt-sm">

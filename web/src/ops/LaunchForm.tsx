@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { Button } from '@astryxdesign/core/Button';
-import { FormGrid } from '../ui/primitives';
+import { FormGrid, normalizeInputChange } from '../ui/primitives';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Selector } from '@astryxdesign/core/Selector';
 
@@ -62,7 +62,7 @@ export const LaunchForm: React.FC<LaunchFormProps> = ({
           <TextInput
             label="URL опитування"
             value={url}
-            onChange={(val) => setUrl(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+            onChange={(val) => setUrl(normalizeInputChange(val))}
             placeholder="https://opinionhero.com/... або https://meinungsplatz.ch/..."
             required
           />

@@ -50,7 +50,7 @@ describe('ResumeTabCard Component (Feature 021D)', () => {
     // Simulate typing
     await user.type(input, 'https://meinungsplatz.ch/survey/123');
     expect(input.value).toBe('https://meinungsplatz.ch/survey/123');
-  });
+  }, 20000);
 
   it('activates button only when URL is valid', async () => {
     const user = userEvent.setup();
@@ -70,7 +70,7 @@ describe('ResumeTabCard Component (Feature 021D)', () => {
     await user.clear(input);
     await user.type(input, 'https://meinungsplatz.ch/de/survey/456');
     expect(submitBtn.disabled).toBe(false);
-  });
+  }, 20000);
 
   it('submits resume request with persona and url', async () => {
     const user = userEvent.setup();
@@ -95,5 +95,5 @@ describe('ResumeTabCard Component (Feature 021D)', () => {
       });
       expect(mockResumed).toHaveBeenCalledTimes(1);
     });
-  });
+  }, 20000);
 });

@@ -10,8 +10,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Card } from '@astryxdesign/core/Card';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
-import { useToast } from '@astryxdesign/core/Toast';
-import { PageHeader, RuleStatusPill } from '../../ui/primitives';
+import { PageHeader, RuleStatusPill, useToast } from '../../ui/primitives';
 
 export interface FacetsData {
   hosts: { name: string; count: number; by_status: Record<string, number> }[];

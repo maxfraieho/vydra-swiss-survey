@@ -17,8 +17,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Badge } from '@astryxdesign/core/Badge';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { useToast } from '@astryxdesign/core/Toast';
-import { MasterDetail } from '../../ui/primitives';
+import { MasterDetail, normalizeInputChange, useToast } from '../../ui/primitives';
 
 export const BrowserSourcesPanel: React.FC = () => {
   const toast = useToast();
@@ -156,7 +155,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Ключ джерела (key)"
           value={key}
-          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setKey(normalizeInputChange(val))}
           placeholder="e.g. laptop_comet"
           required
         />
@@ -164,7 +163,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Назва (label)"
           value={label}
-          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setLabel(normalizeInputChange(val))}
           placeholder="e.g. Laptop Comet Browser"
           required
         />
@@ -182,7 +181,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Хост / IP"
           value={host}
-          onChange={(val) => setHost(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setHost(normalizeInputChange(val))}
           placeholder="192.168.3.30"
           required
         />
@@ -190,7 +189,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="CDP Порт"
           value={port}
-          onChange={(val) => setPort(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setPort(normalizeInputChange(val))}
           placeholder="9226"
           required
         />
@@ -198,7 +197,7 @@ export const BrowserSourcesPanel: React.FC = () => {
         <TextInput
           label="Примітка"
           value={note}
-          onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setNote(normalizeInputChange(val))}
           placeholder="Windows 11 portproxy 9226"
         />
 

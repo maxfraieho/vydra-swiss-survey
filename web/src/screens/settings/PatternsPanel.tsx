@@ -9,8 +9,7 @@ import { Card } from '@astryxdesign/core/Card';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
-import { useToast } from '@astryxdesign/core/Toast';
-import { MasterDetail } from '../../ui/primitives';
+import { MasterDetail, normalizeInputChange, useToast } from '../../ui/primitives';
 
 export const PatternsPanel: React.FC = () => {
   const toast = useToast();
@@ -99,7 +98,7 @@ export const PatternsPanel: React.FC = () => {
         <TextInput
           label="Ключ патерну (key)"
           value={key}
-          onChange={(val) => setKey(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setKey(normalizeInputChange(val))}
           placeholder="e.g. select_household_income"
           required
         />
@@ -107,14 +106,14 @@ export const PatternsPanel: React.FC = () => {
         <TextInput
           label="Назва (Label)"
           value={label}
-          onChange={(val) => setLabel(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setLabel(normalizeInputChange(val))}
           placeholder="Вибір річного доходу"
         />
 
         <TextInput
           label="Ключові слова (через кому)"
           value={keywordsText}
-          onChange={(val) => setKeywordsText(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+          onChange={(val) => setKeywordsText(normalizeInputChange(val))}
           placeholder="income, einkommen, revenu"
         />
 

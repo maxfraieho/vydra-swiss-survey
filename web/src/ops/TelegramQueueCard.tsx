@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card } from '@astryxdesign/core/Card';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
-import { useToast } from '@astryxdesign/core/Toast';
+import { useToast } from '../ui/primitives';
 import { apiFetch } from '../api/client';
 import { usePolling } from '../api/hooks';
 

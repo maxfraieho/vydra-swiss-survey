@@ -9,8 +9,7 @@ import { Selector } from '@astryxdesign/core/Selector';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Button } from '@astryxdesign/core/Button';
 import { Badge } from '@astryxdesign/core/Badge';
-import { useToast } from '@astryxdesign/core/Toast';
-import { RuleStatusPill } from '../../ui/primitives';
+import { RuleStatusPill, normalizeInputChange, useToast } from '../../ui/primitives';
 
 export interface LinkedTrace {
   run_id: string;
@@ -144,7 +143,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose, onUpdat
                 <TextArea
                   label="Поведінка"
                   value={behavior}
-                  onChange={(val) => setBehavior(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+                  onChange={(val) => setBehavior(normalizeInputChange(val))}
                 />
                 <Selector
                   label="Статус"
@@ -167,7 +166,7 @@ export const RuleDetail: React.FC<RuleDetailProps> = ({ ruleId, onClose, onUpdat
                 <TextArea
                   label="Примітка"
                   value={note}
-                  onChange={(val) => setNote(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+                  onChange={(val) => setNote(normalizeInputChange(val))}
                 />
                 <div className="flex-row justify-end gap-sm">
                   <Button variant="secondary" size="sm" onClick={() => setIsEditing(false)}>

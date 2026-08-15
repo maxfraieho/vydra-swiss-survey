@@ -3,7 +3,7 @@ import { Card } from '@astryxdesign/core/Card';
 import { Button } from '@astryxdesign/core/Button';
 import { Selector } from '@astryxdesign/core/Selector';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { useToast } from '@astryxdesign/core/Toast';
+import { useToast, normalizeInputChange } from '../ui/primitives';
 import { apiFetch } from '../api/client';
 
 export interface ResumeTabCardProps {
@@ -35,11 +35,7 @@ export const ResumeTabCard: React.FC<ResumeTabCardProps> = ({ onResumed }) => {
   const isUrlValid = isValidUrl(tabUrl);
 
   const notify = (body: string, type: 'info' | 'error' = 'info') => {
-    if (typeof toast === 'function') {
-      toast({ body, type });
-    } else if (toast && typeof (toast as any).show === 'function') {
-      (toast as any).show({ title: body, variant: type });
-    }
+    toast.show({ title: body, variant: type });
   };
 
   const handleResume = async (e?: React.FormEvent) => {
@@ -89,7 +85,7 @@ export const ResumeTabCard: React.FC<ResumeTabCardProps> = ({ onResumed }) => {
               <TextInput
                 label="URL відкритої вкладки"
                 value={tabUrl}
-                onChange={(val) => setTabUrl(typeof val === 'string' ? val : (val as any)?.target?.value ?? '')}
+                onChange={(val) => setTabUrl(normalizeInputChange(val))}
                 placeholder="https://meinungsplatz.ch/..."
               />
             </div>
