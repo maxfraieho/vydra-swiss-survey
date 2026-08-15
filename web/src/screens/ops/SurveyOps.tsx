@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Button } from '@astryxdesign/core/Button';
-import { useToast } from '@astryxdesign/core/Toast';
 import { apiFetch, getApiBase } from '../../api/client';
 import { usePolling } from '../../api/hooks';
-import { PageHeader } from '../../ui/primitives';
+import { PageHeader, useToast } from '../../ui/primitives';
 import { AttentionCard } from '../../ops/AttentionCard';
 import { AgentIntent } from '../../ops/AgentIntent';
 import { Viewport } from '../../ops/Viewport';
@@ -21,11 +20,57 @@ interface RawSurveyStatus {
   url: string | null;
   reason_code?: string | null;
   pending_step: number | string | null;
-  pending_decision?: { action: string; target_text?: string; value?: string; target_bbox?: TargetBBox; confidence?: number; rationale?: string } | null;
+  step_total?: number | null;
+  total_steps?: number | null;
+  pending_decision?: {
+    action: string;
+    target_text?: string;
+    value?: string;
+    target_bbox?: TargetBBox;
+    confidence?: number;
+    rationale?: string;
+  } | null;
   log_history?: string[];
   waiting_seconds_remaining?: number;
   recent_runs?: RunItem[];
 }
+
+const parseStepLine = (line: string, idx: number): StepItem => {
+  let text = line.trim();
+  let timestamp: string | undefined;
+  const timeMatch = text.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*/);
+  if (timeMatch) {
+    timestamp = timeMatch[1];
+    text = text.slice(timeMatch[0].length);
+  }
+  const isError = /❌|error|fail|помилк/i.test(text);
+  const isWarning = /⚠️|warn|увага/i.test(text);
+  const isPause = /⏸️|pause|пауз|очікуван/i.test(text);
+  const isSkip = /⏭️|skip|пропущ/i.test(text);
+  const isCorrection = /✏️|правк|виправл|override|correct/i.test(text);
+  const isSuccess = /✅|success|успішн|затвердж/i.test(text);
+
+  let status = 'success';
+  if (isError) status = 'error';
+  else if (isCorrection) status = 'corrected';
+  else if (isWarning) status = 'warning';
+  else if (isPause) status = 'paused';
+  else if (isSkip) status = 'skipped';
+  else if (isSuccess) status = 'success';
+
+  const parts = text.split(/\s+/);
+  const action = parts[0] || 'step';
+  const target = parts.length > 1 ? parts.slice(1).join(' ') : text;
+
+  return {
+    index: idx + 1,
+    action,
+    target,
+    status,
+    timestamp,
+    hasCorrection: isCorrection,
+  };
+};
 
 export const SurveyOps: React.FC = () => {
   const toast = useToast();
@@ -88,7 +133,13 @@ export const SurveyOps: React.FC = () => {
     }
   };
 
-  const handleLaunch = async (params: { url: string; personaId: string; browserSource: string; autonomous: boolean; trainingMode: boolean }) => {
+  const handleLaunch = async (params: {
+    url: string;
+    personaId: string;
+    browserSource: string;
+    autonomous: boolean;
+    trainingMode: boolean;
+  }) => {
     await apiFetch('/api/survey/start', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -97,12 +148,15 @@ export const SurveyOps: React.FC = () => {
     reloadStatus();
   };
 
-  const parsedSteps: StepItem[] = (statusData?.log_history || []).map((line, idx) => ({
-    index: idx + 1,
-    action: line.split(' ')[0] || 'step',
-    target: line,
-    status: 'success',
-  }));
+  const parsedSteps: StepItem[] = (statusData?.log_history || []).map(parseStepLine);
+
+  const currentStepNum = typeof statusData?.pending_step === 'number'
+    ? statusData.pending_step
+    : (parsedSteps.length > 0 ? parsedSteps.length : null);
+
+  const totalStepsNum = statusData?.step_total ?? statusData?.total_steps ?? (
+    parsedSteps.length > 0 ? Math.max(parsedSteps.length, currentStepNum || 0) : null
+  );
 
   const agentIntentData = statusData?.pending_decision
     ? {
@@ -159,11 +213,12 @@ export const SurveyOps: React.FC = () => {
         screenshotSrc={`${getApiBase()}/api/survey/screenshot/latest?v=${screenshotVersion}`}
         url={statusData?.url}
         status={currentStatus}
-        stepIndex={typeof statusData?.pending_step === 'number' ? statusData.pending_step : null}
+        stepIndex={currentStepNum}
+        stepTotal={totalStepsNum}
         targetBbox={statusData?.pending_decision?.target_bbox}
         isPointPickerMode={isPointPickerMode}
         onApprove={() => handleAction('approve')}
-        onCorrect={() => handleAction('correct')}
+        onCorrect={(corr) => handleAction('correct', corr)}
         onPause={() => handleAction('pause')}
         onRefresh={() => {
           reloadStatus();
@@ -172,7 +227,8 @@ export const SurveyOps: React.FC = () => {
       />
 
       <StepTimeline
-        currentStep={typeof statusData?.pending_step === 'number' ? statusData.pending_step : 1}
+        currentStep={currentStepNum || 1}
+        totalSteps={totalStepsNum}
         steps={parsedSteps}
       />
 
