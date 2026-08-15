@@ -164,10 +164,33 @@ class LocalLlamaVisionBackend(BaseVisionBackend):
                 return _exec()
 
 
+_BACKEND_CACHE: dict[str, BaseVisionBackend] = {}
+
+
 def get_vision_backend() -> BaseVisionBackend:
-    """Factory function returning configured BaseVisionBackend instance based on app_settings."""
+    """Factory function returning configured BaseVisionBackend instance based on app_settings.
+
+    The built backend is cached by the raw ``ai_source_config`` string (SDD 022, R3):
+    the setting is still read on every call, so a change made in the UI takes effect
+    immediately, but the backend object — and the ``_connect()`` +
+    ``executescript(SCHEMA)`` + 5x ``ALTER TABLE`` it costs to build one — is reused
+    while the configuration string is unchanged. Backends are stateless, so sharing
+    one instance across steps is safe.
+    """
     import persona_graph_memory
-    cfg_str = persona_graph_memory.get_setting("ai_source_config")
+    cfg_str = persona_graph_memory.get_setting("ai_source_config") or ""
+    cached = _BACKEND_CACHE.get(cfg_str)
+    if cached is not None:
+        return cached
+    backend = _build_vision_backend(cfg_str)
+    _BACKEND_CACHE.clear()
+    _BACKEND_CACHE[cfg_str] = backend
+    return backend
+
+
+def _build_vision_backend(cfg_str: str) -> BaseVisionBackend:
+    """Uncached body of :func:`get_vision_backend` (unchanged logic)."""
+    import persona_graph_memory
     if not cfg_str:
         return ProxyVisionBackend()
 
