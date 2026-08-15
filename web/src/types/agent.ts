@@ -18,6 +18,7 @@ export type AgentActionType =
   | 'done';
 
 export type ReasonCodeType =
+  | 'captcha_detected'
   | 'wrong_element'
   | 'missed_captcha'
   | 'bad_value'
@@ -26,6 +27,7 @@ export type ReasonCodeType =
   | 'other';
 
 export const REASON_CODE_LABELS: Record<ReasonCodeType, string> = {
+  captcha_detected: 'Виявлено капчу / bot-filter (captcha_detected)',
   wrong_element: 'Не той елемент (wrong_element)',
   missed_captcha: 'Пропущена / не розпізнана капча (missed_captcha)',
   bad_value: 'Невірне значення або формат (bad_value)',

@@ -72,6 +72,7 @@ CURRENT_PROC_LOCK = threading.Lock()
 
 ACTIVE_SURVEY_STATE = {
     "status": "idle", # idle, waiting_auth, running, waiting_verification, finished, error
+    "reason_code": None, # captcha_detected, wrong_element, etc.
     "active_task_id": None,
     "profile": None,
     "url": None,
@@ -1021,6 +1022,7 @@ def verify_step_api():
         return jsonify(res)
 
 @app.route("/api/survey/approve_step", methods=["POST"])
+@app.route("/api/survey/approve", methods=["POST"])
 def approve_step_api():
     with STATE_LOCK:
         ACTIVE_SURVEY_STATE["verification_result"] = {"approved": True}
@@ -1028,7 +1030,75 @@ def approve_step_api():
     add_log("✅ Затверджено людиною у Режимі Навчання.")
     return jsonify({"status": "success"})
 
+@app.route("/api/survey/skip", methods=["POST"])
+def skip_step_api():
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["verification_result"] = {"approved": True, "override_action": "skip"}
+        ACTIVE_SURVEY_STATE["verification_event"].set()
+    add_log("⏭️ Пропущено людиною у Режимі Навчання.")
+    return jsonify({"status": "success"})
+
+@app.route("/api/survey/pause", methods=["POST"])
+def pause_step_api():
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["status"] = "paused"
+    add_log("⏸️ Поставлено на паузу оператором.")
+    return jsonify({"status": "success"})
+
+@app.route("/api/survey/resume_after_captcha", methods=["POST"])
+def resume_after_captcha_api():
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["status"] = "running"
+        ACTIVE_SURVEY_STATE["reason_code"] = None
+        ACTIVE_SURVEY_STATE["verification_result"] = {"approved": True}
+        ACTIVE_SURVEY_STATE["verification_event"].set()
+    add_log("🔓 Капчу підтверджено оператором. Продовження автоматичного опитування...")
+    return jsonify({"status": "success", "message": "Resumed after captcha"})
+
+@app.route("/api/survey/abort_task", methods=["POST"])
+@app.route("/api/survey/abort", methods=["POST"])
+def abort_task_api():
+    try:
+        with CURRENT_PROC_LOCK:
+            proc = CURRENT_PROC
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                proc.kill()
+        with STATE_LOCK:
+            ACTIVE_SURVEY_STATE["status"] = "idle"
+            ACTIVE_SURVEY_STATE["reason_code"] = None
+            ACTIVE_SURVEY_STATE["wait_expires_at"] = None
+            ACTIVE_SURVEY_STATE["verification_result"] = {"approved": False, "abort": True}
+            ACTIVE_SURVEY_STATE["verification_event"].set()
+        add_log("🛑 Опитування перервано (aborted) оператором.")
+        return jsonify({"status": "success", "message": "Task aborted"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/survey/cdp_emulate", methods=["POST"])
+def cdp_emulate_api():
+    data = request.get_json(silent=True) or {}
+    width = int(data.get("width", 0))
+    height = int(data.get("height", 0))
+    mobile = bool(data.get("mobile", False))
+    try:
+        from cdp_client import CDPClient
+        client = CDPClient(19225)
+        try:
+            client.set_device_metrics_override(width, height, mobile=mobile)
+            add_log(f"🖥️ Встановлено емуляцію екрана CDP: {width}x{height} (mobile={mobile})")
+        finally:
+            client.close()
+        return jsonify({"status": "success", "width": width, "height": height, "mobile": mobile})
+    except Exception as e:
+        add_log(f"⚠️ Помилка налаштування емуляції екрана CDP: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/api/survey/override_step", methods=["POST"])
+@app.route("/api/survey/override", methods=["POST"])
 def override_step_api():
     data = request.get_json(silent=True) or {}
     target = data.get("override_target", "")

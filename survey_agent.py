@@ -218,7 +218,7 @@ def main() -> None:
                     stop_reason = "captcha_detected"
                     break
                 else:
-                    log("Pausing in waiting_captcha state and notifying tutor...")
+                    log("Pausing in waiting_verification state (captcha_detected) and notifying tutor...")
                     try:
                         from astryx_survey_server import notify_tutor_captcha_blocking
                         notify_tutor_captcha_blocking(args.profile, current_url, captchas)
@@ -227,26 +227,51 @@ def main() -> None:
 
                     try:
                         import astryx_survey_server
-                        astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "waiting_captcha"
+                        with astryx_survey_server.STATE_LOCK:
+                            astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "waiting_verification"
+                            astryx_survey_server.ACTIVE_SURVEY_STATE["reason_code"] = "captcha_detected"
+                            astryx_survey_server.ACTIVE_SURVEY_STATE["pending_decision"] = {
+                                "action": "captcha_solve",
+                                "target_text": f"CAPTCHA: {', '.join(captchas)}",
+                                "rationale": f"Виявлено захист: {', '.join(captchas)}",
+                                "confidence": 0.99
+                            }
                     except Exception:
                         pass
 
                     resolved = False
                     start_wait = time.time()
                     while time.time() - start_wait < 600:
-                        time.sleep(3.0)
-                        if not client.detect_captcha_signatures():
+                        time.sleep(2.0)
+                        server_status = None
+                        try:
+                            import astryx_survey_server
+                            with astryx_survey_server.STATE_LOCK:
+                                server_status = astryx_survey_server.ACTIVE_SURVEY_STATE.get("status")
+                        except Exception:
+                            pass
+
+                        if server_status in ("idle", "error"):
+                            log("Task aborted by operator.")
+                            stop_reason = "aborted_by_operator"
+                            break
+
+                        if server_status == "running" or not client.detect_captcha_signatures():
                             resolved = True
-                            log("CAPTCHA resolved by tutor. Resuming execution.")
+                            log("CAPTCHA resolved (operator resume or DOM check). Resuming execution.")
                             try:
                                 import astryx_survey_server
-                                astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "running"
+                                with astryx_survey_server.STATE_LOCK:
+                                    astryx_survey_server.ACTIVE_SURVEY_STATE["status"] = "running"
+                                    astryx_survey_server.ACTIVE_SURVEY_STATE["reason_code"] = None
+                                    astryx_survey_server.ACTIVE_SURVEY_STATE["pending_decision"] = None
                             except Exception:
                                 pass
                             break
                     if not resolved:
-                        log("CAPTCHA was not resolved within timeout.")
-                        stop_reason = "captcha_timeout"
+                        if stop_reason != "aborted_by_operator":
+                            log("CAPTCHA was not resolved within timeout.")
+                            stop_reason = "captcha_timeout"
                         break
 
             shot_path = os.path.join(screenshot_dir, f"step-{step:03d}.png")
@@ -335,9 +360,8 @@ def main() -> None:
                     log(f"Could not find exact element matching target_text={target!r} — attempting submit button fallback.")
                     sub = client.find_submit_button()
                     if sub:
-                        client._send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": sub["x"], "y": sub["y"]})
-                        client._send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
-                        client._send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": sub["x"], "y": sub["y"], "button": "left", "clickCount": 1})
+                        import human_behavior
+                        human_behavior.human_click_at(client, sub["x"], sub["y"])
                     else:
                         log(f"Target not found and no submit button available — skipping click for step {step}.")
                         step_failed = True

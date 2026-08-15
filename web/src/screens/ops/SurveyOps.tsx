@@ -19,6 +19,7 @@ import type { HumanCorrection, TargetBBox, AgentActionType } from '../../types/a
 interface RawSurveyStatus {
   status: SurveyStatus;
   url: string | null;
+  reason_code?: string | null;
   pending_step: number | string | null;
   pending_decision?: { action: string; target_text?: string; value?: string; target_bbox?: TargetBBox; confidence?: number; rationale?: string } | null;
   log_history?: string[];
@@ -62,6 +63,28 @@ export const SurveyOps: React.FC = () => {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.show({ variant: 'error', title: 'Помилка виконання дії', description: msg });
+    }
+  };
+
+  const handleResumeCaptcha = async () => {
+    try {
+      await apiFetch('/api/survey/resume_after_captcha', { method: 'POST' });
+      toast.show({ variant: 'success', title: 'Капчу пройдено, опитування продовжується' });
+      reloadStatus();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Помилка відновлення після капчі', description: msg });
+    }
+  };
+
+  const handleAbortTask = async () => {
+    try {
+      await apiFetch('/api/survey/abort_task', { method: 'POST' });
+      toast.show({ variant: 'warning', title: 'Опитування перервано' });
+      reloadStatus();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.show({ variant: 'error', title: 'Помилка зупинки опитування', description: msg });
     }
   };
 
@@ -115,11 +138,14 @@ export const SurveyOps: React.FC = () => {
       <AttentionCard
         status={currentStatus}
         waitingVerification={isWaiting}
+        reasonCode={statusData?.reason_code}
         questionText={statusData?.pending_decision?.target_text}
         onApprove={() => handleAction('approve')}
         onCorrect={(corr) => handleAction('correct', corr)}
         onSkip={() => handleAction('skip')}
         onPause={() => handleAction('pause')}
+        onResumeAfterCaptcha={handleResumeCaptcha}
+        onAbortTask={handleAbortTask}
       />
 
       {agentIntentData && <AgentIntent intent={agentIntentData} />}

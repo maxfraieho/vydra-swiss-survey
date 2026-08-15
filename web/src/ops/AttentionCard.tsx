@@ -11,6 +11,7 @@ import type { SurveyStatus } from '../ui/tokens';
 export interface AttentionCardProps {
   status: SurveyStatus;
   waitingVerification: boolean;
+  reasonCode?: ReasonCodeType | string | null;
   questionText?: string | null;
   options?: string[];
   waitingSince?: string | null;
@@ -18,11 +19,14 @@ export interface AttentionCardProps {
   onCorrect: (correction: HumanCorrection) => void;
   onSkip: () => void;
   onPause: () => void;
+  onResumeAfterCaptcha?: () => void;
+  onAbortTask?: () => void;
 }
 
 export const AttentionCard: React.FC<AttentionCardProps> = ({
   status,
   waitingVerification,
+  reasonCode: incomingReasonCode,
   questionText,
   options = [],
   waitingSince,
@@ -30,12 +34,16 @@ export const AttentionCard: React.FC<AttentionCardProps> = ({
   onCorrect,
   onSkip,
   onPause,
+  onResumeAfterCaptcha,
+  onAbortTask,
 }) => {
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [reasonCode, setReasonCode] = useState<ReasonCodeType>('wrong_element');
   const [overrideValue, setOverrideValue] = useState('');
   const [correctionNote, setCorrectionNote] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
+
+  const isCaptchaChallenge = incomingReasonCode === 'captcha_detected' || (questionText && questionText.startsWith('CAPTCHA:'));
 
   useEffect(() => {
     if (!waitingVerification) {
@@ -80,6 +88,38 @@ export const AttentionCard: React.FC<AttentionCardProps> = ({
     value: code,
     label,
   }));
+
+  // Спеціальний режим: Детекція Капчі / Anti-bot Challenge (Feature 021C Part C)
+  if (isCaptchaChallenge) {
+    return (
+      <Card padding={3}>
+        <Banner
+          variant="warning"
+          title="🛑 Виявлено капчу / Cloudflare Challenge"
+          description={`Агент призупинено для ручного вирішення оператором: ${formatElapsed(elapsedSec)}`}
+        />
+
+        <div className="mt-md text-sm text-secondary">
+          Будь ласка, вирішіть капчу у вікні Viewport або браузері. Після проходження натисніть «Я вирішив / Продовжити» для автоматичного продовження опитування.
+        </div>
+
+        {questionText && (
+          <div className="mt-sm text-xs text-mono text-tertiary">
+            Сигнатура: {questionText}
+          </div>
+        )}
+
+        <div className="flex-row gap-sm mt-lg flex-wrap">
+          <Button variant="primary" onClick={onResumeAfterCaptcha || onApprove}>
+            ✓ Я вирішив / Продовжити
+          </Button>
+          <Button variant="destructive" onClick={onAbortTask || onSkip}>
+            ✕ Пропустити / Перервати
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card padding={3}>
