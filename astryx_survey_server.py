@@ -117,7 +117,56 @@ def add_log(msg: str):
         if len(ACTIVE_SURVEY_STATE["log_history"]) > 200:
             ACTIVE_SURVEY_STATE["log_history"].pop(0)
 
+TELEGRAM_LISTENER_STATE = {
+    "status": "active",
+    "last_update_at": None,
+    "last_error": None
+}
+
 RECENT_TELEGRAM_PUSHES = []
+
+def record_telegram_push(payload, text: str, url: str | None = None) -> dict:
+    update_id = None
+    if isinstance(payload, dict):
+        update_id = payload.get("update_id")
+    if not update_id:
+        update_id = int(time.time() * 1000)
+
+    now_iso = datetime.now().isoformat()
+    item = {
+        "update_id": update_id,
+        "url": url or "",
+        "text": text or "",
+        "received_at": now_iso,
+        "state": "pending"
+    }
+
+    with STATE_LOCK:
+        TELEGRAM_LISTENER_STATE["last_update_at"] = now_iso
+        TELEGRAM_LISTENER_STATE["status"] = "active"
+        TELEGRAM_LISTENER_STATE["last_error"] = None
+
+        # 1. Deduplicate by update_id: update existing item if present
+        for ex in RECENT_TELEGRAM_PUSHES:
+            if str(ex.get("update_id")) == str(update_id):
+                if url:
+                    ex["url"] = url
+                if text:
+                    ex["text"] = text
+                return ex
+
+        # 2. Deduplicate by URL among pending items: remove older pending item with the same URL
+        if url:
+            RECENT_TELEGRAM_PUSHES[:] = [
+                ex for ex in RECENT_TELEGRAM_PUSHES
+                if not (ex.get("state") == "pending" and ex.get("url") == url)
+            ]
+
+        RECENT_TELEGRAM_PUSHES.append(item)
+        if len(RECENT_TELEGRAM_PUSHES) > 50:
+            RECENT_TELEGRAM_PUSHES.pop(0)
+
+    return item
 
 def extract_text_and_url_from_payload(payload):
     text = ""
@@ -155,22 +204,13 @@ def fetch_telegram_api(optional_payload=None):
     # 1. Process optional_payload if provided
     if optional_payload:
         text, url = extract_text_and_url_from_payload(optional_payload)
-        if text:
-            task = push_task_from_text(text, force=True, override_url=url)
+        if text or url:
+            record_telegram_push(optional_payload, text, url)
+            task = push_task_from_text(text or url or "", force=True, override_url=url)
             if task:
                 count += 1
 
-    # 2. Check recent cached Telegram push messages in RAM
-    with STATE_LOCK:
-        cached_msgs = list(RECENT_TELEGRAM_PUSHES)
-    for raw in cached_msgs:
-        text, url = extract_text_and_url_from_payload(raw)
-        if text:
-            task = push_task_from_text(text, force=True, override_url=url)
-            if task:
-                count += 1
-
-    # 3. Query Telegram getUpdates API
+    # 2. Query Telegram getUpdates API
     token = get_telegram_bot_token()
     if token:
         try:
@@ -179,13 +219,25 @@ def fetch_telegram_api(optional_payload=None):
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("ok"):
+                    with STATE_LOCK:
+                        TELEGRAM_LISTENER_STATE["status"] = "active"
+                        TELEGRAM_LISTENER_STATE["last_error"] = None
+                        TELEGRAM_LISTENER_STATE["last_update_at"] = datetime.now().isoformat()
                     for update in data.get("result", []):
                         text, url = extract_text_and_url_from_payload(update)
-                        if text:
-                            task = push_task_from_text(text, force=True, override_url=url)
+                        if text or url:
+                            record_telegram_push(update, text, url)
+                            task = push_task_from_text(text or url or "", force=True, override_url=url)
                             if task:
                                 count += 1
+                else:
+                    with STATE_LOCK:
+                        TELEGRAM_LISTENER_STATE["status"] = "error"
+                        TELEGRAM_LISTENER_STATE["last_error"] = data.get("description", "Telegram getUpdates returned not ok")
         except Exception as e:
+            with STATE_LOCK:
+                TELEGRAM_LISTENER_STATE["status"] = "error"
+                TELEGRAM_LISTENER_STATE["last_error"] = str(e)
             add_log(f"⚠️ getUpdates warning: {e}")
 
     return {"status": "success", "processed": count}
@@ -289,30 +341,50 @@ def set_active_task_locked(task_item):
 def telegram_listener_thread():
     add_log("🤖 Telegram-бот слухач активний.")
     last_update_id = 0
+    with STATE_LOCK:
+        TELEGRAM_LISTENER_STATE["status"] = "active"
+        TELEGRAM_LISTENER_STATE["last_error"] = None
     
     while True:
         try:
             token = get_telegram_bot_token()
+            if not token:
+                with STATE_LOCK:
+                    TELEGRAM_LISTENER_STATE["status"] = "error"
+                    TELEGRAM_LISTENER_STATE["last_error"] = "Telegram bot token is not configured"
+                time.sleep(5)
+                continue
+
             url = f"https://api.telegram.org/bot{token}/getUpdates"
             params = urllib.parse.urlencode({"offset": last_update_id + 1, "timeout": 20})
             req = urllib.request.Request(f"{url}?{params}")
             with urllib.request.urlopen(req, timeout=25) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("ok"):
+                    with STATE_LOCK:
+                        TELEGRAM_LISTENER_STATE["status"] = "active"
+                        TELEGRAM_LISTENER_STATE["last_error"] = None
                     for update in data.get("result", []):
-                        last_update_id = update["update_id"]
+                        last_update_id = max(last_update_id, update.get("update_id", 0))
                         msg = update.get("message") or update.get("channel_post") or update.get("edited_message") or update.get("edited_channel_post") or {}
                         chat = msg.get("chat", {})
                         if chat.get("id"):
                             persona_graph_memory.save_setting("telegram_chat_id", str(chat.get("id")))
                         text, extracted_url = extract_text_and_url_from_payload(update)
                         if text or extracted_url:
-                            with STATE_LOCK:
-                                RECENT_TELEGRAM_PUSHES.append(update)
-                                if len(RECENT_TELEGRAM_PUSHES) > 50:
-                                    RECENT_TELEGRAM_PUSHES.pop(0)
+                            record_telegram_push(update, text, extracted_url)
                             push_task_from_text(text, force=True, override_url=extracted_url)
-        except Exception:
+                else:
+                    err_msg = data.get("description", "getUpdates returned not ok")
+                    with STATE_LOCK:
+                        TELEGRAM_LISTENER_STATE["status"] = "error"
+                        TELEGRAM_LISTENER_STATE["last_error"] = err_msg
+                    time.sleep(5)
+        except Exception as e:
+            with STATE_LOCK:
+                TELEGRAM_LISTENER_STATE["status"] = "error"
+                TELEGRAM_LISTENER_STATE["last_error"] = str(e)
+            add_log(f"⚠️ Telegram listener warning: {e}")
             time.sleep(5)
 
 def auto_start_timer_thread():
@@ -798,15 +870,64 @@ def fetch_telegram_route():
 def telegram_push_api():
     payload = request.get_json(silent=True) or request.form.to_dict() or {}
     text, url = extract_text_and_url_from_payload(payload)
-    if text:
-        with STATE_LOCK:
-            RECENT_TELEGRAM_PUSHES.append(payload)
-            if len(RECENT_TELEGRAM_PUSHES) > 50:
-                RECENT_TELEGRAM_PUSHES.pop(0)
-        task_item = push_task_from_text(text, force=True, override_url=url)
+    if text or url:
+        item = record_telegram_push(payload, text, url)
+        task_item = push_task_from_text(text or url or "", force=True, override_url=url)
         if task_item:
-            return jsonify({"status": "success", "task": task_item})
+            return jsonify({"status": "success", "task": task_item, "item": item})
     return jsonify({"status": "error", "message": "Could not parse survey trigger from text"}), 400
+
+@app.route("/api/survey/telegram_queue", methods=["GET"])
+def telegram_queue_api():
+    with STATE_LOCK:
+        listener = dict(TELEGRAM_LISTENER_STATE)
+        items = list(reversed(RECENT_TELEGRAM_PUSHES))
+    return jsonify({
+        "listener": listener,
+        "items": items
+    })
+
+@app.route("/api/survey/telegram_queue/<update_id>/claim", methods=["POST"])
+def claim_telegram_queue_api(update_id):
+    target = None
+    with STATE_LOCK:
+        for item in RECENT_TELEGRAM_PUSHES:
+            if str(item.get("update_id")) == str(update_id):
+                item["state"] = "claimed"
+                target = dict(item)
+                break
+    if not target:
+        return jsonify({"status": "error", "message": f"Item {update_id} not found"}), 404
+
+    text = target.get("text", "")
+    url = target.get("url") or "https://meinungsplatz.ch/"
+    profile = "annet" if ("Олени" in text or "Annette" in text or "Олена" in text) else "arno"
+
+    with STATE_LOCK:
+        ACTIVE_SURVEY_STATE["status"] = "starting"
+        ACTIVE_SURVEY_STATE["profile"] = profile
+        ACTIVE_SURVEY_STATE["url"] = url
+        ACTIVE_SURVEY_STATE["active_task_id"] = f"telegram_{update_id}"
+        ACTIVE_SURVEY_STATE["wait_expires_at"] = None
+
+    add_log(f"⚡ Завдання з Telegram #{update_id} взято в роботу для {PROFILES.get(profile, {}).get('name', profile)} ({url})")
+    threading.Thread(target=run_survey_execution, args=(profile, url), daemon=True).start()
+    return jsonify({"status": "success", "profile": profile, "url": url})
+
+@app.route("/api/survey/telegram_queue/<update_id>/discard", methods=["POST"])
+def discard_telegram_queue_api(update_id):
+    found = False
+    with STATE_LOCK:
+        for item in RECENT_TELEGRAM_PUSHES:
+            if str(item.get("update_id")) == str(update_id):
+                item["state"] = "discarded"
+                found = True
+                break
+    if not found:
+        return jsonify({"status": "error", "message": f"Item {update_id} not found"}), 404
+
+    add_log(f"🗑 Завдання з Telegram #{update_id} відхилено (discarded).")
+    return jsonify({"status": "success"})
 
 @app.route("/api/survey/select_task", methods=["POST"])
 def select_task_api():
@@ -830,7 +951,7 @@ def select_task_api():
 def resume_tab_api():
     data = request.get_json(silent=True) or {}
     profile = data.get("profile")
-    tab_url = (data.get("tab_url") or "").strip()
+    tab_url = (data.get("resume_tab_url") or data.get("tab_url") or "").strip()
     if profile not in PROFILES:
         return jsonify({"status": "error", "message": "Unknown profile"}), 400
     if not tab_url:

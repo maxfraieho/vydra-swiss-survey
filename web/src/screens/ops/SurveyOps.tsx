@@ -11,6 +11,8 @@ import { Viewport } from '../../ops/Viewport';
 import { StepTimeline, type StepItem } from '../../ops/StepTimeline';
 import { RecentRuns, type RunItem } from '../../ops/RecentRuns';
 import { LaunchForm } from '../../ops/LaunchForm';
+import { TelegramQueueCard } from '../../ops/TelegramQueueCard';
+import { ResumeTabCard } from '../../ops/ResumeTabCard';
 import type { SurveyStatus } from '../../ui/tokens';
 import type { HumanCorrection, TargetBBox, AgentActionType } from '../../types/agent';
 
@@ -121,6 +123,10 @@ export const SurveyOps: React.FC = () => {
       />
 
       {agentIntentData && <AgentIntent intent={agentIntentData} />}
+
+      {/* Черга опитувань з Telegram та Продовжити у відкритій вкладці */}
+      <TelegramQueueCard onSurveyStarted={reloadStatus} />
+      <ResumeTabCard onResumed={reloadStatus} />
 
       {/* ЗОНА 2: Інтерактивний Viewport + Таймлайн */}
       <Viewport
