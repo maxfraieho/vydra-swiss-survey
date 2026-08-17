@@ -17,3 +17,4 @@ web/node_modules/
 !specs/**/evidence/**/*.png
 !specs/**/evidence/**/*.jpg
 node_modules/
+constitution.md.pre-install-backup
