@@ -4,9 +4,9 @@
   "spec_dir": "specs/021-multiagent-sdd-extension",
   "branch": "astryx-ui-refactor",
   "phase": "implement",
-  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs", "P5-native-spec-kit", "P6-handoff", "P7-sdd-verify", "P8-arbiter-shadow"],
+  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs", "P5-native-spec-kit", "P6-handoff", "P7-sdd-verify", "P8-arbiter-shadow", "P9-partial-rpi3b-verified"],
   "owner_agent": "claude-code",
   "host": "dev-184",
-  "updated_at": "2026-08-17T11:45:00Z",
-  "notes": "P0-P8 done, P8 in shadow mode (SDD_JUDGE_SHADOW=1) since 836b0ad. T-149 blocking-mode decision deferred to operator ~2026-08-24. P9 (AGY verification) remains, out of scope for dev-184 session."
+  "updated_at": "2026-08-17T12:15:00Z",
+  "notes": "P0-P8 done. P9: mechanism verified live on rpi3b (all 5 sdd-* skills confirmed visible), but AGY2/AGY3/phone fleet itself untested (all offline this session). T-149 (arbiter blocking-mode decision) and T-152/T-153 (fleet-specific AGY verification) remain open, deferred to operator when devices are reachable."
 }
