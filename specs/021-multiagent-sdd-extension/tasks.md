@@ -37,18 +37,20 @@
 - [x] T-121: `sdd-development-methodology.md` §6.2 — Agy підтверджені факти (deprecated `.agent/commands/`, Progressive Disclosure, немає `$ARGUMENTS`)
 - [x] T-122: `sdd-development-methodology.md` новий §6.4 — Codex CLI (гібрид prompts+skills, статус верифікації чесно позначено як непідтверджений)
 
-## P5 — Native Spec Kit (HIGH RISK)
+## P5 — Native Spec Kit (HIGH RISK) ✅
 
-- [ ] T-123: Backup `.specify/constitution.md` → `.specify/constitution.md.pre-install-backup`
-- [ ] T-124: `curl 127.0.0.1:5005/ops` baseline (до install)
-- [ ] T-125: `specify integration install claude`
-- [ ] T-126: `git diff --stat .specify/constitution.md` — якщо зачеплено, `git checkout --` + відновити з backup
-- [ ] T-127: `specify integration info codex` — підтвердити реальні опції CLI
-- [ ] T-128: `specify integration install codex --integration-options="--skills"` (або без прапорця, за T-127)
-- [ ] T-129: Повторити перевірку T-126 для codex-install
-- [ ] T-130: `curl 127.0.0.1:5005/ops` — підтвердити 200 (прод не постраждав)
-- [ ] T-131: Конституція → версія 1.1.0, §3 → таблиця мапінгу (`plan.md` §1.1.5)
-- [ ] T-132: `specify integration status` → підтвердити `claude, codex` встановлені
+- [x] T-123: Backup `.specify/constitution.md` → `.specify/constitution.md.pre-install-backup`
+- [x] T-124: `curl 127.0.0.1:5005/ops` baseline (до install) — 200
+- [x] T-125: `specify integration install claude` — OK. **Side effect:** перезаписав 4 наявні `.claude/skills/speckit-{clarify,constitution,plan,specify}` офіційним upstream (research "manifest preserves user mods" не підтвердилось на першому install — hash-трекінгу ще не було). Користувач підтвердив залишити upstream.
+- [x] T-126: `git diff --stat .specify/constitution.md` — порожньо, не зачеплено
+- [x] T-127: `specify integration info codex` — `--integration-options="--skills"` НЕ підтверджено (codex вже "skills-based" за замовчуванням, довідка install не згадує `--skills`)
+- [x] T-128: `specify integration install codex` (без невірного прапорця) — OK. Той самий overwrite-ефект, але для `.agents/skills/speckit-*` (не `.claude/skills/`) — обидва дерева тепер синхронізовані офіційним upstream
+- [x] T-129: Повторна перевірка — конституція не зачеплена
+- [x] T-130: `curl 127.0.0.1:5005/ops` — 200, прод не постраждав
+- [x] T-131: Конституція → 1.1.0, §3 переписано: виправлено фантомні `/speckit.*` як literal slash-команди → таблиця мапінгу з коректним поясненням (Agent Skills, semantic/model invocation, не текстова підстановка)
+- [x] T-132: `specify integration status` → `claude, codex` встановлені, `Modified managed files: 0`
+
+**Додатково знайдено (не в оригінальному tasks.md):** `.specify/.gitignore` (згенерований install) ігнорує `feature.json` як "не для шарингу між машинами" — конфліктує з нашим Handoff Protocol (P6), де `feature.json` МАЄ бути трекований для міжагентного стану. Не блокер (файл вже трекований, ігнор не діє на трекований файл), але задокументовано як свідомий відхід від нативної конвенції Spec Kit. `.specify/integrations/.cache/` (28K, regenerable API-каталог) — додано в `.gitignore`, не закомічено.
 
 ## P6 — Handoff enforcement
 

@@ -4,9 +4,9 @@
   "spec_dir": "specs/021-multiagent-sdd-extension",
   "branch": "astryx-ui-refactor",
   "phase": "implement",
-  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs"],
+  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs", "P5-native-spec-kit"],
   "owner_agent": "claude-code",
   "host": "dev-184",
-  "updated_at": "2026-08-17T10:00:00Z",
-  "notes": "P0-P4 done. T-115 (Codex TUI smoke-test) needs manual verification. Next: P5 native Spec Kit install (HIGH RISK)."
+  "updated_at": "2026-08-17T10:30:00Z",
+  "notes": "P0-P5 done. specify integration install claude+codex OK, constitution untouched, 4 speckit-* skills overwritten with upstream (approved). Next: P6 handoff enforcement in AGENTS.md."
 }
