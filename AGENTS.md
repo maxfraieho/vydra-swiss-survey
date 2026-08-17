@@ -14,6 +14,9 @@ This project is indexed by GitNexus as **vydra-swiss-survey** (153 symbols, 418 
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- **MUST read `.specify/feature.json` + `git log -n 1 --stat` before starting SDD work.** This is the Handoff Protocol (`specs/021-multiagent-sdd-extension/plan.md` §4) that keeps multiple agents (Claude Code, Codex CLI, AGY) from drifting on the same feature. If `.specify/feature.json`'s `branch` field does not match the currently checked-out branch, STOP and tell the operator — do not guess which feature is active from memory.
+- **MUST update `.specify/feature.json`'s `phase`/`phases_done`/`updated_at` on every SDD phase transition** (specify → clarify → plan → tasks → implement → verify), committing that update as its own atomic commit (`spec:`, `plan:`, `tasks:`, `impl:` prefix) — not bundled silently into an unrelated commit.
+- **MUST run `bash bin/sdd_verify.sh --gate` before being allowed to modify implementation code for the active feature.** It validates the artifacts required for the current `phase` exist. This is the L3 Validator Gate.
 - When exploring unfamiliar code, use `query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
 
