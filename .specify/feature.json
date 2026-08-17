@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "feature_id": "021-multiagent-sdd-extension",
+  "spec_dir": "specs/021-multiagent-sdd-extension",
+  "branch": "astryx-ui-refactor",
+  "phase": "implement",
+  "phases_done": ["specify", "clarify", "plan", "tasks"],
+  "owner_agent": "claude-code",
+  "host": "dev-184",
+  "updated_at": "2026-08-17T09:15:00Z",
+  "notes": "P0-P1 done, P2 (shared skills) next"
+}
