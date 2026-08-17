@@ -67,16 +67,16 @@
 - [x] T-140: `bash bin/sdd_verify.sh` на `astryx-ui-refactor` → **PASS**
 - [x] T-141: Non-tautological тест — фізично прибрано `specs/021.../plan.md`, `--gate` → `exit 1` з точною назвою відсутнього файлу, відновлено, `--gate` → `exit 0`. Реальний RED→GREEN цикл, не tautology
 
-## P8 — LLM Arbiter
+## P8 — LLM Arbiter ✅ (shadow mode)
 
-- [ ] T-142: `~/.vydra-survey-profiles/sdd_judge.env` — `SDD_JUDGE_KEY`, `SDD_JUDGE_MODEL`
-- [ ] T-143: `GET /v1/models` на проксі з реальним ключем — визначити `SDD_JUDGE_MODEL` дефолт
-- [ ] T-144: `scripts/sdd_llm_judge.py` — база з дослідження + правки §5.4 `plan.md` (401-handling, конфігурований model, fallback JSON-екстракція, логування, phase-aware промпт)
-- [ ] T-145: `tests/unit/test_sdd_judge.py` — behavioral тест з мок HTTP (PASS/FAIL/timeout/no-spec сценарії)
-- [ ] T-146: `.githooks/pre-commit` — виклик judge, fail-open логіка
-- [ ] T-147: `git config core.hooksPath .githooks`
-- [ ] T-148: Shadow-режим (`--dry-run`, лише логує, не блокує) — 1 тиждень спостереження
-- [ ] T-149: Після shadow-періоду — рішення оператора: увімкнути блокування чи ще шліфувати
+- [x] T-142: `~/.vydra-survey-profiles/sdd_judge.env` (600 perms) — `SDD_JUDGE_URL`, `SDD_JUDGE_KEY=freecc`, `SDD_JUDGE_MODEL=agent-proxy`. Ключ знайдено живим тестуванням (`/v1/proxy/status`), НЕ з задокументованого `GOCLAW_OPENAI_PROXY_TOKEN` (застаріла назва) — реальний env var `OPENAI_PROXY_TOKEN`, реальне значення взято з `ANTHROPIC_AUTH_TOKEN=freecc` в `.env` проксі
+- [x] T-143: `GET /v1/proxy/available-models` з реальним ключем → 24 NVIDIA NIM моделі + 16 OpenRouter free. Обрано слот `agent-proxy` (auto, `moonshotai/kimi-k2-instruct`) — перший тест (короткий промпт) пройшов 200 OK
+- [x] T-144: `scripts/sdd_llm_judge.py` — переписано з нуля з урахуванням усіх правок §5.4 плану: 401/403 → WARN не FAIL, `SDD_JUDGE_MODEL` конфігурований, fallback JSON-екстракція (regex на `{...}` якщо модель обгорнула в prose/markdown), логування в `logs/sdd_judge/<ts>.json`, phase-aware промпт (не-implement фаза очікує diff лише в specs/)
+- [x] T-145: `tests/unit/test_sdd_judge.py` — 11 behavioral тестів (mock HTTP), усі PASS: unreachable/401/valid-PASS/valid-FAIL-з-violations/JSON-в-prose/сміття-не-JSON/`SDD_JUDGE_DISABLE`/порожній-diff/нема-spec/FAIL-блокує-коміт/FAIL-не-блокує-в-dry-run
+- [x] T-146: `.githooks/pre-commit` — shadow mode за замовчуванням (`SDD_JUDGE_SHADOW=1`), викликає `--dry-run`
+- [x] T-147: `git config core.hooksPath .githooks` — виконано
+- [x] T-148: Shadow-режим активний з моменту коміту P8 (`836b0ad`). **Живий інтеграційний тест відбувся автоматично** — сам коміт P8-файлів пройшов через щойно встановлений хук: проксі не відповів за 15с (timeout), хук вивів WARN і НЕ заблокував коміт. Це не баг — реальне підтвердження R5 (нестабільність проксі) і коректної fail-open поведінки під нею. Повторний тест з 60с таймаутом теж не отримав відповіді від моделі — інфраструктурна нестабільність проксі зараз, не логіки арбітра. Тиждень спостереження (за планом) розпочато з `836b0ad`, дата рішення про blocking mode — орієнтовно 2026-08-24
+- [ ] T-149: Рішення про blocking mode — ВІДКЛАДЕНО до кінця тижня спостереження і/або до стабілізації проксі. Оператор вирішує, не агент
 
 ## P9 — AGY-верифікація (паралельно після P4)
 

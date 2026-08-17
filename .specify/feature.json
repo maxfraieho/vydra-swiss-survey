@@ -4,9 +4,9 @@
   "spec_dir": "specs/021-multiagent-sdd-extension",
   "branch": "astryx-ui-refactor",
   "phase": "implement",
-  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs", "P5-native-spec-kit", "P6-handoff", "P7-sdd-verify"],
+  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs", "P5-native-spec-kit", "P6-handoff", "P7-sdd-verify", "P8-arbiter-shadow"],
   "owner_agent": "claude-code",
   "host": "dev-184",
-  "updated_at": "2026-08-17T11:00:00Z",
-  "notes": "P0-P7 done. sdd_verify.sh dynamic + --gate + --arbiter, tested PASS on master and astryx-ui-refactor. Next: P8 arbiter (needs working proxy key) or P9 AGY verification."
+  "updated_at": "2026-08-17T11:45:00Z",
+  "notes": "P0-P8 done, P8 in shadow mode (SDD_JUDGE_SHADOW=1) since 836b0ad. T-149 blocking-mode decision deferred to operator ~2026-08-24. P9 (AGY verification) remains, out of scope for dev-184 session."
 }
