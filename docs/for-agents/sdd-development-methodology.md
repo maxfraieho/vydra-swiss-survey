@@ -304,8 +304,9 @@ description: Spec-Driven Development (SDD) methodology guide for specify-cli, pr
 
 ## 📦 5. Каталог Спеціалізованих SDD Скілів у Проєкті
 
-У директорії `.agents/skills/` (та засихронізовано в `.claude/skills/`) підключено наступні 7 open-source скілів розширення Spec Kit:
+> **Оновлено 2026-08-17** (`specs/021-multiagent-sdd-extension/`): попередній перелік (7 скілів) не відповідав фактичному стану репо. `.agents/skills/` — єдине джерело правди (канон), `.claude/skills/` НЕ синхронізовано автоматично для SDD-скілів — див. `plan.md` §clarify п.4.
 
+**7 speckit-* скілів** (розширення Spec Kit):
 1. **`speckit-constitution`:** Формування та перевірка недоторканних інваріантів у `.specify/constitution.md`.
 2. **`speckit-specify`:** Трансформація ідей у Given-When-Then специфікації (`specs/<feature>/spec.md`).
 3. **`speckit-clarify`:** Брейнштормінг-інтерв'юер для знаходження «сліпих плям» та зняття неоднозначностей.
@@ -313,29 +314,54 @@ description: Spec-Driven Development (SDD) methodology guide for specify-cli, pr
 5. **`speckit-assumptions`:** Скіл Адді Османі для явного опису блока `ASSUMPTIONS I'M MAKING` та межам 6 зон бізнес-контексту.
 6. **`speckit-architecture-guard`:** Автоматичний перевіряючий безпеки (OWASP, SQL Injection) та захисту гарячого шляху під час планування.
 7. **`speckit-canon`:** Відстеження дрейфу специфікацій (`spec-drift`) для існуючих вихідних файлів проєкту.
+8. **`speckit-teaching`:** HITL-навчання агента (окремий скіл, не плутати з project-командою `/sdd:teaching`).
+
+**6 базових SDD-скілів** (методологія проєкту):
+9. **`sdd-workflow`:** Базовий guide — 5 принципів SDD + artifact lifecycle. Читається кожним агентом на старті сесії (`AGENTS.md` MUST).
+10. **`sdd-feature`**, **11. `sdd-bugfix`**, **12. `sdd-refactor`**, **13. `sdd-integration`**, **14. `sdd-teaching`** — по одному на кожен із Шаблонів 1-5, з окремими `description` для Progressive Disclosure маршрутизації в AGY. Спільні для AGY і Codex CLI (§6.4).
+
+**Інші скіли:** `gitnexus-audit`, `codebase-audit`, `impeccable`, `impeccable-design`, `termux-build-deploy` — не SDD-специфічні, поза межами цього каталогу.
 
 
 ---
 
 ## 🛠️ 6. Розгортання /sdd:* Slash-Команд
 
-Для автоматизації та зручного виклику 5 ключових шаблонів SDD-розробки у проєкті розгорнуто систему slash-команд у `.claude/commands/sdd/` з документаційним описом у [`docs/for-agents/prompts/README-sdd-commands.md`](file:///data/data/com.termux/files/home/vydra-swiss-survey/docs/for-agents/prompts/README-sdd-commands.md).
+Для автоматизації та зручного виклику ключових шаблонів SDD-розробки у проєкті розгорнуто систему slash-команд у `.claude/commands/sdd/` з документаційним описом у [`docs/for-agents/prompts/README-sdd-commands.md`](file:///data/data/com.termux/files/home/vydra-swiss-survey/docs/for-agents/prompts/README-sdd-commands.md).
 
-### 1. Для Claude Code (`.claude/commands/sdd/`)
-Усі 5 команд розміщені в `.claude/commands/sdd/` і посилаються на Шаблони з `docs/for-agents/sdd-development-methodology.md`:
+### 6.1 Для Claude Code (`.claude/commands/sdd/`)
+Усі **9 команд** розміщені в `.claude/commands/sdd/` і посилаються на Шаблони з `docs/for-agents/sdd-development-methodology.md`:
 * **`/sdd:feature`** — Запускає Шаблон 1 ("🎨 Нова Фіча"): створює `specs/<NNN>-<slug>/spec.md`, виконує `check_gitnexus_impact.py`, створює RED->GREEN тести та реалізацію.
 * **`/sdd:bugfix`** — Запускає Шаблон 2 ("🐛 Виправлення Бага"): ізоляція багу, тест відтворення RED, рефакторинг та GREEN підтвердження.
 * **`/sdd:refactor`** — Запускає Шаблон 3 ("♻️ Безпечний Рефакторинг"): перевірка існуючого покриття, impact-аналіз залежностей через GitNexus, ізольовані зміни без регресії.
 * **`/sdd:integration`** — Запускає Шаблон 4 ("🔌 Інтеграція Сервісів / Протоколів"): розробка адаптера, verification-скрипт `verify_<service>_roundtrip.py`, regression-тести.
 * **`/sdd:teaching`** — Запускає Шаблон 5 ("🎓 Навчання Агента та Формалізація Правил"): аналіз HITL-корекцій, створення shadow-правила, N>=3 промоція.
+* **`/sdd:clarify`** — Запускає Шаблон 7 ("💡 Зняття Неоднозначностей"): 3-5 уточнюючих питань, блок ASSUMPTIONS, чернетка Given-When-Then.
+* **`/sdd:research`** — Запускає Шаблон 6 ("🔬 Глибоке Дослідження"): формує самодостатній дослідницький промпт-артефакт у `docs/for-agents/prompts/`.
+* **`/sdd:audit`** — Запускає Шаблон 8 ("🔍 Аудит Spec-Drift"): порівнює код зі специфікацією, звіт про розходження.
+* **`/sdd:verify`** — Запускає Шаблон 9 ("🛡️ Комплексна Верифікація"): `bin/sdd_verify.sh`, системні інваріанти, повна тестова сюїта.
 
-### 2. Для Агента Agy (AntiGravity / `agy`)
-Агент Agy виконує еквівалент slash-команд через:
-* **Активацію Скіла:** `.agents/skills/sdd-workflow/SKILL.md` (чи `/speckit.*`).
-* **Прямий виклик у промпті:** Сформулюйте запит із вказівкою номера Шаблону (наприклад, *"Виконай SDD Шаблон 1 з docs/sdd-development-methodology.md для фічі X"*). Agy зчитує відповідний Шаблон напряму з методики, гарантуючи 100% відсутність розбіжностей (spec-drift).
+### 6.2 Для Агента Agy (AntiGravity / `agy`)
 
-### 3. Для Інших Агентів (Qwen 2.5, Gemini)
+> **Оновлено 2026-08-17** — підтверджені факти замінюють попереднє припущення (деталі: `specs/021-multiagent-sdd-extension/plan.md`).
+
+`.agent/commands/` з `$ARGUMENTS`-підстановкою — **офіційно deprecated** (AGY v1.20.5+). Єдиний сучасний механізм — **Agent Skills**: `.agents/skills/<name>/SKILL.md` з YAML-frontmatter (`name`, `description`) автоматично реєструється в TUI як `/<skill-name>`. **Механічної підстановки `$ARGUMENTS` немає** — AGY застосовує Progressive Disclosure (на старті сесії — лише метадані скілів; повний текст і аргументи парсяться моделлю семантично при активації).
+
+Практично: `/sdd-feature`, `/sdd-bugfix`, `/sdd-refactor`, `/sdd-integration`, `/sdd-teaching` — 5 окремих skill-файлів у `.agents/skills/sdd-*/SKILL.md` (не один загальний `sdd-workflow` — розділення потрібне саме для маршрутизаційного сигналу Progressive Disclosure). Верифікація на реальному AGY — окрема задача (P9 у `plan.md`), `agy` не встановлений на dev-184.
+
+### 6.3 Для Інших Агентів (Qwen 2.5, Gemini)
 * **Програмовані воркери (Qwen 2.5):** Запускаються автоматично через `persona_graph_memory.py` для auto-triage черги `async_review_queue`. Slash-команди не застосовуються.
 * **Дослідницькі промпти (Gemini):** Викликаються через готові промпт-файли у `docs/prompts/gemini-*`. Взаємодія здійснюється через прямий текст промпту із посиланням на номер Шаблону.
+
+### 6.4 Для OpenAI Codex CLI (`.codex/prompts/`)
+
+> **Новий розділ, 2026-08-17** (`specs/021-multiagent-sdd-extension/`).
+
+Codex CLI (встановлений на dev-184, `codex-cli 0.124.0`) нативно читає `AGENTS.md` як пріоритетний контекст на старті сесії. Для slash-команд задіяно гібридну стратегію (обидва механізми, які підтримує Codex):
+
+1. **Prompt-шаблони** (`.codex/prompts/*.md`) — реєструються в TUI-меню, синтаксис `$1..$9`/`$ARGUMENTS`/`$$`. 5 тонких лаунчерів (`sdd-feature.md`…`sdd-teaching.md`), кожен лише посилається на відповідний `.agents/skills/sdd-*/SKILL.md` — без дублювання методології.
+2. **Agent Skills** (`.agents/skills/<name>/SKILL.md`) — той самий стандарт, що й AGY; ті самі 5 файлів обслуговують обидва агенти.
+
+Статус (2026-08-17): файли створені, але наявність `.codex/prompts/`-механізму на цій версії CLI **не підтверджена живим TUI-тестом** (`codex exec`/`--help` не дають способу перелічити prompt-команди неінтерактивно). Деталі й acceptance-критерій — `plan.md` §2, §8.2-8.3. Портування додаткових 4 команд (`clarify/research/audit/verify`) у Codex — поза межами фази 1 (`plan.md` §2.3).
 
 

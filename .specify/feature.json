@@ -4,9 +4,9 @@
   "spec_dir": "specs/021-multiagent-sdd-extension",
   "branch": "astryx-ui-refactor",
   "phase": "implement",
-  "phases_done": ["specify", "clarify", "plan", "tasks"],
+  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs"],
   "owner_agent": "claude-code",
   "host": "dev-184",
-  "updated_at": "2026-08-17T09:15:00Z",
-  "notes": "P0-P1 done, P2 (shared skills) next"
+  "updated_at": "2026-08-17T10:00:00Z",
+  "notes": "P0-P4 done. T-115 (Codex TUI smoke-test) needs manual verification. Next: P5 native Spec Kit install (HIGH RISK)."
 }

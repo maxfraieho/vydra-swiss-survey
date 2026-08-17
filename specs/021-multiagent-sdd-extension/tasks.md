@@ -12,30 +12,30 @@
 
 - [x] T-102: Написати `spec.md` (6 user stories, інваріанти, out-of-scope)
 
-## P2 — Shared skills (`.agents/skills/`)
+## P2 — Shared skills (`.agents/skills/`) ✅
 
-- [ ] T-103: `.agents/skills/sdd-feature/SKILL.md`
-- [ ] T-104: `.agents/skills/sdd-bugfix/SKILL.md`
-- [ ] T-105: `.agents/skills/sdd-refactor/SKILL.md`
-- [ ] T-106: `.agents/skills/sdd-integration/SKILL.md`
-- [ ] T-107: `.agents/skills/sdd-teaching/SKILL.md`
-- [ ] T-108: Верифікація frontmatter (`name`+`description`) усіх 5 файлів валідний YAML
+- [x] T-103: `.agents/skills/sdd-feature/SKILL.md`
+- [x] T-104: `.agents/skills/sdd-bugfix/SKILL.md`
+- [x] T-105: `.agents/skills/sdd-refactor/SKILL.md`
+- [x] T-106: `.agents/skills/sdd-integration/SKILL.md`
+- [x] T-107: `.agents/skills/sdd-teaching/SKILL.md`
+- [x] T-108: Верифікація frontmatter — усі 5 файлів мають валідний `name`+`description` YAML, підтверджено `find`-лістингом на dev-184
 
-## P3 — Codex prompts
+## P3 — Codex prompts ⚠️ частково (файли створені, TUI-верифікація не автоматизується)
 
-- [ ] T-109: `.codex/prompts/sdd-feature.md` (+4 аналогічні: bugfix/refactor/integration/teaching) — T-109..T-113
-- [ ] T-114: Перевірити `trust_level` в `~/.codex/config.toml` для `/home/vokov/projects/vydra-swiss-survey`
-- [ ] T-115: Smoke-тест — `codex` у корені репо, підтвердити `/sdd-feature` в TUI-списку команд (скріншот/вивід команди-листингу)
+- [x] T-109..T-113: `.codex/prompts/sdd-{feature,bugfix,refactor,integration,teaching}.md` — створено, тонкі лаунчери з `$ARGUMENTS`, посилаються на `.agents/skills/sdd-*/SKILL.md`
+- [x] T-114: `trust_level` перевірено — `/home/vokov/projects` = `trusted` в `~/.codex/config.toml`; точний запис для `/home/vokov/projects/vydra-swiss-survey` відсутній, успадкування за префіксом НЕ підтверджено
+- [ ] T-115: Smoke-тест НЕ виконано — `codex --help`/`codex exec --help` підтвердили, що `.codex/prompts/`-меню є TUI-only фічею без CLI-інтроспекції; `codex exec` non-interactive не читає `.codex/prompts/`. Потребує ручної інтерактивної перевірки оператором (відкрити `codex` в репо, перевірити `/sdd-feature` в списку команд)
 
-## P4 — Docs
+## P4 — Docs ✅
 
-- [ ] T-116: `README-sdd-commands.md` — переписати секцію "Щодо agy" підтвердженими фактами
-- [ ] T-117: `README-sdd-commands.md` — додати секцію "Codex CLI"
-- [ ] T-118: `README-sdd-commands.md` — оновити список команд Claude Code (5→9)
-- [ ] T-119: `sdd-development-methodology.md` §5 — оновити каталог скілів (реальний перелік)
-- [ ] T-120: `sdd-development-methodology.md` §6.1 — 9 команд замість 5
-- [ ] T-121: `sdd-development-methodology.md` §6.2 — Agy підтверджені факти
-- [ ] T-122: `sdd-development-methodology.md` новий §6.4 — Codex CLI
+- [x] T-116: `README-sdd-commands.md` — секція "Щодо agy" переписана підтвердженими фактами
+- [x] T-117: `README-sdd-commands.md` — додано секцію "Codex CLI"
+- [x] T-118: `README-sdd-commands.md` — список команд Claude Code оновлено 5→9
+- [x] T-119: `sdd-development-methodology.md` §5 — каталог скілів оновлено (14 файлів: 8 speckit-* + 6 sdd-*, було невірно "7")
+- [x] T-120: `sdd-development-methodology.md` §6.1 — 9 команд замість 5
+- [x] T-121: `sdd-development-methodology.md` §6.2 — Agy підтверджені факти (deprecated `.agent/commands/`, Progressive Disclosure, немає `$ARGUMENTS`)
+- [x] T-122: `sdd-development-methodology.md` новий §6.4 — Codex CLI (гібрид prompts+skills, статус верифікації чесно позначено як непідтверджений)
 
 ## P5 — Native Spec Kit (HIGH RISK)
 
