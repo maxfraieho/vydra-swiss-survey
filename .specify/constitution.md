@@ -1,8 +1,8 @@
 # Конституція проєкту `vydra-swiss-survey` (Project Constitution)
 
-> **Версія:** 1.0.1  
+> **Версія:** 1.1.0  
 > **Статус:** Дійсний інваріант розробки  
-> **Методологія:** Spec-Driven Development (SDD) via GitHub Spec Kit (`specify-cli` v0.16.2)
+> **Методологія:** Spec-Driven Development (SDD) via GitHub Spec Kit (`specify-cli` v0.16.5, `specify integration install claude`+`codex` виконано 2026-08-17 — `specs/021-multiagent-sdd-extension/`)
 
 ---
 
@@ -49,9 +49,25 @@
 
 ## 3. Правила SDD Workflow (`specify-cli`)
 
+> **Оновлено 2026-08-17** (`specs/021-multiagent-sdd-extension/`). Попередня редакція посилалась на команди `/speckit.specify` → `/speckit.plan` → `/speckit.tasks` → `/speckit.implement` як на нормативний виконуваний контур. Живий SSH-аудит (2026-08-17, до install) показав: ці команди **не існували** в жодному агентному середовищі репо — `.specify/` містив лише сам файл конституції, без `templates/`/`scripts/`/`integration.json`. Після `specify integration install claude`+`codex` того ж дня стан змінився: `.specify/{templates,scripts,integrations}` тепер реальні, `.claude/skills/speckit-*` та `.agents/skills/speckit-*` — офіційні upstream Agent Skills (не текстові slash-команди з позиційною підстановкою).
+
+**Правило пріоритету:** ця конституція визначає інваріанти; `docs/for-agents/sdd-development-methodology.md` — процедуру (9 project-шаблонів); native Spec Kit / Codex / AGY-механізми — лише транспорт виклику. За конфліктом між шарами виграє конституція.
+
+| Фаза SDD | Native механізм (Spec Kit Agent Skill) | Project-команда (`.claude/commands/sdd/`) | Спільний скіл (AGY+Codex) |
+|---|---|---|---|
+| Specify | `speckit-specify` (auto/semantic invocation, Claude Code) | `/sdd:feature` | `.agents/skills/sdd-feature` |
+| Clarify | `speckit-clarify` | `/sdd:clarify` | `.agents/skills/speckit-clarify` |
+| Plan | `speckit-plan` | (у складі `/sdd:*` шаблонів) | `.agents/skills/speckit-plan` |
+| Tasks | `speckit-tasks` | (у складі `/sdd:*` шаблонів) | `.agents/skills/speckit-tasks` |
+| Implement | `speckit-implement` | `/sdd:{bugfix,refactor,integration,teaching}` | `.agents/skills/sdd-*` |
+| Verify | — (project-only) | `/sdd:verify` | `bin/sdd_verify.sh` |
+
+Важливо: native Spec Kit механізм — це **Agent Skills** (`name`+`description` frontmatter, семантична/model-invocation активація), НЕ буквальні slash-команди на кшталт `/speckit.specify`. Формулювання попередньої редакції ("`/speckit.specify`: Створення специфікації…") було неточним — виправлено вище.
+
 Усі нові фічі, рефакторинг або зміни API описуються за специфікаційним циклом:
 
-1. `/speckit.specify`: Створення специфікації у `specs/<feature-name>/spec.md`.
-2. `/speckit.plan`: Розробка архітектурного плану з обов'язковим аналізом впливу через GitNexus (`impact({target: symbol, direction: "upstream"})`).
-3. `/speckit.tasks`: Декомпозиція на атомарні задачі з критеріями приймання (AC).
-4. `/speckit.implement`: Послідовне виконання з викликом `detect_changes()` після кожного кроку.
+1. `/sdd:feature` (project) або семантична активація `speckit-specify` (native): Створення специфікації у `specs/<feature-name>/spec.md`.
+2. Розробка архітектурного плану з обов'язковим аналізом впливу через GitNexus (`impact({target: symbol, direction: "upstream"})`).
+3. Декомпозиція на атомарні задачі з критеріями приймання (AC).
+4. Послідовне виконання з викликом `detect_changes()` після кожного кроку.
+5. `bash bin/sdd_verify.sh` перед комітом.
