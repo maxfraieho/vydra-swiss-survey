@@ -52,20 +52,20 @@
 
 **Додатково знайдено (не в оригінальному tasks.md):** `.specify/.gitignore` (згенерований install) ігнорує `feature.json` як "не для шарингу між машинами" — конфліктує з нашим Handoff Protocol (P6), де `feature.json` МАЄ бути трекований для міжагентного стану. Не блокер (файл вже трекований, ігнор не діє на трекований файл), але задокументовано як свідомий відхід від нативної конвенції Spec Kit. `.specify/integrations/.cache/` (28K, regenerable API-каталог) — додано в `.gitignore`, не закомічено.
 
-## P6 — Handoff enforcement
+## P6 — Handoff enforcement ✅
 
-- [ ] T-133: Створити `.specify/feature.json` (bootstrap на цю ж фічу — dogfooding)
-- [ ] T-134: `AGENTS.md` → «Always Do» — додати 4 обов'язки з `plan.md` §4.3
-- [ ] T-135: Оновлювати `feature.json` на кожному фазовому переході цієї ж фічі (retro-fill для P0-P5)
+- [x] T-133: `.specify/feature.json` створено (bootstrap на цю ж фічу — dogfooding), оновлювався на кожному фазовому переході P0-P5
+- [x] T-134: `AGENTS.md` → «Always Do» — 3 нові MUST-правила (feature.json читання перед стартом + STOP при branch-mismatch, оновлення на кожному переході окремим комітом, `sdd_verify.sh --gate` перед правкою коду)
+- [x] T-135: Retro-fill для P0-P5 — виконано через послідовні коміти `feature.json` на кожній фазі (P1/tasks, P5)
 
-## P7 — `sdd_verify.sh` рефакторинг
+## P7 — `sdd_verify.sh` рефакторинг ✅
 
-- [ ] T-136: Динамічний обхід `specs/*/` замість хардкод-allowlist
-- [ ] T-137: Режим `--gate` (читає `feature.json`, валідує активну фічу)
-- [ ] T-138: Режим `--arbiter` (виклик `sdd_llm_judge.py --staged`)
-- [ ] T-139: Regression-тест: `bash bin/sdd_verify.sh` PASS на `master`
-- [ ] T-140: Regression-тест: `bash bin/sdd_verify.sh` PASS на `astryx-ui-refactor`
-- [ ] T-141: Non-tautological тест: штучно видалити `plan.md` активної фічі → `--gate` FAIL
+- [x] T-136: Динамічний обхід `specs/*/` — замінено 32-шляховий хардкод. Знайдено і виправлено реальний баг під час тестування: перша версія вимагала `spec.md` безумовно, що ламалось на `001-sdd-migration` (лише `plan.md`+`tasks.md`, старіший за конвенцію spec.md) — послаблено до WARN, не FAIL
+- [x] T-137: Режим `--gate` — читає `feature.json`, phase-залежні вимоги, перевірка branch-match
+- [x] T-138: Режим `--arbiter` — викликає `scripts/sdd_llm_judge.py --staged` якщо існує (P8 ще не зроблено — no-op з попередженням)
+- [x] T-139: `bash bin/sdd_verify.sh` на `master`-клоні (порт 5006 checkout) → **PASS**, `001-sdd-migration` дав очікуваний WARN, не FAIL
+- [x] T-140: `bash bin/sdd_verify.sh` на `astryx-ui-refactor` → **PASS**
+- [x] T-141: Non-tautological тест — фізично прибрано `specs/021.../plan.md`, `--gate` → `exit 1` з точною назвою відсутнього файлу, відновлено, `--gate` → `exit 0`. Реальний RED→GREEN цикл, не tautology
 
 ## P8 — LLM Arbiter
 
