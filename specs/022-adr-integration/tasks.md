@@ -63,14 +63,14 @@
 
 ## P5 — Kindle Incremental Delta Digest (`plan.md` §5, залежить від P1)
 
-- [ ] T-321: `~/projects/resume/kindle_digest.py` — `build_briefing()`
+- [x] T-321: `~/projects/resume/kindle_digest.py` — `build_briefing()`
   отримує джерело `docs/adr/*.md` (git-діапазон по вікну), не тільки
   `specs/*/`
-- [ ] T-322: Новий розділ `"Edition N: What Changed Since Last Release"` —
+- [x] T-322: Новий розділ `"Edition N: What Changed Since Last Release"` —
   рендериться першим у тілі дайджесту
-- [ ] T-323: Ручний прогін `kindle_digest.py --window daily --dry-run` —
+- [x] T-323: Ручний прогін `kindle_digest.py --window daily --dry-run` —
   новий розділ присутній, дані реальні (не заглушки)
-- [ ] T-324: Прогін наявного cron-запису (`0 6 * * *`) без `--dry-run` —
+- [x] T-324: Прогін наявного cron-запису (`0 6 * * *`) без `--dry-run` —
   exit code 0, `send_digest.py` не зачеплено (без змін, per `plan.md` §5.1
   п.3)
 
