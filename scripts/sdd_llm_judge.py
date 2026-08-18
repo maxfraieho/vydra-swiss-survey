@@ -194,7 +194,7 @@ Return ONLY valid JSON matching this schema:
 """
 
 
-def call_judge(prompt: str, url: str, key: str, model: str, timeout: int = 15) -> dict | None:
+def call_judge(prompt: str, url: str, key: str, model: str, timeout: int = 45) -> dict | None:
     """Returns a parsed verdict dict, or None if the call could not be
     completed for any infrastructure reason (caller must treat None as
     'skip, do not block')."""
