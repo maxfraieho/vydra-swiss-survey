@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "feature_id": "021-multiagent-sdd-extension",
-  "spec_dir": "specs/021-multiagent-sdd-extension",
+  "feature_id": "022-adr-integration",
+  "spec_dir": "specs/022-adr-integration",
   "branch": "astryx-ui-refactor",
-  "phase": "implement",
-  "phases_done": ["specify", "clarify", "plan", "tasks", "P2-skills", "P3-codex-prompts", "P4-docs", "P5-native-spec-kit", "P6-handoff", "P7-sdd-verify", "P8-arbiter-shadow", "P9-partial-rpi3b-verified"],
+  "phase": "tasks",
+  "phases_done": ["specify", "clarify", "plan", "tasks"],
   "owner_agent": "claude-code",
   "host": "dev-184",
-  "updated_at": "2026-08-17T12:15:00Z",
-  "notes": "P0-P8 done. P9: mechanism verified live on rpi3b (all 5 sdd-* skills confirmed visible), but AGY2/AGY3/phone fleet itself untested (all offline this session). T-149 (arbiter blocking-mode decision) and T-152/T-153 (fleet-specific AGY verification) remain open, deferred to operator when devices are reachable."
+  "updated_at": "2026-08-18T08:20:00Z",
+  "notes": "P1-P6 (ADR artifacts, constitution §3.1, methodology ADR-checkpoint, doc-drift arbiter extension, Kindle Incremental Delta Digest, verify) not yet implemented — tasks.md T-303..T-326 pending. P7 (port to sdd-universal-template, T-327..T-331) explicitly deferred by operator until after live testing in this repo. Prior feature 021-multiagent-sdd-extension left open: T-149 (arbiter blocking-mode decision) and T-152/T-153 (AGY2/.30 laptop + AGY3 tablet fleet SDD verification) — T-152 was closed this session (2026-08-18, Claude Code on .30 confirmed to see all sdd-* skills/commands live), T-153 (AGY3 tablet) still open."
 }
