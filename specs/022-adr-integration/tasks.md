@@ -14,9 +14,9 @@
 
 ## P1 — ADR-артефакти (`plan.md` §1)
 
-- [ ] T-303: `docs/adr/template.md` — шаблон MADR v3.x (усі обов'язкові
+- [x] T-303: `docs/adr/template.md` — шаблон MADR v3.x (усі обов'язкові
   секції + YAML frontmatter `status/date/deciders/spec/supersedes`)
-- [ ] T-304: `docs/adr/0001-baseline-architecture.md` — ретроактивний,
+- [x] T-304: `docs/adr/0001-baseline-architecture.md` — ретроактивний,
   `status: Accepted (Retroactive)`, фіксує Flask/Termux, SQLite WAL, прямий
   CDP, Astryx design system
 - [ ] T-305: `docs/adr/0002-madr-format-adoption.md` — перший живий ADR,
