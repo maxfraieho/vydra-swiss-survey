@@ -76,10 +76,10 @@
 
 ## P6 — Verify
 
-- [ ] T-325: `bash bin/sdd_verify.sh --gate` — фаза `implement` для
+- [x] T-325: `bash bin/sdd_verify.sh --gate` — фаза `implement` для
   `specs/022-adr-integration` проходить (усі required-артефакти P1-P5
   наявні)
-- [ ] T-326: `.specify/feature.json` — `phase: "verify"`,
+- [x] T-326: `.specify/feature.json` — `phase: "verify"`,
   `phases_done` включає всі P0-P6
 
 ## P7 — Портування в sdd-universal-template (окремий крок, ПІСЛЯ живого
