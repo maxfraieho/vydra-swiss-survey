@@ -11,3 +11,4 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob
 3. Визнач наступний вільний номер `specs/<NNN>-<slug>/`: виконай `ls specs/` і подивись, не вгадуй номер з пам'яті.
 4. Дотримуйся МУСТ-правил з `AGENTS.md` (imperativ impact-аналіз перед правкою символу, `detect_changes()` перед комітом).
 5. У фінальному звіті вкажи: створені файли, результат `check_gitnexus_impact.py`, результат `pytest`, і чи пройшов `bash bin/sdd_verify.sh`.
+6. Перед `tasks.md` — ADR-чекпоінт (`constitution.md` §3.1, деталі: КРОК 2 у Шаблоні 1 методики).

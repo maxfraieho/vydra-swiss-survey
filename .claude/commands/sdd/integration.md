@@ -11,3 +11,4 @@ allowed-tools: Bash, Read, Edit, Write, Grep, Glob
 3. Адаптер МУСИТЬ працювати поза гарячим шляхом (ThreadPoolExecutor), з таймаутом на основі реальних замірів p95, і відсікати відмову сервісу за < 2мс без блокування циклу опитування.
 4. Створи `scripts/verify_<service>_roundtrip.py` і `tests/regression/test_<service>_protocol.py`.
 5. У звіті: контракт сервісу (джерело), значення таймауту і чому саме таке, результат round-trip скрипта, результат `pytest`.
+6. Перед КРОКОМ 2 (адаптер) — ADR-чекпоінт (`constitution.md` §3.1, деталі: КРОК 1 у Шаблоні 4 методики).

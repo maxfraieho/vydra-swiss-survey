@@ -35,14 +35,14 @@
 
 ## P3 — Методологія: ADR-чекпоінт без нового шаблону (`plan.md` §3)
 
-- [ ] T-310: `docs/for-agents/sdd-development-methodology.md` — абзац
+- [x] T-310: `docs/for-agents/sdd-development-methodology.md` — абзац
   ADR-чекпоінту в описі Plan-кроку Шаблонів 1 (Feature), 3 (Refactor), 4
   (Integration)
-- [ ] T-311: `.claude/commands/sdd/feature.md` — рядок-нагадування з
+- [x] T-311: `.claude/commands/sdd/feature.md` — рядок-нагадування з
   посиланням на новий абзац
-- [ ] T-312: `.claude/commands/sdd/refactor.md` — те саме
-- [ ] T-313: `.claude/commands/sdd/integration.md` — те саме
-- [ ] T-314: Верифікація — `grep -c 'ШАБЛОН 10'
+- [x] T-312: `.claude/commands/sdd/refactor.md` — те саме
+- [x] T-313: `.claude/commands/sdd/integration.md` — те саме
+- [x] T-314: Верифікація — `grep -c 'ШАБЛОН 10'
   docs/for-agents/sdd-development-methodology.md` = 0 (підтвердження: новий
   шаблон НЕ додано)
 
