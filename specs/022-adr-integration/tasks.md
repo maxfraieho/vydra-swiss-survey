@@ -19,7 +19,7 @@
 - [x] T-304: `docs/adr/0001-baseline-architecture.md` — ретроактивний,
   `status: Accepted (Retroactive)`, фіксує Flask/Termux, SQLite WAL, прямий
   CDP, Astryx design system
-- [ ] T-305: `docs/adr/0002-madr-format-adoption.md` — перший живий ADR,
+- [x] T-305: `docs/adr/0002-madr-format-adoption.md` — перший живий ADR,
   `spec: specs/022-adr-integration`, документує саме це рішення (MADR +
   наскрізна нумерація, без log4brains)
 - [ ] T-306: Верифікація — обидва ADR мають усі MADR-секції заповнені (не
