@@ -151,5 +151,37 @@ class TestEvaluateDiff(unittest.TestCase):
         self.assertEqual(exit_code, 0)
 
 
+class TestAdrDrift(unittest.TestCase):
+    @patch.object(judge, "get_staged_diff", return_value="diff --git a/foo.py b/foo.py\n+x = 1")
+    @patch.object(judge, "get_active_feature", return_value={"spec_dir": "specs/001", "phase": "implement"})
+    @patch.object(judge, "get_spec_and_plan", return_value=("# Spec", "# Plan"))
+    @patch.object(judge, "call_judge", return_value={
+        "verdict": "PASS",
+        "summary": "ok",
+        "adr_drift": True,
+        "adr_drift_note": "ADR-0002 suggests X, diff does Y",
+    })
+    @patch.dict("os.environ", {"SDD_JUDGE_KEY": "test-key"})
+    @patch.object(judge, "_log_verdict")
+    @patch.object(judge, "_warn")
+    def test_adr_drift_detected_warns_but_does_not_block(
+        self, mock_warn, mock_log, mock_call_judge, mock_spec_plan, mock_feature, mock_diff
+    ):
+        exit_code = judge.evaluate_diff()
+        self.assertEqual(exit_code, 0)
+        mock_warn.assert_any_call("ADR drift detected: ADR-0002 suggests X, diff does Y")
+
+    def test_no_adr_referenced_in_spec_skips_adr_context(self):
+        result = judge.get_referenced_adrs("just some spec text without Reference: line")
+        self.assertEqual(result, [])
+
+    @patch.object(Path, "glob", return_value=[Path("docs/adr/0002-madr-format-adoption.md")])
+    def test_referenced_adr_found_extracts_path(self, mock_glob):
+        spec_text = "Feature spec.\nReference: ADR-0002\nSome other details."
+        paths = judge.get_referenced_adrs(spec_text)
+        self.assertEqual(len(paths), 1)
+        self.assertIn("0002", paths[0])
+
+
 if __name__ == "__main__":
     unittest.main()

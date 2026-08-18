@@ -10,6 +10,7 @@ FAIL verdict from a model that actually answered blocks the commit.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -93,6 +94,43 @@ def get_spec_and_plan(spec_dir: str) -> tuple[str, str]:
     return spec_content, plan_content
 
 
+def get_referenced_adrs(spec_content: str) -> list[str]:
+    """Scan spec.md for 'Reference: ADR-NNNN' lines and resolve them to
+    real files under docs/adr/. Missing ADRs are silently skipped —
+    this is best-effort context enrichment, not a contract check."""
+    if not spec_content:
+        return []
+    adr_numbers = re.findall(r"Reference:\s*ADR-(\d+)", spec_content, re.IGNORECASE)
+    paths: list[str] = []
+    adr_dir = Path("docs/adr")
+    for num in adr_numbers:
+        try:
+            matches = list(adr_dir.glob(f"{num}-*.md"))
+            for p in sorted(matches):
+                p_str = str(p)
+                if p_str not in paths:
+                    paths.append(p_str)
+        except OSError:
+            continue
+    return paths
+
+
+def _load_adr_context(adr_paths: list[str]) -> str:
+    if not adr_paths:
+        return ""
+    chunks: list[str] = []
+    for path_str in adr_paths:
+        p = Path(path_str)
+        try:
+            if p.exists():
+                content = p.read_text(encoding="utf-8")[:2000]
+                chunks.append(f"--- {path_str} ---\n{content}")
+        except OSError:
+            continue
+    combined = "\n\n".join(chunks)
+    return combined[:6000]
+
+
 def _extract_json(text: str) -> dict | None:
     """Best-effort JSON extraction — handles models that don't honor
     response_format=json_object and wrap the JSON in prose or fences."""
@@ -119,7 +157,7 @@ def _log_verdict(result: dict) -> None:
         pass  # logging is best-effort, never blocks the commit over it
 
 
-def build_prompt(spec: str, plan: str, diff: str, phase: str) -> str:
+def build_prompt(spec: str, plan: str, diff: str, phase: str, adr_context: str = "") -> str:
     if phase and phase != "implement":
         return f"""
 You are the strict SDD Quality Arbiter. The active feature is in phase
@@ -135,8 +173,9 @@ changed before the spec/plan/tasks phase is complete — flag this as a
 violation. If the diff is empty, PASS.
 
 Return ONLY valid JSON matching this schema:
-{{"verdict": "PASS" | "FAIL", "confidence": float, "violations": [{{"rule": "string", "reason": "string", "file": "string"}}], "summary": "string"}}
+{{"verdict": "PASS" | "FAIL", "confidence": float, "violations": [{{"rule": "string", "reason": "string", "file": "string"}}], "summary": "string", "adr_drift": boolean, "adr_drift_note": "string"}}
 """
+    adr_section = f"\n[REFERENCED ADR CONTEXT]:\n{adr_context}\n" if adr_context else ""
     return f"""
 You are the strict SDD Quality Arbiter. Validate the staged git diff against the feature specification.
 
@@ -145,13 +184,13 @@ You are the strict SDD Quality Arbiter. Validate the staged git diff against the
 
 [PLAN & CONSTRAINTS]:
 {plan[:3000]}
-
+{adr_section}
 [GIT STAGED DIFF]:
 {diff[:8000]}
 
 Analyze if the code changes violate the spec, introduce unintended side-effects, or bypass defined architectural boundaries.
 Return ONLY valid JSON matching this schema:
-{{"verdict": "PASS" | "FAIL", "confidence": float, "violations": [{{"rule": "string", "reason": "string", "file": "string"}}], "summary": "string"}}
+{{"verdict": "PASS" | "FAIL", "confidence": float, "violations": [{{"rule": "string", "reason": "string", "file": "string"}}], "summary": "string", "adr_drift": boolean, "adr_drift_note": "string"}}
 """
 
 
@@ -219,6 +258,9 @@ def evaluate_diff(dry_run: bool = False) -> int:
         _warn("no active feature.json / spec.md found — skipping (no contract to judge against)")
         return 0
 
+    adr_paths = get_referenced_adrs(spec)
+    adr_context = _load_adr_context(adr_paths)
+
     _load_secrets_env()
     url = os.environ.get("SDD_JUDGE_URL", "http://192.168.3.184:18880/v1/chat/completions")
     key = os.environ.get("SDD_JUDGE_KEY", "")
@@ -228,12 +270,15 @@ def evaluate_diff(dry_run: bool = False) -> int:
         _warn("SDD_JUDGE_KEY not set (missing ~/.vydra-survey-profiles/sdd_judge.env?) — skipping")
         return 0
 
-    prompt = build_prompt(spec, plan, diff, phase)
+    prompt = build_prompt(spec, plan, diff, phase, adr_context=adr_context)
     result = call_judge(prompt, url, key, model)
     if result is None:
         return 0  # already warned inside call_judge
 
     _log_verdict(result)
+
+    if result.get("adr_drift"):
+        _warn(f"ADR drift detected: {result.get('adr_drift_note', '')}")
 
     verdict = result.get("verdict")
     summary = result.get("summary", "")

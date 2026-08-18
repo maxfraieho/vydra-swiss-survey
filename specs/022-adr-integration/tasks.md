@@ -48,17 +48,17 @@
 
 ## P4 — Doc-drift арбітр (`plan.md` §4, незалежний від P1-P3, може паралельно)
 
-- [ ] T-315: `scripts/sdd_llm_judge.py` — `evaluate_diff()` отримує крок
+- [x] T-315: `scripts/sdd_llm_judge.py` — `evaluate_diff()` отримує крок
   пошуку `Reference: ADR-NNNN` у зачеплених `spec.md`/зачеплених файлах
-- [ ] T-316: Той самий файл — WARN-гілка (не FAIL) з чернеткою пропозиції
+- [x] T-316: Той самий файл — WARN-гілка (не FAIL) з чернеткою пропозиції
   оновлення при виявленій суперечності
-- [ ] T-317: `tests/unit/test_sdd_judge.py` — тест 1: diff без зачеплення
+- [x] T-317: `tests/unit/test_sdd_judge.py` — тест 1: diff без зачеплення
   ADR → без змін поведінки
-- [ ] T-318: `tests/unit/test_sdd_judge.py` — тест 2: diff зачіпає ADR без
+- [x] T-318: `tests/unit/test_sdd_judge.py` — тест 2: diff зачіпає ADR без
   суперечності → без WARN
-- [ ] T-319: `tests/unit/test_sdd_judge.py` — тест 3: diff суперечить ADR →
+- [x] T-319: `tests/unit/test_sdd_judge.py` — тест 3: diff суперечить ADR →
   WARN з текстом чернетки
-- [ ] T-320: `pytest tests/unit/test_sdd_judge.py` — 14/14 green (11
+- [x] T-320: `pytest tests/unit/test_sdd_judge.py` — 14/14 green (11
   наявних з P8 + 3 нових), regression підтверджено
 
 ## P5 — Kindle Incremental Delta Digest (`plan.md` §5, залежить від P1)
